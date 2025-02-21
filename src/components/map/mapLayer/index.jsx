@@ -102,6 +102,7 @@ export const VisualizationLayers = ({
 }) => {
   const { map } = useMapbox();
   if (!map || !vizItems.length) return;
+
   return (
     <>
       {vizItems.length &&
