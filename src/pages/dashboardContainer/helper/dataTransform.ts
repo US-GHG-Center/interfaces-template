@@ -1,156 +1,88 @@
-import {
-  PlumeRegion,
-  Plume,
-  SubDailyPlume,
-  STACItem,
-  PlumeMeta,
-  PlumeRegionMeta,
-} from '../../../dataModel';
+import { STACItem } from '../../../dataModel';
+import { Features, Metadata } from '../../../dataModel';
 
-interface PlumeRegionMap {
-  [key: string]: PlumeRegion;
-}
+import { Plume,PointGeometry,Geometry,Properties } from '../../../dataModel';
+import {getResultArray} from '../../../services/api'
 
-interface PlumeMap {
-  [key: string]: Plume;
-}
+export const transformMetadata = (metadata: Metadata, stacData: STACItem[]) => {
+  const metaFeatures = getResultArray(metadata);
 
-type DataTree = PlumeRegionMap;
+  const polygonLookup = new Map<string, Features>();
+  let pointLookup = new Map<string, Features>();
 
-export function dataTransformationPlume(
-  data: STACItem[],
-  plumeMetaData: PlumeMetaMap
-): PlumeMap {
-  // format of FeatureCollection Id: <something>_<region>_<plumeid>_<datetime>
-  // goes_ch4_<country>_<administrativeDivision>_<plumeSourceId>_<plumeId>_<datetime>
-  const plumeMap: PlumeMap = {};
+  for (const feature of metaFeatures) {
+    const id = feature.properties['Data Download']
+      .split('/')
+      .pop()
+      .split('.')[0];
 
-  // sort by data by time
-  const sortedData = data.sort((prev: STACItem, next: STACItem): number => {
+    if (feature.geometry.type === 'Polygon') {
+      polygonLookup.set(id, feature);
+    } else if (feature.geometry.type === 'Point') {
+      pointLookup.set(id, feature);
+    }
+  }
+  const sortedData = stacData.sort((prev: STACItem, next: STACItem): number => {
     const prev_date = new Date(prev.properties.datetime).getTime();
     const next_date = new Date(next.properties.datetime).getTime();
     return prev_date - next_date;
   });
-
-  // create a plumemap
-  sortedData.forEach((item: STACItem) => {
-    const itemId = item.id;
-    const destructuredId = itemId.split('_');
-    // goes-ch4_<country>_<administrativeDivision>_<plumeSourceId>_<plumeId>_<datetime>
-    const [_, country, administrativeDivision, region, plumeId, __] =
-      destructuredId;
-    const newPlumeId: string = `${country}_${administrativeDivision}_${region}_${plumeId}`;
-    if (!(newPlumeId in plumeMap)) {
-      let [lon, lat] = item.geometry.coordinates[0][0];
-      if (newPlumeId in plumeMetaData) {
-        lon = plumeMetaData[newPlumeId].lon;
-        lat = plumeMetaData[newPlumeId].lat;
-      }
-      const plume: Plume = {
-        id: newPlumeId,
-        region: region,
-        representationalPlume: item,
-        location: [lon, lat],
-        startDate: item.properties.datetime,
-        endDate: item.properties.datetime,
-        subDailyPlumes: [],
-      };
-      plumeMap[newPlumeId] = plume;
-    }
-    plumeMap[newPlumeId].subDailyPlumes.push(item);
+  stacData = sortedData.slice(0, 200);
+  // Transform points to markers with associated data
+  const plumes: Record<string, Plume> = {};
+  stacData.forEach((item: STACItem) => {
+    const id = item.id;
+    const pointInfo = pointLookup.get(id);
+    const polygonInfo = polygonLookup.get(id);
+    const properties: Properties = {
+      longitudeOfMaxConcentration:
+        pointInfo?.properties['Longitude of max concentration'],
+      latitudeOfMaxConcentration:
+        pointInfo?.properties['Latitude of max concentration'],
+      plumeId: pointInfo?.properties['Plume ID'],
+      concentrationUncertanity:
+        pointInfo?.properties['Concentration Uncertainty (ppm m)'],
+      maxConcentration:
+        pointInfo?.properties['Max Plume Concentration (ppm m)'],
+      orbit: Number(pointInfo?.properties['Orbit']),
+      utcTimeObserved: pointInfo?.properties['UTC Time Observed'],
+      pointStyle: pointInfo?.properties['style'],
+      polygonStyle: polygonInfo?.properties['style'],
+      plumeCountNumber: pointInfo?.properties?.plume_complex_count,
+      assetLink: pointInfo?.properties['Data Download'],
+      dcid: pointInfo?.properties?.DCID,
+      daacSceneNumber: pointInfo?.properties['DAAC Scene Numbers'],
+      sceneFID: pointInfo?.properties['Scene FIDs'],
+      mapEndTime: pointInfo?.properties?.map_endtime,
+    };
+    const lon =
+      pointInfo?.geometry?.type === 'Point'
+        ? (pointInfo.geometry.coordinates as number[])[0]
+        : undefined;
+    const lat =
+      pointInfo?.geometry?.type === 'Point'
+        ? (pointInfo.geometry.coordinates as number[])[1]
+        : undefined;
+    plumes[id] = {
+      id: item.id,
+      bbox: item.bbox,
+      type: item.type,
+      lat: lat,
+      lon: lon,
+      links: item.links,
+      assets: item.assets,
+      geometry: item.geometry,
+      collection: item.collection,
+      properties: item.properties,
+      plumeProperties: properties,
+      pointGeometry: pointInfo?.geometry as PointGeometry,
+      polygonGeometry: polygonInfo?.geometry as Geometry,
+      stac_version: item.stac_version,
+      stac_extensions: item.stac_extensions,
+    };
   });
 
-  return plumeMap;
-}
-
-export function dataTransformationPlumeRegion(
-  plumeMap: PlumeMap
-): PlumeRegionMap {
-  const dataTree: DataTree = {};
-  // create a data tree
-  Object.keys(plumeMap).forEach((plumeId) => {
-    // datetime correction in the plume. Note: plumes are in sorted order (by datetime)
-    const noOfSubDailyPlumes: number = plumeMap[plumeId].subDailyPlumes.length;
-    const firstSubDailyPlume: SubDailyPlume =
-      plumeMap[plumeId].subDailyPlumes[0];
-    const lastSubDailyPlume: SubDailyPlume =
-      plumeMap[plumeId].subDailyPlumes[noOfSubDailyPlumes - 1];
-    plumeMap[plumeId].startDate = firstSubDailyPlume.properties.datetime;
-    plumeMap[plumeId].endDate = lastSubDailyPlume.properties.datetime;
-    // datetime correction end
-
-    const plume = plumeMap[plumeId];
-    const region = plume.region;
-
-    if (!(region in dataTree)) {
-      const plumeRegion: PlumeRegion = {
-        id: region,
-        location: plume.location,
-        startDate: plume.startDate,
-        endDate: plume.endDate,
-        plumes: [],
-      };
-      dataTree[region] = plumeRegion;
-    }
-    dataTree[region].plumes.push(plume);
-    dataTree[region].endDate = plume.endDate; // to get realistic endDate for the PlumeRegion.
-  });
-
-  return dataTree;
-}
-
-interface PlumeMetaMap {
-  [key: string]: PlumeMeta;
-}
-
-interface PlumeRegionMetaMap {
-  [key: string]: PlumeRegionMeta;
-}
-
-export function dataTransformationPlumeMeta(
-  plumeMetas: PlumeMeta[]
-): PlumeMetaMap {
-  // basically array to hashmap conversion.
-  const plumeMetaMap: PlumeMetaMap = {};
-  plumeMetas.forEach((plumeMeta: PlumeMeta) => {
-    if (!(plumeMeta.id in plumeMetaMap)) {
-      plumeMetaMap[plumeMeta.id] = plumeMeta;
-    }
-  });
-  return plumeMetaMap;
-}
-
-export function dataTransformationPlumeRegionMeta(
-  plumeMetaMap: PlumeMetaMap
-): PlumeRegionMetaMap {
-  const plumeRegionMetaMap: PlumeRegionMetaMap = {};
-
-  Object.keys(plumeMetaMap).forEach((plumeId) => {
-    let plumeMeta: PlumeMeta = plumeMetaMap[plumeId];
-    if (!(plumeMeta.plumeSourceId in plumeRegionMetaMap)) {
-      const plumeRegionMeta: PlumeRegionMeta = {
-        id: plumeMeta.plumeSourceId, // Format: <region>. e.g. BV1
-        plumeSourceName: plumeMeta.plumeSourceName,
-        country: plumeMeta.country,
-        administrativeDivision: plumeMeta.administrativeDivision,
-        plumes: [],
-      };
-      plumeRegionMetaMap[plumeMeta.plumeSourceId] = plumeRegionMeta;
-    }
-    plumeRegionMetaMap[plumeMeta.plumeSourceId].plumes.push(plumeMeta);
-  });
-  return plumeRegionMetaMap;
-}
-
-// using the dataset, update the metadata
-export function metaDatetimeFix(
-  plumeMetaMap: PlumeMetaMap,
-  plumeMap: PlumeMap
-) {
-  Object.keys(plumeMap).forEach((plumeId) => {
-    if (!(plumeId in plumeMetaMap)) return;
-    plumeMetaMap[plumeId].startDatetime = plumeMap[plumeId].startDate;
-    plumeMetaMap[plumeId].endDatetime = plumeMap[plumeId].endDate;
-  });
-  return plumeMetaMap;
-}
+  return {
+    data: plumes,
+  };
+};
