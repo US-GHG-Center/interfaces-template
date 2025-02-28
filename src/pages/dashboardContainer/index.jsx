@@ -27,10 +27,10 @@ export function DashboardContainer() {
     const init = async () => {
       try {
         // // fetch in the collection from the features api
-        // const collectionUrl = `${process.env.REACT_APP_BASE_STAC_API_URL}/collections/${collectionId}`;
+        const collectionUrl = `${process.env.REACT_APP_BASE_STAC_API_URL}/collections/${collectionId}`;
         // // use this url to find out the data frequency of the collection
-        // const collectionMetadata = fetchCollectionMetadata(collectionUrl)
-        // setCollectionMeta(collectionMetadata)
+        const collectionMetadata = await fetchCollectionMetadata(collectionUrl)
+        setCollectionMeta(collectionMetadata)
        
         // const metaDataEndpoint = `${process.env.REACT_APP_METADATA_ENDPOINT}`;
         // const stacAPIEndpoint = `${process.env.REACT_APP_STAC_API_URL}`;

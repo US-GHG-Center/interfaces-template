@@ -16,7 +16,7 @@ export const fetchData = async (endpoint) => {
 export const fetchCollectionMetadata = async (collectionUrl) => {
   try {
     const metaData = await fetchData(collectionUrl)
-    return await metaData.json();
+    return   metaData;
   } catch (err) {
     console.error('Error fetching data: ', err)
   }
