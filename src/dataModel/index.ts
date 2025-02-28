@@ -1,22 +1,3 @@
-import {
-  PlumeRegion,
-  Plume,
-  SubDailyPlume,
-  DateTime,
-  Lon,
-  Lat,
-  STACItem,
-} from './plumes';
-import { PlumeMeta, PlumeRegionMeta } from './plumeMeta';
-
-export type {
-  PlumeRegion,
-  Plume,
-  SubDailyPlume,
-  DateTime,
-  Lon,
-  Lat,
-  STACItem,
-  PlumeMeta,
-  PlumeRegionMeta,
-};
+import { Plume, DateTime, Lon, Lat, STACItem,Properties,Geometry,PointGeometry } from './plumes';
+import { Metadata,Features } from './metadata';
+export type {  Metadata,Features ,Plume, DateTime, Lon, Lat, STACItem, Properties,Geometry,PointGeometry };
