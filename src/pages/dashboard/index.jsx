@@ -69,6 +69,8 @@ function Dashboard({
   const [VMIN, setVMIN] = useState(-92);
   const [colormap, setColormap] = useState('plasma');
   const [assets, setAssets] = useState('ch4-plume-emissions');
+  
+  // console.log({collectionMeta})
 
   //states for data
 
@@ -87,14 +89,14 @@ function Dashboard({
 
   const handleSelectedVizLayer = (vizLayerId) => {
     if (!vizItems || !vizLayerId) return;
-    console.log({ vizLayerId });
+    // console.log({ vizLayerId });
   };
 
   const handleSelectedVizItemSearch = (vizItemId) => {
     // will focus on the visualization item along with its visualization item metadata card
     // will react to update the metadata on the sidedrawer
     if (!vizItems || !vizItemId) return;
-    console.log({ vizItemId });
+    // console.log({ vizItemId });
   };
 
   const handleResetHome = () => {
