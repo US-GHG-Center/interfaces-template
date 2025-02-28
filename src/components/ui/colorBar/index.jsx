@@ -13,22 +13,22 @@ import './index.css';
       @param {label} label - label to be displayed 
       @param {number} VMIN - minimum value of the color index
       @param {number} VMAX - maximum value of the color index
-      @param {number} STEPSIZE - stepsize of  scale 
+      @param {number} STEPS - no of Steps  
       @param {string} colormap - name of the colormap
      
 */
 
-export const ColorBar = ({ label, VMIN, VMAX, STEPSIZE = 1, colormap }) => {
+export const ColorBar = ({ label, VMIN, VMAX, STEPS, colormap }) => {
   const colorBarScale = useRef();
   useEffect(() => {
-    const STEP = (VMAX - VMIN) / STEPSIZE;
+    const STEP = Math.floor(((VMAX - VMIN) / STEPS));
     const colorbar = d3.select(colorBarScale.current);
     createColorbar(colorbar, VMIN, VMAX, STEP, colormap);
 
     return () => {
       colorbar.selectAll('*').remove();
     };
-  }, [label, VMIN, VMAX, STEPSIZE, colormap]);
+  }, [label, VMIN, VMAX, STEPS, colormap]);
 
   return (
     <Card id='colorbar'>
