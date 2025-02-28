@@ -39,13 +39,14 @@ export const addSourceLayerToMap = (
 ) => {
   if (!map || (sourceExists(map, sourceId) && layerExists(map, layerId)))
     return;
-
+  
   const collection = feature.collection; // feature.collection
   let itemId = feature.id;
 
   const TILE_URL =
-    `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${itemId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x` +
-    '?assets=' +
+    `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?item=` +
+    itemId +
+    '&assets=' +
     assets +
     '&bidx=1' +
     '&colormap_name=' +
@@ -53,8 +54,8 @@ export const addSourceLayerToMap = (
     '&rescale=' +
     VMIN +
     '%2C' +
-    VMAX;
-  // "&nodata=-9999";
+    VMAX +
+    '&nodata=-9999';
 
   map.addSource(sourceId, {
     type: 'raster',
