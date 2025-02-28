@@ -1,28 +1,40 @@
-export type SubDailyPlume = STACItem; // This is the smallest working unit of data. Format: <country>_<state>_<region>_<plume_id>_<datetime>. e.g. "GOES-CH4_Mexico_Durango_BV1_BV1-2_2019-05-21T17:31:00Z"
-
-export interface Plume {
-  id: string; // Format: <country>_<state>_<region>_<plume_id>. e.g. Mexico_Durango_BV1_BV1-1
-  region: string;
-  representationalPlume: SubDailyPlume;
-  location: [Lon, Lat]; // [lon, lat]
-  startDate: DateTime;
-  endDate: DateTime;
-  subDailyPlumes: SubDailyPlume[];
-}
-
-export interface PlumeRegion {
-  id: string; // Format: <region>. e.g. BV1
-  location: [Lon, Lat]; // [lon, lat]
-  startDate: DateTime;
-  endDate: DateTime;
-  plumes: Plume[];
-}
-
-// helpers
-
 export type DateTime = string;
 export type Lon = string;
 export type Lat = string;
+
+export interface Plume extends STACItem {
+  lat?: number;
+  lon?: number;
+  plumeProperties: Properties;
+  pointGeometry?: PointGeometry;
+  polygonGeometry?: Geometry;
+}
+export interface Properties {
+  longitudeOfMaxConcentration?: number;
+  latitudeOfMaxConcentration?: number;
+  concentrationUncertanity?: number;
+  plumeId?: string;
+  maxConcentration?: number;
+  orbit?: number;
+  utcTimeObserved?: string;
+  pointStyle?: Style;
+  polygonStyle?: Style;
+  plumeCountNumber?: number;
+  assetLink?: string;
+  dcid?: string;
+  daacSceneNumber?: string[];
+  sceneFID?: string[];
+  mapEndTime?: string;
+}
+export interface Style {
+  color: string;
+  fillOpacity: number;
+  maxZoom: number;
+  minZoom: number;
+  opacity: number;
+  radius: number;
+  weight: number;
+}
 
 // Stac Item defination
 export interface STACItem {
@@ -30,10 +42,7 @@ export interface STACItem {
   bbox: number[];
   type: string;
   links: Link[];
-  assets: {
-    rad: Asset;
-    rendered_preview: Asset;
-  };
+  assets: Record<string,Asset>;
   geometry: Geometry;
   collection: string;
   properties: {
@@ -91,9 +100,13 @@ interface Statistics {
   valid_percent: number;
 }
 
-interface Geometry {
+export interface Geometry {
   type: string;
-  coordinates: string[][][];
+  coordinates: number[][][];
+}
+export interface PointGeometry {
+  type: string;
+  coordinates: number[];
 }
 
 interface ProjJSON {
