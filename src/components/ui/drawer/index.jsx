@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import './index.css';
 
 const drawerWidth = '30rem';
-
 const Main = styledmui('main', {
   shouldForwardProp: (prop) => prop !== 'open',
 })(({ theme }) => ({
@@ -64,54 +63,25 @@ export function PersistentDrawerRight({
   open,
   setOpen,
   selectedVizItems,
-  vizItemMetaData,
+  hoveredVizLayerId,
   collectionId,
-  metaDataTree,
-  vizItemsMap,
-  handleSelectedVizItems,
-  hoveredVizItemId,
-  setHoveredVizItemId,
+  onSelectVizLayer,
+  onHoverOnVizLayer,
 }) {
-  const [selectedVizItemMetas, setSelectedVizItemMetas] = useState([]);
-  const [location, setLocation] = useState('USA');
   const [numberOfVizItems, setNumberOfVizItems] = useState(0);
-
-  let VMIN = 0;
-  let VMAX = 0.4;
-  let colorMap = 'plasma';
-
   const handleDrawerClose = () => {
     setOpen(false);
   };
-
   useEffect(() => {
-    if (!vizItemMetaData) return;
     if (!selectedVizItems.length) {
-      setSelectedVizItemMetas([]);
-      setLocation('USA');
       setNumberOfVizItems(0);
       return;
     }
+    const numberOfVizItems = selectedVizItems.length;
+    setNumberOfVizItems(numberOfVizItems);
+  }, [selectedVizItems]);
 
-    try {
-      const selectedMetas = selectedVizItems.map((vizItem) => {
-        if (!(vizItem.id in vizItemMetaData)) {
-          throw new Error(`vizItemId: "${vizItem.id}" not found in metadata.`);
-        }
-        return vizItemMetaData[vizItem.id];
-      });
-      setSelectedVizItemMetas(selectedMetas);
-
-      const firstVizItemMeta = vizItemMetaData[selectedVizItems[0].id];
-      const { administrativeDivision, country } = firstVizItemMeta;
-      const location = `${administrativeDivision}, ${country}`;
-      const numberOfVizItems = selectedVizItems.length;
-      setLocation(location);
-      setNumberOfVizItems(numberOfVizItems);
-    } catch (err) {
-      console.error('Error getting data for the drawer.', err);
-    }
-  }, [vizItemMetaData, selectedVizItems]);
+  // console.log({ selectedVizItems });
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -145,7 +115,7 @@ export function PersistentDrawerRight({
               fontWeight='bold'
               className='drawer-head-content'
             >
-              {location}
+              Plume Complexes
             </Typography>
             <Typography
               variant='subtitle1'
@@ -156,26 +126,20 @@ export function PersistentDrawerRight({
             </Typography>
           </HorizontalLayout>
         </DrawerHeader>
-        {!!selectedVizItemMetas.length &&
-          selectedVizItemMetas.map((selectedVizItemMeta) => (
+        {selectedVizItems?.length ? (
+          selectedVizItems?.map((selectedVizItem) => (
             <VisualizationItemCard
-              key={selectedVizItemMeta.id}
-              vizItemSourceId={selectedVizItemMeta.id}
-              vizItemSourceName={selectedVizItemMeta.id}
-              imageUrl={`${process.env.REACT_APP_RASTER_API_URL}/collections/${collectionId}/items/${vizItemsMap[selectedVizItemMeta.id].representationalPlume.id}/preview.png?assets=rad&rescale=${VMIN}%2C${VMAX}&colormap_name=${colorMap}`}
-              tiffUrl={`${process.env.REACT_APP_CLOUD_BROWSE_URL}/browseui/#${collectionId}/#q=${selectedVizItemMeta.id.split('_').slice(-1)}`}
-              lon={selectedVizItemMeta.lon}
-              lat={selectedVizItemMeta.lat}
-              totalReleaseMass={selectedVizItemMeta.totalReleaseMass}
-              colEnhancements={selectedVizItemMeta.colEnhancements}
-              startDatetime={selectedVizItemMeta.startDatetime}
-              endDatetime={selectedVizItemMeta.endDatetime}
-              duration={selectedVizItemMeta.duration}
-              handleSelectedVizItemCard={handleSelectedVizItems}
-              hoveredVizItemId={hoveredVizItemId}
-              setHoveredVizItemId={setHoveredVizItemId}
+              key={selectedVizItem?.id}
+              vizItem={selectedVizItem}
+              collectionId={collectionId}
+              onSelectVizLayer={onSelectVizLayer}
+              hoveredVizLayerId={hoveredVizLayerId}
+              onHoverOnVizLayer={onHoverOnVizLayer}
             />
-          ))}
+          ))
+        ) : (
+          <></>
+        )}
       </Drawer>
     </Box>
   );

@@ -1,4 +1,3 @@
-
 export const fetchData = async (endpoint) => {
   try {
     const response = await fetch(endpoint);
@@ -12,15 +11,36 @@ export const fetchData = async (endpoint) => {
   }
 };
 
-
 export const fetchCollectionMetadata = async (collectionUrl) => {
   try {
-    const metaData = await fetchData(collectionUrl)
-    return   metaData;
+    const metaData = await fetchData(collectionUrl);
+    return metaData;
   } catch (err) {
-    console.error('Error fetching data: ', err)
+    console.error('Error fetching data: ', err);
   }
-}
+};
+
+export const getLocation = async (lat, lon) => {
+  let location = '';
+  try {
+    const endpoint = `${process.env.REACT_APP_LAT_LON_TO_COUNTRY_ENDPOINT}?lat=${lat}&lon=${lon}&&apiKey=${process.env.REACT_APP_GEOAPIFY_APIKEY}`;
+    const location_data = await fetchData(endpoint);
+    let location_properties = location_data.features[0].properties;
+    let sub_location =
+      location_properties['city'] ||
+      location_properties['county'] ||
+      'Unknown';
+    let state = location_properties['state']
+      ? `${location_properties['state']}, `
+      : '';
+    let country =  location_properties['country']?location_properties['country']:''
+    location = `${sub_location}, ${state} ${country}`;
+  } catch (error) {
+    console.error(`Error fetching location for ${lat}, ${lon}:`, error);
+    location = 'Unknown';
+  }
+  return location;
+};
 
 export const fetchAllFromSTACAPI = async (STACApiUrl) => {
   // it will fetch all collection items from all stac api.
@@ -29,9 +49,9 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
   try {
     let requiredResult = [];
     // fetch in the collection from the stac api
-     const jsonResult = await fetchData(STACApiUrl);
+    const jsonResult = await fetchData(STACApiUrl);
     if (!jsonResult) return [];
-    
+
     const initialResults = getResultArray(jsonResult);
     requiredResult.push(...initialResults);
 
@@ -51,13 +71,13 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
 const fetchAllDataSTAC = async (STACApiUrl, numberMatched) => {
   // NOTE: STAC API doesnot accept offset as a query params. So, need to pull all the items using limit.
   try {
-    const url = addOffsetsToURL(STACApiUrl, 0, numberMatched)
-    const jsonResult = await fetchData(url)
+    const url = addOffsetsToURL(STACApiUrl, 0, numberMatched);
+    const jsonResult = await fetchData(url);
     if (!jsonResult) return [];
     return getResultArray(jsonResult);
   } catch (error) {
     console.error('Error fetching data:', error);
-    return []
+    return [];
   }
 };
 
@@ -81,6 +101,3 @@ export const getResultArray = (result) => {
   }
   return [];
 };
-
-
-

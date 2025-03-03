@@ -14,14 +14,11 @@ import {
   MapZoom,
   Search,
   FilterByDate,
-  VizItemAnimation,
 } from '@components';
-
+import { useMapbox } from '../../components';
 import styled from 'styled-components';
-
+import { isFeatureWithinBounds } from './helper';
 import './index.css';
-
-
 
 const TITLE = 'EMIT Methane Plume Viewer';
 const DESCRIPTION =
@@ -61,6 +58,8 @@ function Dashboard({
   const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
   const [visualizationLayers, setVisualizationLayers] = useState(true);
 
+  // console.log('Rerendering dashboard');
+  const { map } = useMapbox();
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState(false);
 
@@ -77,6 +76,7 @@ function Dashboard({
     if (!vizItemId) return;
     setShowVisualizationLayers(true);
     const vizItem = plumes[vizItemId];
+    // console.log({ vizItem });
     const location = vizItem?.geometry?.coordinates[0][0];
     setVisualizationLayers([vizItem]);
     setZoomLocation(location);
@@ -87,14 +87,14 @@ function Dashboard({
 
   const handleSelectedVizLayer = (vizLayerId) => {
     if (!vizItems || !vizLayerId) return;
-    console.log({ vizLayerId });
+    // console.log({ vizLayerId });
   };
 
   const handleSelectedVizItemSearch = (vizItemId) => {
     // will focus on the visualization item along with its visualization item metadata card
     // will react to update the metadata on the sidedrawer
     if (!vizItems || !vizItemId) return;
-    console.log({ vizItemId });
+    // console.log({ vizItemId });
   };
 
   const handleResetHome = () => {
@@ -115,6 +115,38 @@ function Dashboard({
     }
     handleSelectedVizItem(prevSelectedRegionId.current);
   };
+
+  const renderRasterOnZoomed = (bounds, zoom) => {
+    // console.log({ bounds, zoom });
+    if (zoom > 8) {
+      const itemsInsideZoomedRegion = Object.values(plumes)?.filter((value) =>
+        isFeatureWithinBounds(value?.polygonGeometry, bounds)
+      );
+      if (itemsInsideZoomedRegion.length > 0) {
+      setVisualizationLayers(itemsInsideZoomedRegion);
+      setOpenDrawer(true);
+      }
+      // console.log({itemsInsideZoomedRegion})
+      
+    } else {
+      setVisualizationLayers([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!map) return;
+    const handleZoom = () => {
+      const zoom = map.getZoom();
+      const bounds = map.getBounds();
+      // const layers = map.getStyle().layers;
+      // console.log({ layers });
+      renderRasterOnZoomed(bounds, zoom);
+    };
+    map.on('zoomend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map]);
 
   // Component Effects
   useEffect(() => {
@@ -137,12 +169,14 @@ function Dashboard({
     //   // console.log({ filteredVizItems });
   };
   const handleHoveredVizLayer = (vizItemId) => {
-    // console.log({ vizItemId });
+    // console.log({HoveredItemDashboard:vizItemId})
+    setHoveredVizLayerId(vizItemId);
   };
   // JSX
   return (
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
+        {/* <MainMap> */}
         <Paper className='title-container'>
           <Title title={TITLE} description={DESCRIPTION} />
           <div className='title-content'>
@@ -180,17 +214,15 @@ function Dashboard({
           onClickOnLayer={handleSelectedVizLayer}
           onHoverOverLayer={handleHoveredVizLayer}
         />
-
+        {/* </MainMap> */}
         <PersistentDrawerRight
           open={openDrawer}
           setOpen={setOpenDrawer}
-          selectedVizItems={filteredVizItems}
-          vizItemMetaData={vizItemMetaData}
+          selectedVizItems={visualizationLayers}
+          hoveredVizLayerId={hoveredVizLayerId}
           collectionId={collectionId}
-          vizItemsMap={vizItems}
-          handleSelectedVizItems={handleSelectedVizLayer}
-          hoveredVizItemId={hoveredVizLayerId}
-          setHoveredVizItemId={setHoveredVizLayerId}
+          onSelectVizLayer={handleSelectedVizLayer}
+          onHoverOnVizLayer={handleHoveredVizLayer}
         />
       </div>
       {VMAX && (
@@ -199,7 +231,7 @@ function Dashboard({
           VMAX={VMAX}
           VMIN={VMIN}
           colormap={colormap}
-          STEPSIZE={1}
+          STEPS={5}
         />
       )}
       {loadingData && <LoadingSpinner />}
