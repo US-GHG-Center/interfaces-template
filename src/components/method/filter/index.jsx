@@ -9,38 +9,42 @@ import moment from 'moment';
       
 */
 
-export function FilterByDate({ vizItems, onFilteredVizItems }) {
+export function FilterByDate({ vizItems, onFilteredItems }) {
   const minDate = moment('2018-01-01').valueOf();
   const maxDate = moment().valueOf();
-
   const [dateRange, setDateRange] = useState([minDate, maxDate]);
 
-  useEffect(() => {
-    if (!vizItems.length) return;
-
+  const handleSliderChange = (_, dateRange) => {
     const filteredVizItems = vizItems.filter((vizItem) => {
       const vizItemDate = moment(vizItem?.properties?.datetime).valueOf();
-      return vizItemDate >= dateRange[0] && vizItemDate <= dateRange[1];
+      const item = vizItemDate >= dateRange[0] && vizItemDate <= dateRange[1];
+      return item;
     });
-
-    onFilteredVizItems(filteredVizItems);
-  }, [dateRange, vizItems, onFilteredVizItems]);
-
-  const handleSliderChange = (_, newValue) => {
-    setDateRange(newValue);
+    onFilteredItems(filteredVizItems);
   };
 
   return (
     <Box sx={{ width: '90%', padding: '20px' }}>
-      <Typography gutterBottom sx={{ marginBottom: '10px', color: '#082A63', display:'flex',justifyContent:'center',fontWeight:550, }}>
-      {moment(dateRange[0]).format('ddd, DD MMM YYYY')} - {moment(dateRange[1]).format('ddd, DD MMM YYYY')}
+      <Typography
+        gutterBottom
+        sx={{
+          marginBottom: '10px',
+          color: '#082A63',
+          display: 'flex',
+          justifyContent: 'center',
+          fontWeight: 550,
+        }}
+      >
+        {moment(dateRange[0]).format('ddd, DD MMM YYYY')} -{' '}
+        {moment(dateRange[1]).format('ddd, DD MMM YYYY')}
       </Typography>
 
       <Box sx={{ position: 'relative', height: '8px', marginTop: '10px' }}>
         {/* MUI Slider */}
         <Slider
           value={dateRange}
-          onChange={handleSliderChange}
+          onChange={(_, newValue) => setDateRange(newValue)}
+          onChangeCommitted={(_, newValue) => handleSliderChange(_, newValue)}
           getAriaLabel={() => 'Date range'}
           min={minDate}
           max={maxDate}
@@ -63,12 +67,12 @@ export function FilterByDate({ vizItems, onFilteredVizItems }) {
               height: '26px',
               backgroundColor: '#fffffe',
               border: '1px solid #eeeeee',
-              borderRadius:2,
+              borderRadius: 2,
               boxShadow: '0 0 0px rgba(0,0,0,0.2)',
               '&:hover': {
                 boxShadow: '0 0 8px rgba(0,0,0,0.3)',
               },
-            }
+            },
           }}
         />
       </Box>

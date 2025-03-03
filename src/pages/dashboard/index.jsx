@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 
@@ -75,7 +75,7 @@ function Dashboard({
   const handleSelectedVizItem = (vizItemId) => {
     if (!vizItemId) return;
     setShowVisualizationLayers(true);
-    const vizItem = plumes[vizItemId];
+    const vizItem = filteredVizItems[vizItemId];
     // console.log({ vizItem });
     const location = vizItem?.geometry?.coordinates[0][0];
     setVisualizationLayers([vizItem]);
@@ -116,42 +116,65 @@ function Dashboard({
     handleSelectedVizItem(prevSelectedRegionId.current);
   };
 
-  const renderRasterOnZoomed = (bounds, zoom) => {
-    // console.log({ bounds, zoom });
-    if (zoom > 8) {
-      const itemsInsideZoomedRegion = Object.values(plumes)?.filter((value) =>
-        isFeatureWithinBounds(value?.polygonGeometry, bounds)
-      );
-      if (itemsInsideZoomedRegion.length > 0) {
+  const renderRasterOnZoomed = (map, filteredVizItems) => {
+    const bounds = map.getBounds();
+    const itemsInsideZoomedRegion = Object.values(filteredVizItems)?.filter(
+      (value) => isFeatureWithinBounds(value?.polygonGeometry, bounds)
+    );
+    if (itemsInsideZoomedRegion.length > 0) {
       setVisualizationLayers(itemsInsideZoomedRegion);
       setOpenDrawer(true);
-      }
-      // console.log({itemsInsideZoomedRegion})
-      
     } else {
       setVisualizationLayers([]);
     }
+    // console.log({itemsInsideZoomedRegion})
+  };
+
+  const handleHoveredVizLayer = (vizItemId) => {
+    // console.log({HoveredItemDashboard:vizItemId})
+    setHoveredVizLayerId(vizItemId);
+  };
+
+  const handleFilterVizItems = (result) => {
+    const newItems = {};
+    result.forEach((item) => {
+      newItems[item?.id] = item;
+    });
+    setFilteredVizItems(newItems);
   };
 
   useEffect(() => {
     if (!map) return;
     const handleZoom = () => {
       const zoom = map.getZoom();
-      const bounds = map.getBounds();
-      // const layers = map.getStyle().layers;
-      // console.log({ layers });
-      renderRasterOnZoomed(bounds, zoom);
+      if (zoom > 8) {
+        renderRasterOnZoomed(map, filteredVizItems);
+      } else {
+        setVisualizationLayers([]);
+      }
     };
     map.on('zoomend', handleZoom);
     return () => {
       map.off('zoomend', handleZoom);
     };
-  }, [map]);
+  }, [map, filteredVizItems]);
+
+  useEffect(() => {
+    if (!map) return;
+    const zoom = map.getZoom();
+    // console.log('Here i am', zoom);
+    if (zoom > 8 && !!filteredVizItems) {
+      renderRasterOnZoomed(map, filteredVizItems);
+    }
+  }, [map, filteredVizItems]);
+
+  //
 
   // Component Effects
   useEffect(() => {
     if (!plumes) return;
     setVizItems(plumes);
+    setFilteredVizItems(plumes);
   }, [plumes]);
 
   useEffect(() => {
@@ -164,15 +187,6 @@ function Dashboard({
     setColormap(colormap);
   }, [collectionMeta]);
 
-  const onFilteredVizItems = (filteredVizItems) => {
-    //   setFilteredVizItems(filteredVizItems);
-    //   // console.log({ filteredVizItems });
-  };
-  const handleHoveredVizLayer = (vizItemId) => {
-    // console.log({HoveredItemDashboard:vizItemId})
-    setHoveredVizLayerId(vizItemId);
-  };
-  // JSX
   return (
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
@@ -182,14 +196,16 @@ function Dashboard({
           <div className='title-content'>
             <HorizontalLayout>
               <Search
-                vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                vizItems={Object.keys(filteredVizItems).map(
+                  (key) => filteredVizItems[key]
+                )}
                 onSelectedVizItemSearch={handleSelectedVizItemSearch}
               ></Search>
             </HorizontalLayout>
             <HorizontalLayout>
               <FilterByDate
                 vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                onFilteredVizItems={onFilteredVizItems}
+                onFilteredItems={handleFilterVizItems}
               />
             </HorizontalLayout>
           </div>
@@ -202,7 +218,9 @@ function Dashboard({
           handleResetToSelectedRegion={handleResetToSelectedRegion}
         />
         <MarkerFeature
-          vizItems={Object.keys(plumes).map((item) => plumes[item])}
+          vizItems={Object.keys(filteredVizItems).map(
+            (item) => filteredVizItems[item]
+          )}
           onSelectVizItem={handleSelectedVizItem}
         ></MarkerFeature>
         <VisualizationLayers
