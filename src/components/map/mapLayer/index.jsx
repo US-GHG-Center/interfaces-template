@@ -25,6 +25,11 @@ export const VisualizationLayer = ({
   useEffect(() => {
     if (!map || !vizItem) return;
     const feature = vizItem;
+    const polygonFeature = {
+      geometry: vizItem?.polygonGeometry,
+      properties: vizItem?.plumeProperties,
+      type: 'Feature',
+    };
     const rasterSourceId = getSourceId('raster' + vizItemId);
     const rasterLayerId = getLayerId('raster' + vizItemId);
     const polygonSourceId = getSourceId('polygon' + vizItemId);
@@ -40,7 +45,7 @@ export const VisualizationLayer = ({
       rasterSourceId,
       rasterLayerId
     );
-    addSourcePolygonToMap(map, feature, polygonSourceId, polygonLayerId);
+    addSourcePolygonToMap(map, polygonFeature, polygonSourceId, polygonLayerId);
 
     const onClickHandler = (e) => {
       onClickOnLayer && onClickOnLayer(vizItemId);

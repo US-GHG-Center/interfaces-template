@@ -39,7 +39,7 @@ export const addSourceLayerToMap = (
 ) => {
   if (!map || (sourceExists(map, sourceId) && layerExists(map, layerId)))
     return;
-  
+
   const collection = feature.collection; // feature.collection
   let itemId = feature.id;
 
@@ -121,12 +121,12 @@ export const addSourcePolygonToMap = (
 
   map.addLayer({
     id: polygonLayerId,
-    type: 'fill',
+    type: 'line',
     source: polygonSourceId,
     layout: {},
     paint: {
-      'fill-outline-color': '#20B2AA',
-      'fill-color': 'transparent',
+      'line-color': '#0098d7',
+      'line-width': 2,
     },
   });
 };
