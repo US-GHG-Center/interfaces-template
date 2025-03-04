@@ -106,7 +106,8 @@ export const addSourcePolygonToMap = (
   map,
   feature,
   polygonSourceId,
-  polygonLayerId
+  polygonLayerId,
+  width
 ) => {
   if (
     !map ||
@@ -118,7 +119,6 @@ export const addSourcePolygonToMap = (
     type: 'geojson',
     data: feature,
   });
-
   map.addLayer({
     id: polygonLayerId,
     type: 'line',
@@ -126,7 +126,42 @@ export const addSourcePolygonToMap = (
     layout: {},
     paint: {
       'line-color': '#0098d7',
-      'line-width': 2,
+      'line-width': width,
+    },
+  });
+};
+/*
+      Add source and layer of polygon fill layer on map
+      @param {map object} map - instance of map 
+      @param {STACItem} feature -  polygon features to add on map 
+      @param {string} polygonSourceId - id of the polygon source to add
+      @param {string} polygonLayerId - id of the polygon layer to add source on 
+*/
+export const addFillPolygonToMap = (
+  map,
+  feature,
+  polygonFillSourceId,
+  polygonFillLayerId
+) => {
+  if (
+    !map ||
+    (sourceExists(map, polygonFillSourceId) &&
+      layerExists(map, polygonFillLayerId))
+  )
+    return;
+
+  map.addSource(polygonFillSourceId, {
+    type: 'geojson',
+    data: feature,
+  });
+
+  map.addLayer({
+    id: polygonFillLayerId,
+    type: 'fill',
+    source: polygonFillSourceId,
+    layout: {},
+    paint: {
+      'fill-opacity': 0,
     },
   });
 };

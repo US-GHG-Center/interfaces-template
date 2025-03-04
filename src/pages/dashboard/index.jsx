@@ -131,7 +131,9 @@ function Dashboard({
   };
 
   const handleHoveredVizLayer = (vizItemId) => {
-    // console.log({HoveredItemDashboard:vizItemId})
+    // console.log({ HoveredItemDashboard: vizItemId });
+    if (!map) return;
+    // console.log({ layers: map.getStyle().layers });
     setHoveredVizLayerId(vizItemId);
   };
 
@@ -154,6 +156,7 @@ function Dashboard({
       }
     };
     map.on('zoomend', handleZoom);
+    map.on('dragend', handleZoom);
     return () => {
       map.off('zoomend', handleZoom);
     };
@@ -229,6 +232,7 @@ function Dashboard({
           VMAX={VMAX}
           colormap={colormap}
           assets={assets}
+          highlightedLayer={hoveredVizLayerId}
           onClickOnLayer={handleSelectedVizLayer}
           onHoverOverLayer={handleHoveredVizLayer}
         />

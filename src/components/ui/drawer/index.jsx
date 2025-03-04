@@ -72,6 +72,7 @@ export function PersistentDrawerRight({
   const handleDrawerClose = () => {
     setOpen(false);
   };
+  // console.log({ hoveredVizLayerId });
   useEffect(() => {
     if (!selectedVizItems.length) {
       setNumberOfVizItems(0);
@@ -133,7 +134,7 @@ export function PersistentDrawerRight({
               vizItem={selectedVizItem}
               collectionId={collectionId}
               onSelectVizLayer={onSelectVizLayer}
-              hoveredVizLayerId={hoveredVizLayerId}
+              hoveredVizItemId={hoveredVizLayerId}
               onHoverOnVizLayer={onHoverOnVizLayer}
             />
           ))

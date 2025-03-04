@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import moment from 'moment';
+
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -9,7 +9,6 @@ import styled from 'styled-components';
 import Divider from '@mui/material/Divider';
 import DownloadIcon from '@mui/icons-material/Download';
 import { getLocation } from '../../../services/api';
-
 import './index.css';
 
 const HorizontalLayout = styled.div`
@@ -69,19 +68,6 @@ const CaptionValue = ({ caption, value, className }) => {
   );
 };
 
-const formatDuration = (duration) => {
-  const hours = duration.hours();
-  const minutes = duration.minutes();
-  const seconds = duration.seconds();
-
-  let result = '';
-  if (hours > 0) result += `${hours} hour `;
-  if (minutes > 0) result += `${minutes} minutes `;
-  if (seconds > 0) result += `${seconds} seconds`;
-
-  return result;
-};
-
 export function VisualizationItemCard({
   vizItem,
   collectionId,
@@ -119,7 +105,7 @@ export function VisualizationItemCard({
       }
     };
     findLocation();
-  }, [vizItem]);
+  }, [vizItem, lat, lon]);
 
   const handleCardClick = () => {
     onSelectVizLayer && onSelectVizLayer(vizItemSourceId);
@@ -132,12 +118,10 @@ export function VisualizationItemCard({
   const handleMouseLeave = () => {
     onHoverOnVizLayer('');
   };
-
   useEffect(() => {
     if (hoveredVizItemId === vizItemSourceId) setIsHovered(true);
     if (hoveredVizItemId !== vizItemSourceId) setIsHovered(false);
   }, [hoveredVizItemId, vizItemSourceId]);
-  // return <div>{vizItem?.id}</div>
   return (
     <HighlightableCard
       sx={{ display: 'flex', flex: '0 0 auto', margin: '15px' }}
