@@ -8,7 +8,6 @@ import Typography from '@mui/material/Typography';
 import styled from 'styled-components';
 import Divider from '@mui/material/Divider';
 import DownloadIcon from '@mui/icons-material/Download';
-import { getLocation } from '../../../services/api';
 import './index.css';
 
 const HorizontalLayout = styled.div`
@@ -80,8 +79,7 @@ export function VisualizationItemCard({
   const orbit = vizItem?.plumeProperties?.orbit;
   const imageUrl = `${process.env.REACT_APP_RASTER_API_URL}/collections/emit-ch4plume-v1/items/${vizItemSourceId}/preview.png?bidx=1&assets=ch4-plume-emissions&rescale=1%2C1500&resampling=bilinear&colormap_name=plasma`;
   const tiffUrl = `${process.env.REACT_APP_CLOUD_BROWSE_URL}/browseui/#${collectionId}/#q=${vizItem.id.split('_').slice(-1)}`;
-  const lon = vizItem.lon;
-  const lat = vizItem.lat;
+  const location = vizItem?.plumeProperties?.location;
   const maxPlumeConcentration = vizItem?.plumeProperties?.maxConcentration;
   const concentrationUncertanity =
     vizItem?.plumeProperties?.concentrationUncertanity;
@@ -92,20 +90,6 @@ export function VisualizationItemCard({
     vizItem?.plumeProperties?.longitudeOfMaxConcentration;
 
   const [isHovered, setIsHovered] = useState(false);
-  const [location, setLocation] = useState('');
-
-  useEffect(() => {
-    const findLocation = async () => {
-      try {
-        const location = await getLocation(lat, lon);
-        // console.log({ location });
-        setLocation(location);
-      } catch (err) {
-        console.error(`Error getting location for ${vizItem?.id}`, err);
-      }
-    };
-    findLocation();
-  }, [vizItem, lat, lon]);
 
   const handleCardClick = () => {
     onSelectVizLayer && onSelectVizLayer(vizItemSourceId);
