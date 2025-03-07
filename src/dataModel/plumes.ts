@@ -37,6 +37,7 @@ export interface Properties {
   daacSceneNumber?: string[];
   sceneFID?: string[];
   mapEndTime?: string;
+  location?: string;
 }
 export interface Style {
   color: string;

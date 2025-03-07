@@ -1,3 +1,5 @@
+const LOCATION_LOOKUP_PATH = `${process.env.PUBLIC_URL}/lookups/plumeIdLocation.json`;
+export const UNKNOWN = 'unknown';
 export const fetchData = async (endpoint) => {
   try {
     const response = await fetch(endpoint);
@@ -20,24 +22,50 @@ export const fetchCollectionMetadata = async (collectionUrl) => {
   }
 };
 
-export const getLocation = async (lat, lon) => {
+export const getLocationForFeature = async (feature) => {
+  const response = await fetch(LOCATION_LOOKUP_PATH);
+  const lookup_location = await response.json();
+  const lat = feature.properties['Latitude of max concentration'];
+  const lon = feature.properties['Longitude of max concentration'];
+  const id = feature.properties['Plume ID'];
+  let result = '';
+  const locationFromLookup = lookup_location[id];
+  if (
+    locationFromLookup !== undefined ||
+    locationFromLookup !== '' ||
+    locationFromLookup !== UNKNOWN
+  ) {
+    result = lookup_location[id];
+  } else {
+    result = await fetchLocationFromEndpoint(lat, lon);
+  }
+  return result;
+};
+
+export const getAllLocation = async () => {
+  const response = await fetch(LOCATION_LOOKUP_PATH);
+  const lookup_location = await response.json();
+  return lookup_location;
+};
+
+export const fetchLocationFromEndpoint = async (lat, lon) => {
   let location = '';
   try {
     const endpoint = `${process.env.REACT_APP_LAT_LON_TO_COUNTRY_ENDPOINT}?lat=${lat}&lon=${lon}&&apiKey=${process.env.REACT_APP_GEOAPIFY_APIKEY}`;
     const location_data = await fetchData(endpoint);
     let location_properties = location_data.features[0].properties;
     let sub_location =
-      location_properties['city'] ||
-      location_properties['county'] ||
-      'Unknown';
+      location_properties['city'] || location_properties['county'] || UNKNOWN;
     let state = location_properties['state']
       ? `${location_properties['state']}, `
       : '';
-    let country =  location_properties['country']?location_properties['country']:''
+    let country = location_properties['country']
+      ? location_properties['country']
+      : '';
     location = `${sub_location}, ${state} ${country}`;
   } catch (error) {
     console.error(`Error fetching location for ${lat}, ${lon}:`, error);
-    location = 'Unknown';
+    location = UNKNOWN;
   }
   return location;
 };

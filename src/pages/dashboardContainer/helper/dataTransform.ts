@@ -1,11 +1,37 @@
 import { STACItem } from '../../../dataModel';
 import { Features, Metadata } from '../../../dataModel';
 
-import { Plume,PointGeometry,Geometry,Properties } from '../../../dataModel';
-import {getResultArray} from '../../../services/api'
+import { Plume, PointGeometry, Geometry, Properties } from '../../../dataModel';
+import {
+  getAllLocation,
+  getResultArray,
+  UNKNOWN,
+  fetchLocationFromEndpoint,
+} from '../../../services/api';
 
-export const transformMetadata = (metadata: Metadata, stacData: STACItem[]) => {
+const reverseGeocoding = async (
+  allLocation: Record<string, string>,
+  feature: Features
+) => {
+  const id = feature?.properties['Plume ID'];
+  const locationFromLookup = allLocation[id];
+  if (locationFromLookup !== undefined && locationFromLookup !== UNKNOWN) {
+    return locationFromLookup;
+  } else {
+    const lat = feature.properties['Latitude of max concentration'];
+    const lon = feature.properties['Longitude of max concentration'];
+    const location = await fetchLocationFromEndpoint(lat, lon);
+    console.log({ location });
+    return location;
+  }
+};
+
+export const transformMetadata = async (
+  metadata: Metadata,
+  stacData: STACItem[]
+) => {
   const metaFeatures = getResultArray(metadata);
+  const allLocation: Record<string, string> = await getAllLocation();
 
   const polygonLookup = new Map<string, Features>();
   let pointLookup = new Map<string, Features>();
@@ -30,10 +56,11 @@ export const transformMetadata = (metadata: Metadata, stacData: STACItem[]) => {
   stacData = sortedData.slice(0, 200);
   // Transform points to markers with associated data
   const plumes: Record<string, Plume> = {};
-  stacData.forEach((item: STACItem) => {
+  stacData.forEach(async (item: STACItem) => {
     const id = item.id;
     const pointInfo = pointLookup.get(id);
     const polygonInfo = polygonLookup.get(id);
+    const location = await reverseGeocoding(allLocation, pointInfo as Features);
     const properties: Properties = {
       longitudeOfMaxConcentration:
         pointInfo?.properties['Longitude of max concentration'],
@@ -54,6 +81,7 @@ export const transformMetadata = (metadata: Metadata, stacData: STACItem[]) => {
       daacSceneNumber: pointInfo?.properties['DAAC Scene Numbers'],
       sceneFID: pointInfo?.properties['Scene FIDs'],
       mapEndTime: pointInfo?.properties?.map_endtime,
+      location: location as string,
     };
     const lon =
       pointInfo?.geometry?.type === 'Point'
