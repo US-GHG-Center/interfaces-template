@@ -1,187 +1,4 @@
 export const Plumes = {
-  EMIT_L2B_CH4PLM_001_20220810T064957_000485: {
-    id: 'EMIT_L2B_CH4PLM_001_20220810T064957_000485',
-    bbox: [
-      35.192241059678175, 31.111893793152127, 35.22206384829227,
-      31.13575202404341,
-    ],
-    type: 'Feature',
-    lat: 31.12788965249969,
-    lon: 35.20281459382317,
-    links: [
-      {
-        rel: 'collection',
-        type: 'application/json',
-        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1',
-      },
-      {
-        rel: 'parent',
-        type: 'application/json',
-        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1',
-      },
-      {
-        rel: 'root',
-        type: 'application/json',
-        href: 'https://earth.gov/ghgcenter/api/stac/',
-      },
-      {
-        rel: 'self',
-        type: 'application/geo+json',
-        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485',
-      },
-      {
-        title: 'Map of Item',
-        href: 'https://earth.gov/ghgcenter/api/raster/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485/map?bidx=1&assets=ch4-plume-emissions&nodata=-9999&rescale=1%2C1500&resampling=bilinear&colormap_name=plasma',
-        rel: 'preview',
-        type: 'text/html',
-      },
-    ],
-    assets: {
-      'ch4-plume-emissions': {
-        href: 's3://lp-prod-protected/EMITL2BCH4PLM.001/EMIT_L2B_CH4PLM_001_20220810T064957_000485/EMIT_L2B_CH4PLM_001_20220810T064957_000485.tif',
-        type: 'image/tiff; application=geotiff',
-        roles: ['data', 'layer'],
-        title: 'EMIT Methane Point Source Plume Complexes',
-        'proj:bbox': [
-          35.192241059678175, 31.111893793152127, 35.22206384829227,
-          31.13575202404341,
-        ],
-        'proj:wkt2':
-          'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]',
-        'proj:shape': [44, 55],
-        description: 'Methane plume complexes from point source emitters.',
-        'raster:bands': [
-          {
-            scale: 1,
-            nodata: -9999,
-            offset: 0,
-            sampling: 'area',
-            data_type: 'float32',
-            histogram: {
-              max: 2895.019775390625,
-              min: -1102.5279541015625,
-              count: 11,
-              buckets: [12, 111, 470, 642, 405, 204, 99, 32, 10, 5],
-            },
-            statistics: {
-              mean: 415.6500942211055,
-              stddev: 552.766888972329,
-              maximum: 2895.019775390625,
-              minimum: -1102.5279541015625,
-              valid_percent: 82.23140495867769,
-            },
-          },
-        ],
-        'proj:geometry': {
-          type: 'Polygon',
-          coordinates: [
-            [
-              [35.192241059678175, 31.111893793152127],
-              [35.22206384829227, 31.111893793152127],
-              [35.22206384829227, 31.13575202404341],
-              [35.192241059678175, 31.13575202404341],
-              [35.192241059678175, 31.111893793152127],
-            ],
-          ],
-        },
-        'proj:transform': [
-          0.000542232520256367, 0, 35.192241059678175, 0, -0.000542232520256367,
-          31.13575202404341, 0, 0, 1,
-        ],
-      },
-      rendered_preview: {
-        title: 'Rendered preview',
-        href: 'https://earth.gov/ghgcenter/api/raster/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485/preview.png?bidx=1&assets=ch4-plume-emissions&nodata=-9999&rescale=1%2C1500&resampling=bilinear&colormap_name=plasma',
-        rel: 'preview',
-        roles: ['overview'],
-        type: 'image/png',
-      },
-    },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [
-        [
-          [35.192241059678175, 31.111893793152127],
-          [35.22206384829227, 31.111893793152127],
-          [35.22206384829227, 31.13575202404341],
-          [35.192241059678175, 31.13575202404341],
-          [35.192241059678175, 31.111893793152127],
-        ],
-      ],
-    },
-    collection: 'emit-ch4plume-v1',
-    properties: {
-      datetime: '2022-08-10T06:49:57+00:00',
-    },
-    plumeProperties: {
-      longitudeOfMaxConcentration: 35.20281459382317,
-      latitudeOfMaxConcentration: 31.12788965249969,
-      plumeId: 'CH4_PlumeComplex-485',
-      concentrationUncertanity: 553,
-      maxConcentration: 2895,
-      orbit: 2222205,
-      utcTimeObserved: '2022-08-10T06:49:57Z',
-      pointStyle: {
-        color: 'red',
-        fillOpacity: 0,
-        maxZoom: 9,
-        minZoom: 0,
-        opacity: 1,
-        radius: 10,
-        weight: 2,
-      },
-      polygonStyle: {
-        color: 'white',
-        fillOpacity: 0,
-        maxZoom: 20,
-        minZoom: 0,
-        opacity: 1,
-        radius: 10,
-        weight: 2,
-      },
-      plumeCountNumber: 1,
-      assetLink:
-        'https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/EMITL2BCH4PLM.001/EMIT_L2B_CH4PLM_001_20220810T064957_000485/EMIT_L2B_CH4PLM_001_20220810T064957_000485.tif',
-      dcid: '1344041727',
-      daacSceneNumber: ['033'],
-      sceneFID: ['emit20220810t064957'],
-      mapEndTime: '2022-08-10T06:49:58Z',
-    },
-    pointGeometry: {
-      coordinates: [35.20281459382317, 31.12788965249969, 0],
-      type: 'Point',
-    },
-    polygonGeometry: {
-      coordinates: [
-        [
-          [35.2030857, 31.135752],
-          [35.1954945, 31.1352098],
-          [35.1927833, 31.1319564],
-          [35.1922411, 31.1227384],
-          [35.1938678, 31.1200273],
-          [35.19441, 31.1167739],
-          [35.1982056, 31.1129783],
-          [35.2025435, 31.1113516],
-          [35.2123037, 31.1113516],
-          [35.2193527, 31.1140627],
-          [35.2215216, 31.1162317],
-          [35.2215216, 31.1178584],
-          [35.2226061, 31.1189428],
-          [35.2220638, 31.1265341],
-          [35.2193527, 31.1308719],
-          [35.2133881, 31.1330409],
-          [35.2057969, 31.1330409],
-          [35.2030857, 31.135752],
-        ],
-      ],
-      type: 'Polygon',
-    },
-    stac_version: '1.0.0',
-    stac_extensions: [
-      'https://stac-extensions.github.io/raster/v1.1.0/schema.json',
-      'https://stac-extensions.github.io/projection/v1.1.0/schema.json',
-    ],
-  },
   EMIT_L2B_CH4PLM_001_20220810T065021_000486: {
     id: 'EMIT_L2B_CH4PLM_001_20220810T065021_000486',
     bbox: [
@@ -329,6 +146,7 @@ export const Plumes = {
       daacSceneNumber: ['035'],
       sceneFID: ['emit20220810t065021'],
       mapEndTime: '2022-08-10T06:49:58Z',
+      location: 'Sahab Sub-District, Amman, Jordan',
     },
     pointGeometry: {
       coordinates: [36.229802987188734, 31.909788946709373, 0],
@@ -506,6 +324,7 @@ export const Plumes = {
       daacSceneNumber: ['041'],
       sceneFID: ['emit20220810t065132'],
       mapEndTime: '2022-08-10T06:49:58Z',
+      location: 'Al hejnah, Deir Ezzor Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [40.512897664693774, 35.27705289750141, 0],
@@ -690,6 +509,7 @@ export const Plumes = {
       daacSceneNumber: ['041'],
       sceneFID: ['emit20220810t065132'],
       mapEndTime: '2022-08-10T06:49:58Z',
+      location: 'Unknown, Deir Ezzor Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [40.45650548258711, 35.299284430831925, 0],
@@ -871,6 +691,7 @@ export const Plumes = {
       daacSceneNumber: ['010'],
       sceneFID: ['emit20220811t042630'],
       mapEndTime: '2022-08-11T04:26:31Z',
+      location: 'Unknown, Ad Dhahirah Governorate, Oman',
     },
     pointGeometry: {
       coordinates: [56.40898622852942, 22.33125147638067, 0],
@@ -1065,6 +886,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220814t051412'],
       mapEndTime: '2022-08-14T05:14:13Z',
+      location: 'Hajin Subdistrict, Deir Ezzor Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [41.13809176054937, 34.89369450568018, 0],
@@ -1243,6 +1065,7 @@ export const Plumes = {
       daacSceneNumber: ['002', '003'],
       sceneFID: ['emit20220815t042826', 'emit20220815t042838'],
       mapEndTime: '2022-08-15T04:28:27Z',
+      location: 'Balkanabat City, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.7650604597594, 39.36060600755212, 0],
@@ -1461,6 +1284,7 @@ export const Plumes = {
       daacSceneNumber: ['002', '003'],
       sceneFID: ['emit20220815t042826', 'emit20220815t042838'],
       mapEndTime: '2022-08-15T04:28:27Z',
+      location: 'Balkanabat City, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.774278412603756, 39.46254572136032, 0],
@@ -1730,6 +1554,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220815t042838'],
       mapEndTime: '2022-08-15T04:28:27Z',
+      location: 'Balkanabat City, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.872964731290416, 39.35409921730904, 0],
@@ -1914,6 +1739,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220815t074645'],
       mapEndTime: '2022-08-15T07:46:46Z',
+      location: 'Баймырза, Karaganda Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [72.90532619228888, 50.22315008584792, 0],
@@ -2098,6 +1924,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220815t074645'],
       mapEndTime: '2022-08-15T07:46:46Z',
+      location: 'Чапаево, Karaganda Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [72.21560642652278, 49.90919745661948, 0],
@@ -2280,6 +2107,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20220815t140823'],
       mapEndTime: '2022-08-15T14:08:24Z',
+      location: 'Unknown, Al Wahat, Libya',
     },
     pointGeometry: {
       coordinates: [20.851546480197996, 28.82285920888986, 0],
@@ -2496,6 +2324,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20220816t034409'],
       mapEndTime: '2022-08-16T03:44:10Z',
+      location: 'Moyınqum District, Jambyl Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [72.70144676467247, 45.9975320554901, 0],
@@ -2677,6 +2506,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20220816t101035'],
       mapEndTime: '2022-08-16T10:10:36Z',
+      location: 'Akdepe District, Dashoguz Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [58.4369358542883, 40.24986734077262, 0],
@@ -2855,6 +2685,7 @@ export const Plumes = {
       daacSceneNumber: ['014'],
       sceneFID: ['emit20220816t101058'],
       mapEndTime: '2022-08-16T10:10:36Z',
+      location: 'Gorogly District, Dashoguz Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [60.19648038252021, 39.67564310182113, 0],
@@ -3047,6 +2878,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20220816t114505'],
       mapEndTime: '2022-08-16T11:45:06Z',
+      location: 'Ghunah, Al-Hasaka Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [41.073566090638906, 36.16089190551928, 0],
@@ -3220,6 +3052,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20220817t043235'],
       mapEndTime: '2022-08-17T04:32:36Z',
+      location: 'Buqar Jıraw District, Karaganda Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [72.67053951101785, 50.223692318368215, 0],
@@ -3404,6 +3237,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20220817t043235'],
       mapEndTime: '2022-08-17T04:32:36Z',
+      location: 'Buqar Jıraw District, Karaganda Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [72.90586842480911, 50.23074134113155, 0],
@@ -3588,6 +3422,7 @@ export const Plumes = {
       daacSceneNumber: ['011'],
       sceneFID: ['emit20220817t092038'],
       mapEndTime: '2022-08-17T09:20:39Z',
+      location: 'Beyneuskiy, Mangghystau, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [55.188420825432345, 45.344141868581104, 0],
@@ -3769,6 +3604,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220818t034231'],
       mapEndTime: '2022-08-18T03:42:32Z',
+      location: 'Jalağaş District, Kyzylorda Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [64.67098313967578, 46.549524761111066, 0],
@@ -3948,6 +3784,7 @@ export const Plumes = {
       daacSceneNumber: ['022'],
       sceneFID: ['emit20220818t070105'],
       mapEndTime: '2022-08-18T07:01:06Z',
+      location: 'Ürümqi, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [87.8698592863241, 44.037903727283506, 0],
@@ -4123,6 +3960,7 @@ export const Plumes = {
       daacSceneNumber: ['021'],
       sceneFID: ['emit20220818t083506'],
       mapEndTime: '2022-08-18T08:35:07Z',
+      location: 'Ohangaron Tumani, Tashkent Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [69.49468363987636, 41.102256862615576, 0],
@@ -4300,6 +4138,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20220818t114440'],
       mapEndTime: '2022-08-18T11:44:41Z',
+      location: 'Marka Sub-District, Amman, Jordan',
     },
     pointGeometry: {
       coordinates: [36.19618457093288, 31.928767084918412, 0],
@@ -4476,6 +4315,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20220819t092231'],
       mapEndTime: '2022-08-19T09:22:32Z',
+      location: 'دهستان میامی, Razavi Khorasan, Iran',
     },
     pointGeometry: {
       coordinates: [59.98121407197843, 36.231924365672924, 0],
@@ -4668,6 +4508,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220819t123047'],
       mapEndTime: '2022-08-19T12:30:48Z',
+      location: 'Unknown, Al Wahat, Libya',
     },
     pointGeometry: {
       coordinates: [21.546688571166552, 29.246885039730333, 0],
@@ -4842,6 +4683,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20220820t052804'],
       mapEndTime: '2022-08-20T05:28:05Z',
+      location: "E'erduosi, Inner Mongolia, China",
     },
     pointGeometry: {
       coordinates: [109.47890968358048, 39.090031979944264, 0],
@@ -5018,6 +4860,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220820t083324'],
       mapEndTime: '2022-08-20T08:33:25Z',
+      location: 'Darganata District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [60.79022499220088, 40.16907469525434, 0],
@@ -5329,6 +5172,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220820t083324'],
       mapEndTime: '2022-08-20T08:33:25Z',
+      location: 'Kerpiçli, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.04453204420112, 40.04761461071691, 0],
@@ -5506,6 +5350,7 @@ export const Plumes = {
       daacSceneNumber: ['003', '004'],
       sceneFID: ['emit20220820t100727', 'emit20220820t100739'],
       mapEndTime: '2022-08-20T10:07:28Z',
+      location: "Khirbat al Bi'r, Al-Hasaka Governorate, Syria",
     },
     pointGeometry: {
       coordinates: [42.127123877497, 36.94550236233027, 0],
@@ -5696,6 +5541,7 @@ export const Plumes = {
       daacSceneNumber: ['014'],
       sceneFID: ['emit20220820t100937'],
       mapEndTime: '2022-08-20T10:07:28Z',
+      location: 'دهستان مشرحات, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [48.96521819045004, 31.229287133787643, 0],
@@ -5873,6 +5719,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20220820t101039'],
       mapEndTime: '2022-08-20T10:10:40Z',
+      location: 'دهستان آویز, Fars Province, Iran',
     },
     pointGeometry: {
       coordinates: [52.040218812823916, 28.644464709725547, 0],
@@ -6048,6 +5895,7 @@ export const Plumes = {
       daacSceneNumber: ['023'],
       sceneFID: ['emit20220821t110023'],
       mapEndTime: '2022-08-21T11:00:24Z',
+      location: 'Unknown, Marib Governorate, Yemen',
     },
     pointGeometry: {
       coordinates: [46.04746499895051, 15.585878924391514, 0],
@@ -6234,6 +6082,7 @@ export const Plumes = {
       daacSceneNumber: ['023'],
       sceneFID: ['emit20220821t110023'],
       mapEndTime: '2022-08-21T11:00:24Z',
+      location: 'Safer, Marib Governorate, Yemen',
     },
     pointGeometry: {
       coordinates: [45.8040025973554, 15.558767298378696, 0],
@@ -6431,6 +6280,7 @@ export const Plumes = {
       daacSceneNumber: ['010'],
       sceneFID: ['emit20220822t065713'],
       mapEndTime: '2022-08-22T06:57:14Z',
+      location: 'Қақпақ, Turkistan Region, Kazakhstan',
     },
     pointGeometry: {
       coordinates: [69.53968893905758, 41.6260534771832, 0],
@@ -6610,6 +6460,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20220822t100653'],
       mapEndTime: '2022-08-22T10:06:54Z',
+      location: 'Marka Sub-District, Amman, Jordan',
     },
     pointGeometry: {
       coordinates: [36.20974038393924, 31.933104945080476, 0],
@@ -6797,6 +6648,7 @@ export const Plumes = {
       daacSceneNumber: ['021'],
       sceneFID: ['emit20220823t074504'],
       mapEndTime: '2022-08-23T07:45:05Z',
+      location: 'Tagtabazar District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.946806957907754, 35.83392569580476, 0],
@@ -6976,6 +6828,7 @@ export const Plumes = {
       daacSceneNumber: ['021'],
       sceneFID: ['emit20220823t074504'],
       mapEndTime: '2022-08-23T07:45:05Z',
+      location: 'Tagtabazar District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.91535747173288, 35.977617313672695, 0],
@@ -7153,6 +7006,7 @@ export const Plumes = {
       daacSceneNumber: ['021'],
       sceneFID: ['emit20220823t074504'],
       mapEndTime: '2022-08-23T07:45:05Z',
+      location: 'Yoloten District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.57700437909291, 36.20481273966011, 0],
@@ -7325,6 +7179,7 @@ export const Plumes = {
       daacSceneNumber: ['021'],
       sceneFID: ['emit20220823t074504'],
       mapEndTime: '2022-08-23T07:45:05Z',
+      location: 'Yoloten District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.52061219698625, 36.208608367301906, 0],
@@ -7529,6 +7384,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220826t065435'],
       mapEndTime: '2022-08-26T06:54:36Z',
+      location: 'Esenguly District, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.92989914591735, 37.73607737686411, 0],
@@ -7721,6 +7577,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220826t065435'],
       mapEndTime: '2022-08-26T06:54:36Z',
+      location: 'Esenguly District, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.91580110039068, 37.8927825752182, 0],
@@ -7895,6 +7752,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220826t065435'],
       mapEndTime: '2022-08-26T06:54:36Z',
+      location: 'Esenguly District, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.89682296218171, 37.90796508578538, 0],
@@ -8084,6 +7942,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220826t065435'],
       mapEndTime: '2022-08-26T06:54:36Z',
+      location: 'Esenguly District, Balkan Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [53.914716635350175, 37.92856992155512, 0],
@@ -8272,6 +8131,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220826t082915'],
       mapEndTime: '2022-08-26T08:29:16Z',
+      location: 'Unknown, Rif Dimashq Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [36.436393577406484, 33.33369154490263, 0],
@@ -8475,6 +8335,7 @@ export const Plumes = {
       daacSceneNumber: ['024'],
       sceneFID: ['emit20220826t174642'],
       mapEndTime: '2022-08-26T17:46:43Z',
+      location: 'Harroun Crossing, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.05388349093766, 32.24055078406582, 0],
@@ -8648,6 +8509,7 @@ export const Plumes = {
       daacSceneNumber: ['024'],
       sceneFID: ['emit20220826t174642'],
       mapEndTime: '2022-08-26T17:46:43Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.09238199987587, 32.356588543400676, 0],
@@ -8833,6 +8695,7 @@ export const Plumes = {
       daacSceneNumber: ['011'],
       sceneFID: ['emit20220827t060730'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Tejen District, Ahal Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [60.487117013377585, 37.34024763707695, 0],
@@ -9014,6 +8877,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Yoloten District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.91698416929363, 36.378869378662415, 0],
@@ -9192,6 +9056,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.63285432867929, 36.48514695263266, 0],
@@ -9369,6 +9234,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.57863107665365, 36.40055867947267, 0],
@@ -9566,6 +9432,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.63664995632109, 36.47918239490984, 0],
@@ -9884,6 +9751,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Yoloten District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.55639954332314, 36.372362588419335, 0],
@@ -10064,6 +9932,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.5444704278775, 36.41791012012087, 0],
@@ -10238,6 +10107,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.45825545715674, 36.471048907105995, 0],
@@ -10424,6 +10294,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220827t060753'],
       mapEndTime: '2022-08-27T06:06:55Z',
+      location: 'Murgap District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.63990335144262, 36.63534536074367, 0],
@@ -10611,6 +10482,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220827t074030'],
       mapEndTime: '2022-08-27T07:40:31Z',
+      location: 'Şahinbey, Southeastern Anatolia Region, Turkey',
     },
     pointGeometry: {
       coordinates: [37.40156746346275, 36.98400087126844, 0],
@@ -10790,6 +10662,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20220827t104927'],
       mapEndTime: '2022-08-27T10:49:28Z',
+      location: 'Tamantit, Adrar, Algeria',
     },
     pointGeometry: {
       coordinates: [0.31665870556906806, 28.118499165076894, 0],
@@ -10964,6 +10837,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220828t051853'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Danew District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.6800285579416, 39.97387098796205, 0],
@@ -11190,6 +11064,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220828t051905'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Qorako’l District, Bukhara Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [62.59857044725588, 40.051410238358706, 0],
@@ -11382,6 +11257,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220828t051905'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Danew District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [62.348059022897445, 39.9185632708959, 0],
@@ -11592,6 +11468,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20220828t051917'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Chardjuy District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [63.26334751709019, 39.133952814084935, 0],
@@ -11780,6 +11657,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220828t051929'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Olot District, Bukhara Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [64.09242104056217, 39.01249272954751, 0],
@@ -11956,6 +11834,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220828t051929'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Chardjuy District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [64.07398513487345, 39.01791505475008, 0],
@@ -12134,6 +12013,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20220828t051941'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Hojambaz District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [64.77454955104469, 38.66166828894164, 0],
@@ -12360,6 +12240,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20220828t051941'],
       mapEndTime: '2022-08-28T05:18:54Z',
+      location: 'Unknown, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [64.63736472341982, 38.786381768600606, 0],
@@ -12681,6 +12562,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20220828t065300'],
       mapEndTime: '2022-08-28T06:53:01Z',
+      location: 'کواشێ, Iraqi Kurdistan Region, Iraq',
     },
     pointGeometry: {
       coordinates: [42.81359024814158, 36.97532515094439, 0],
@@ -12866,6 +12748,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220828t065324'],
       mapEndTime: '2022-08-28T06:53:01Z',
+      location: 'Khabat District, Erbil Governorate, Iraq',
     },
     pointGeometry: {
       coordinates: [43.89209073093149, 36.17932781120805, 0],
@@ -13050,6 +12933,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20220828t065550'],
       mapEndTime: '2022-08-28T06:55:51Z',
+      location: 'دهستان بکش یک, Fars Province, Iran',
     },
     pointGeometry: {
       coordinates: [51.54570275435014, 30.064571680276984, 0],
@@ -13228,6 +13112,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20220828t065626'],
       mapEndTime: '2022-08-28T06:55:51Z',
+      location: 'دهستان جلگاه, Fars, Iran',
     },
     pointGeometry: {
       coordinates: [53.41477825167383, 28.481252721128392, 0],
@@ -13402,6 +13287,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220828t082847'],
       mapEndTime: '2022-08-28T08:28:48Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.616316170269133, 29.6025895730186, 0],
@@ -13580,6 +13466,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220828t082847'],
       mapEndTime: '2022-08-28T08:28:48Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.537150222311706, 29.550535251073992, 0],
@@ -13756,6 +13643,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220828t082847'],
       mapEndTime: '2022-08-28T08:28:48Z',
+      location: 'Abu Sinan, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.526305571906576, 29.566259994161427, 0],
@@ -13943,6 +13831,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220828t082847'],
       mapEndTime: '2022-08-28T08:28:48Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.43792167110479, 29.523423625061174, 0],
@@ -14123,6 +14012,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220828t082847'],
       mapEndTime: '2022-08-28T08:28:48Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.631498680836312, 29.70886714698885, 0],
@@ -14322,6 +14212,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20220829t060627'],
       mapEndTime: '2022-08-29T06:06:16Z',
+      location: 'Kahrizak RD, Iran',
     },
     pointGeometry: {
       coordinates: [51.326098583646285, 35.460869721868356, 0],
@@ -14502,6 +14393,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20220829t060913'],
       mapEndTime: '2022-08-29T06:09:14Z',
+      location: 'دهستان حومه, Sistan and Baluchestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [60.687200813352234, 27.229237831856416, 0],
@@ -14700,6 +14592,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20220829t060913'],
       mapEndTime: '2022-08-29T06:09:14Z',
+      location: 'دهستان میر آباد, Sistan and Baluchestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [60.277815260558675, 27.281834386321282, 0],
@@ -14905,6 +14798,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220829t165553'],
       mapEndTime: '2022-08-29T16:55:54Z',
+      location: 'Clark, Nevada, United States',
     },
     pointGeometry: {
       coordinates: [-114.85623975948467, 36.381038308743435, 0],
@@ -15086,6 +14980,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220830t065244'],
       mapEndTime: '2022-08-30T06:52:45Z',
+      location: 'Unknown, Rif Dimashq Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [36.44127367008873, 33.32284689449749, 0],
@@ -15290,6 +15185,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220831t060702'],
       mapEndTime: '2022-08-31T06:07:03Z',
+      location: 'Al Ahmadi, Al Ahmadi, Kuwait',
     },
     pointGeometry: {
       coordinates: [47.924131751557866, 29.170430254374203, 0],
@@ -15489,6 +15385,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20220831t060702'],
       mapEndTime: '2022-08-31T06:07:03Z',
+      location: 'Unknown, Jahra, Kuwait',
     },
     pointGeometry: {
       coordinates: [47.585236426397636, 29.04951240235703, 0],
@@ -15669,6 +15566,7 @@ export const Plumes = {
       daacSceneNumber: ['010'],
       sceneFID: ['emit20220831t060738'],
       mapEndTime: '2022-08-31T06:07:03Z',
+      location: 'Al Jubayl Governorate, Eastern Province, Saudi Arabia',
     },
     pointGeometry: {
       coordinates: [49.367012487960054, 27.050301100171808, 0],
@@ -15843,6 +15741,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Abduhamit, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.88449952000941, 38.52014560115475, 0],
@@ -16022,6 +15921,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Qarshi District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.88829514765122, 38.54020820440424, 0],
@@ -16197,6 +16097,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.9506518874807, 38.56081304017398, 0],
@@ -16373,6 +16274,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.94631402731865, 38.5407504369245, 0],
@@ -16574,6 +16476,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Taxom, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.92625142406916, 38.533701414161165, 0],
@@ -16754,6 +16657,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.018973185033, 38.536412576762444, 0],
@@ -16932,6 +16836,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.00379067446582, 38.54129266944475, 0],
@@ -17107,6 +17012,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.00216397690505, 38.51689220603321, 0],
@@ -17283,6 +17189,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.0102974647089, 38.49737183530399, 0],
@@ -17459,6 +17366,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [65.98915039641889, 38.48923834750014, 0],
@@ -17642,6 +17550,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Taxom, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.07048527445735, 38.31463947597759, 0],
@@ -17825,6 +17734,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20220901t034318'],
       mapEndTime: '2022-09-01T03:43:19Z',
+      location: 'Gʻuzor District, Qashqadaryo Region, Uzbekistan',
     },
     pointGeometry: {
       coordinates: [66.01463532487095, 38.26095845647221, 0],
@@ -17999,6 +17909,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20220901t051709'],
       mapEndTime: '2022-09-01T05:17:10Z',
+      location: 'zhalay xwaru, Sulaymaniyah Governorate, Iraq',
     },
     pointGeometry: {
       coordinates: [45.4558893193508, 35.50424832348891, 0],
@@ -18199,6 +18110,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20220901t051720'],
       mapEndTime: '2022-09-01T05:17:10Z',
+      location: 'Sanandaj, Kordestan, Iran',
     },
     pointGeometry: {
       coordinates: [47.00775879232452, 35.17782434629457, 0],
@@ -18377,6 +18289,7 @@ export const Plumes = {
       daacSceneNumber: ['008', '009'],
       sceneFID: ['emit20220901t051920', 'emit20220901t051932'],
       mapEndTime: '2022-09-01T05:19:21Z',
+      location: 'دهستان شورآب, Fars Province, Iran',
     },
     pointGeometry: {
       coordinates: [53.24777063543486, 29.741401098204207, 0],
@@ -18579,6 +18492,7 @@ export const Plumes = {
       daacSceneNumber: ['014'],
       sceneFID: ['emit20220901t082525'],
       mapEndTime: '2022-09-01T08:25:26Z',
+      location: 'Burj Umar Idris, Illizi, Algeria',
     },
     pointGeometry: {
       coordinates: [7.191082597379277, 28.6905544739473, 0],
@@ -18826,6 +18740,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20220903t051924'],
       mapEndTime: '2022-09-03T05:19:25Z',
+      location: 'As Sali Municipality, Riyadh Region, Saudi Arabia',
     },
     pointGeometry: {
       coordinates: [46.897143358192295, 24.60808582893714, 0],
@@ -19116,6 +19031,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20220903t065056'],
       mapEndTime: '2022-09-03T06:50:57Z',
+      location: 'Unknown, Al Wahat, Libya',
     },
     pointGeometry: {
       coordinates: [19.897759477067023, 28.196580647993844, 0],
@@ -19301,6 +19217,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20220903t065242'],
       mapEndTime: '2022-09-03T06:50:57Z',
+      location: 'Unknown, Kufra, Libya',
     },
     pointGeometry: {
       coordinates: [24.669405655323054, 22.695089497472747, 0],
@@ -19495,6 +19412,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20220903t082537'],
       mapEndTime: '2022-09-03T08:25:38Z',
+      location: 'Bordj Badji Mokhtar, Bordj Badji Mokhtar, Algeria',
     },
     pointGeometry: {
       coordinates: [1.0980157672584872, 22.966747990121085, 0],
@@ -19672,6 +19590,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20220909t070254'],
       mapEndTime: '2022-09-09T07:02:55Z',
+      location: 'Boikhutsong, Gauteng, South Africa',
     },
     pointGeometry: {
       coordinates: [28.121257879275046, -25.461122859015497, 0],
@@ -19852,6 +19771,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20220909t070306'],
       mapEndTime: '2022-09-09T07:02:55Z',
+      location: 'Secunda, Mpumalanga, South Africa',
     },
     pointGeometry: {
       coordinates: [29.286515565305976, -26.46316855644926, 0],
@@ -20029,6 +19949,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20220909t070306'],
       mapEndTime: '2022-09-09T07:02:55Z',
+      location: 'Emalahleni Local Municipality, Mpumalanga, South Africa',
     },
     pointGeometry: {
       coordinates: [29.117881251506248, -26.257120198751842, 0],
@@ -20207,6 +20128,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20220909t070306'],
       mapEndTime: '2022-09-09T07:02:55Z',
+      location: 'Emalahleni, Mpumalanga, South Africa',
     },
     pointGeometry: {
       coordinates: [29.103783205979582, -26.213741597131335, 0],
@@ -20383,6 +20305,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20230107t143818'],
       mapEndTime: '2023-01-07T14:38:19Z',
+      location: 'Cachapoal, Del Libertador B Ohiggins, Chile',
     },
     pointGeometry: {
       coordinates: [-70.70658349517062, -34.23390280424329, 0],
@@ -20562,6 +20485,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20230111t130107'],
       mapEndTime: '2023-01-11T13:01:08Z',
+      location: 'Tiltil, Santiago Metropolitan Region, Chile',
     },
     pointGeometry: {
       coordinates: [-70.79605186101298, -32.952607358877465, 0],
@@ -20753,6 +20677,7 @@ export const Plumes = {
       daacSceneNumber: ['008'],
       sceneFID: ['emit20230111t130218'],
       mapEndTime: '2023-01-11T13:01:08Z',
+      location: 'Municipio de Santa Isabel, La Pampa, Argentina',
     },
     pointGeometry: {
       coordinates: [-67.07308337693277, -36.364334376330525, 0],
@@ -20927,6 +20852,7 @@ export const Plumes = {
       daacSceneNumber: ['019'],
       sceneFID: ['emit20230119t040223'],
       mapEndTime: '2023-01-19T04:02:24Z',
+      location: 'Isaac Regional, Queensland, Australia',
     },
     pointGeometry: {
       coordinates: [148.6953344786023, -22.980409078842595, 0],
@@ -21105,6 +21031,7 @@ export const Plumes = {
       daacSceneNumber: ['019'],
       sceneFID: ['emit20230119t040223'],
       mapEndTime: '2023-01-19T04:02:24Z',
+      location: 'Central Highlands Regional, Queensland, Australia',
     },
     pointGeometry: {
       coordinates: [148.57929671926743, -22.987458101605927, 0],
@@ -21293,6 +21220,7 @@ export const Plumes = {
       daacSceneNumber: ['026'],
       sceneFID: ['emit20230121t161834'],
       mapEndTime: '2023-01-21T16:17:48Z',
+      location: 'Municipio de Santa Isabel, La Pampa, Argentina',
     },
     pointGeometry: {
       coordinates: [-67.0741678419732, -36.36487660885085, 0],
@@ -21467,6 +21395,7 @@ export const Plumes = {
       daacSceneNumber: ['042'],
       sceneFID: ['emit20230122t153151'],
       mapEndTime: '2023-01-22T15:31:52Z',
+      location: 'Don Torcuato, Buenos Aires, Argentina',
     },
     pointGeometry: {
       coordinates: [-58.619136153615685, -34.52399720258047, 0],
@@ -21658,6 +21587,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20230123t085311'],
       mapEndTime: '2023-01-23T08:53:12Z',
+      location: 'Habiganj, Sylhet Division, Bangladesh',
     },
     pointGeometry: {
       coordinates: [91.59228553788405, 24.635197454950017, 0],
@@ -21832,6 +21762,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20230125t004744'],
       mapEndTime: '2023-01-25T00:47:45Z',
+      location: 'Camberwell, New South Wales, Australia',
     },
     pointGeometry: {
       coordinates: [151.07410854496655, -32.46947818332908, 0],
@@ -22015,6 +21946,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20230125t004744'],
       mapEndTime: '2023-01-25T00:47:45Z',
+      location: 'Singleton Council, New South Wales, Australia',
     },
     pointGeometry: {
       coordinates: [151.07519301000704, -32.68528672639112, 0],
@@ -22201,6 +22133,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20230126t062716'],
       mapEndTime: '2023-01-26T06:27:17Z',
+      location: 'Phraek Sa Mai Subdistrict, Thailand',
     },
     pointGeometry: {
       coordinates: [100.66980015949592, 13.58070306448341, 0],
@@ -22384,6 +22317,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230126t124335'],
       mapEndTime: '2023-01-26T12:43:36Z',
+      location: 'Unknown, District of Al-Jufra, Libya',
     },
     pointGeometry: {
       coordinates: [18.792147368264278, 28.12663265288068, 0],
@@ -22565,6 +22499,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20230127t162104'],
       mapEndTime: '2023-01-27T16:21:05Z',
+      location: 'Lima Metropolitan Area, Lima, Peru',
     },
     pointGeometry: {
       coordinates: [-77.06371756265632, -11.80879246400066, 0],
@@ -22750,6 +22685,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20230127t162104'],
       mapEndTime: '2023-01-27T16:21:05Z',
+      location: 'Ventanilla, Constitutional Province of Callao, Peru',
     },
     pointGeometry: {
       coordinates: [-77.11902527972246, -11.921576828213984, 0],
@@ -22930,6 +22866,7 @@ export const Plumes = {
       daacSceneNumber: ['033'],
       sceneFID: ['emit20230128t124118'],
       mapEndTime: '2023-01-28T12:41:19Z',
+      location: 'Burj Umar Idris, Illizi, Algeria',
     },
     pointGeometry: {
       coordinates: [7.253981569729029, 28.608677363388605, 0],
@@ -23115,6 +23052,7 @@ export const Plumes = {
       daacSceneNumber: ['033'],
       sceneFID: ['emit20230128t124118'],
       mapEndTime: '2023-01-28T12:41:19Z',
+      location: 'Burj Umar Idris, Illizi, Algeria',
     },
     pointGeometry: {
       coordinates: [7.516964342053367, 28.482879418689127, 0],
@@ -23290,6 +23228,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230128t124130'],
       mapEndTime: '2023-01-28T12:41:19Z',
+      location: 'Burj Umar Idris, Illizi, Algeria',
     },
     pointGeometry: {
       coordinates: [7.68071856317079, 28.65205596500911, 0],
@@ -23464,6 +23403,7 @@ export const Plumes = {
       daacSceneNumber: ['025'],
       sceneFID: ['emit20230129t084611'],
       mapEndTime: '2023-01-29T08:46:12Z',
+      location: 'Unknown, Ad Dhahirah Governorate, Oman',
     },
     pointGeometry: {
       coordinates: [55.615157818874124, 22.870230601515473, 0],
@@ -23641,6 +23581,7 @@ export const Plumes = {
       daacSceneNumber: ['046', '047'],
       sceneFID: ['emit20230129t130321', 'emit20230129t130333'],
       mapEndTime: '2023-01-29T13:03:22Z',
+      location: 'Municipio de Vista Alegre, Neuquén Province, Argentina',
     },
     pointGeometry: {
       coordinates: [-68.19984255402548, -38.749073000418036, 0],
@@ -23825,6 +23766,7 @@ export const Plumes = {
       daacSceneNumber: ['047'],
       sceneFID: ['emit20230129t130333'],
       mapEndTime: '2023-01-29T13:03:22Z',
+      location: 'Municipio de 25 de Mayo, La Pampa, Argentina',
     },
     pointGeometry: {
       coordinates: [-67.82624434756885, -38.05935323465194, 0],
@@ -24001,6 +23943,7 @@ export const Plumes = {
       daacSceneNumber: ['043'],
       sceneFID: ['emit20230130t093555'],
       mapEndTime: '2023-01-30T09:35:56Z',
+      location: 'Kahrizak, Iran',
     },
     pointGeometry: {
       coordinates: [51.34128109421342, 35.456531861706324, 0],
@@ -24184,6 +24127,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20230130t184923'],
       mapEndTime: '2023-01-30T18:49:24Z',
+      location: 'Simeprodeso (Colectivo Nuevo), Nuevo León, Mexico',
     },
     pointGeometry: {
       coordinates: [-100.29838105564168, 25.87257206617506, 0],
@@ -24369,6 +24313,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20230131t053924'],
       mapEndTime: '2023-01-31T05:39:25Z',
+      location: 'Nazira, Assam, India',
     },
     pointGeometry: {
       coordinates: [94.68463760090611, 26.79599404817155, 0],
@@ -24547,6 +24492,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20230131t053936'],
       mapEndTime: '2023-01-31T05:39:25Z',
+      location: 'Naharkatiya, Assam, India',
     },
     pointGeometry: {
       coordinates: [95.23391914392582, 27.286172246483307, 0],
@@ -24802,6 +24748,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230131t054317'],
       mapEndTime: '2023-01-31T05:43:18Z',
+      location: 'Mengcheng, Ningxia, China',
     },
     pointGeometry: {
       coordinates: [106.75202233921112, 37.17703564847979, 0],
@@ -24983,6 +24930,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20230131t054340'],
       mapEndTime: '2023-01-31T05:43:18Z',
+      location: 'Otog Front Banner, Inner Mongolia, China',
     },
     pointGeometry: {
       coordinates: [108.34564371624458, 38.17365902071099, 0],
@@ -25157,6 +25105,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20230131t054340'],
       mapEndTime: '2023-01-31T05:43:18Z',
+      location: 'Suld Sum, Inner Mongolia, China',
     },
     pointGeometry: {
       coordinates: [108.59127504792072, 37.85265736871922, 0],
@@ -25334,6 +25283,7 @@ export const Plumes = {
       daacSceneNumber: ['044'],
       sceneFID: ['emit20230131t084913'],
       mapEndTime: '2023-01-31T08:49:14Z',
+      location: 'Sakarchage District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.026096138512465, 37.474721302100455, 0],
@@ -25510,6 +25460,7 @@ export const Plumes = {
       daacSceneNumber: ['008'],
       sceneFID: ['emit20230201t075326'],
       mapEndTime: '2023-02-01T07:53:27Z',
+      location: "Unknown, Sana'a Governorate, Yemen",
     },
     pointGeometry: {
       coordinates: [44.148024480492445, 15.479059117900919, 0],
@@ -25689,6 +25640,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230202t070803'],
       mapEndTime: '2023-02-02T07:08:04Z',
+      location: 'Unknown, Ad Dhahirah Governorate, Oman',
     },
     pointGeometry: {
       coordinates: [56.02833899930946, 22.15502590729736, 0],
@@ -25862,6 +25814,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230202t070803'],
       mapEndTime: '2023-02-02T07:08:04Z',
+      location: 'Unknown, Ad Dhahirah Governorate, Oman',
     },
     pointGeometry: {
       coordinates: [55.985502630209204, 21.87631839188559, 0],
@@ -26035,6 +25988,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230202t193821'],
       mapEndTime: '2023-02-02T19:38:22Z',
+      location: 'Sweetwater County, Wyoming, United States',
     },
     pointGeometry: {
       coordinates: [-108.2941417993423, 41.97037112754598, 0],
@@ -26208,6 +26162,7 @@ export const Plumes = {
       daacSceneNumber: ['002'],
       sceneFID: ['emit20230203t062256'],
       mapEndTime: '2023-02-03T06:22:57Z',
+      location: 'Dera Bugti Tehsil, Balochistan, Pakistan',
     },
     pointGeometry: {
       coordinates: [69.04951074074584, 28.943777060907067, 0],
@@ -26400,6 +26355,7 @@ export const Plumes = {
       daacSceneNumber: ['020'],
       sceneFID: ['emit20230203t062629'],
       mapEndTime: '2023-02-03T06:22:57Z',
+      location: 'Qaraqash County, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [80.48953245311468, 38.6551614986986, 0],
@@ -26573,6 +26529,7 @@ export const Plumes = {
       daacSceneNumber: ['020'],
       sceneFID: ['emit20230203t062629'],
       mapEndTime: '2023-02-03T06:22:57Z',
+      location: 'Qaraqash County, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [80.47706110514878, 38.66058382390116, 0],
@@ -26747,6 +26704,7 @@ export const Plumes = {
       daacSceneNumber: ['006', '007'],
       sceneFID: ['emit20230203t171434', 'emit20230203t171446'],
       mapEndTime: '2023-02-03T17:14:35Z',
+      location: 'Coahoma, Mississippi, United States',
     },
     pointGeometry: {
       coordinates: [-90.63905093979469, 34.13999130252381, 0],
@@ -26939,6 +26897,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230204t040649'],
       mapEndTime: '2023-02-04T04:06:50Z',
+      location: 'Qiaotou, Shanxi, China',
     },
     pointGeometry: {
       coordinates: [111.09313589638445, 38.9490515246776, 0],
@@ -27129,6 +27088,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20230204t041009'],
       mapEndTime: '2023-02-04T04:10:10Z',
+      location: 'Yushu, Heilongjiang, China',
     },
     pointGeometry: {
       coordinates: [125.24703137263575, 46.096760606696975, 0],
@@ -27316,6 +27276,7 @@ export const Plumes = {
       daacSceneNumber: ['014'],
       sceneFID: ['emit20230204t070701'],
       mapEndTime: '2023-02-04T07:07:02Z',
+      location: 'As Sali Municipality, Riyadh Region, Saudi Arabia',
     },
     pointGeometry: {
       coordinates: [46.89226326550993, 24.614592619180247, 0],
@@ -27539,6 +27500,7 @@ export const Plumes = {
       daacSceneNumber: ['033'],
       sceneFID: ['emit20230204t071117'],
       mapEndTime: '2023-02-04T07:11:18Z',
+      location: 'دهستان میامی, Razavi Khorasan, Iran',
     },
     pointGeometry: {
       coordinates: [59.99151648986322, 36.23951562095646, 0],
@@ -27719,6 +27681,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230204t071144'],
       mapEndTime: '2023-02-04T07:11:45Z',
+      location: 'Sakarchage District, Mary Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.027180603552935, 37.47417906958028, 0],
@@ -27924,6 +27887,7 @@ export const Plumes = {
       daacSceneNumber: ['028'],
       sceneFID: ['emit20230204t084139'],
       mapEndTime: '2023-02-04T08:41:40Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [28.408098882490634, 29.69260017138115, 0],
@@ -28101,6 +28065,7 @@ export const Plumes = {
       daacSceneNumber: ['030'],
       sceneFID: ['emit20230204t084203'],
       mapEndTime: '2023-02-04T08:41:40Z',
+      location: 'Unknown, Matruh, Egypt',
     },
     pointGeometry: {
       coordinates: [29.42641155553209, 30.748326888320296, 0],
@@ -28278,6 +28243,7 @@ export const Plumes = {
       daacSceneNumber: ['006'],
       sceneFID: ['emit20230205t171244'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.49309183234462, 32.084930050752206, 0],
@@ -28457,6 +28423,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.17642804051489, 32.57727717914499, 0],
@@ -28631,6 +28598,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.06364367630158, 32.41298072550731, 0],
@@ -28839,6 +28807,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.05225679337619, 32.3099565466586, 0],
@@ -29016,6 +28985,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-103.7849361608898, 32.3224278946245, 0],
@@ -29194,6 +29164,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.01375828443798, 32.20584790276938, 0],
@@ -29374,6 +29345,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-103.99586461126952, 32.15108241822349, 0],
@@ -29550,6 +29522,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230205t171255'],
       mapEndTime: '2023-02-05T17:12:45Z',
+      location: 'Eddy County, New Mexico, United States',
     },
     pointGeometry: {
       coordinates: [-104.07177716410541, 32.15162465074374, 0],
@@ -29729,6 +29702,7 @@ export const Plumes = {
       daacSceneNumber: ['004'],
       sceneFID: ['emit20230206t162514'],
       mapEndTime: '2023-02-06T16:25:15Z',
+      location: 'Kimble County, Texas, United States',
     },
     pointGeometry: {
       coordinates: [-99.90309354837434, 30.4105160282005, 0],
@@ -29908,6 +29882,7 @@ export const Plumes = {
       daacSceneNumber: ['019'],
       sceneFID: ['emit20230214t072457'],
       mapEndTime: '2023-02-14T07:24:58Z',
+      location: 'Xingren, Ningxia, China',
     },
     pointGeometry: {
       coordinates: [105.26359407110762, 37.00026784687614, 0],
@@ -30094,6 +30069,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230214t085715'],
       mapEndTime: '2023-02-14T08:57:16Z',
+      location: 'Qaraqash County, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [80.05683090195016, 38.750052189743506, 0],
@@ -30272,6 +30248,7 @@ export const Plumes = {
       daacSceneNumber: ['031'],
       sceneFID: ['emit20230214t103422'],
       mapEndTime: '2023-02-14T10:34:23Z',
+      location: 'Bachhiya Chhor, Rajasthan, India',
     },
     pointGeometry: {
       coordinates: [69.75278631951836, 27.140311698534394, 0],
@@ -30456,6 +30433,7 @@ export const Plumes = {
       daacSceneNumber: ['031'],
       sceneFID: ['emit20230214t103422'],
       mapEndTime: '2023-02-14T10:34:23Z',
+      location: 'Bachhiya Chhor, Rajasthan, India',
     },
     pointGeometry: {
       coordinates: [69.71808343822195, 27.035118589604657, 0],
@@ -30634,6 +30612,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230214t103457'],
       mapEndTime: '2023-02-14T10:34:23Z',
+      location: 'Barmer Tehsil, Rajasthan, India',
     },
     pointGeometry: {
       coordinates: [71.57360312253924, 25.903479319829618, 0],
@@ -30810,6 +30789,7 @@ export const Plumes = {
       daacSceneNumber: ['003'],
       sceneFID: ['emit20230215t063626'],
       mapEndTime: '2023-02-15T06:36:27Z',
+      location: 'Otog Banner, Inner Mongolia, China',
     },
     pointGeometry: {
       coordinates: [107.13700742859407, 39.474474836805996, 0],
@@ -31000,6 +30980,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230215t111933'],
       mapEndTime: '2023-02-15T11:19:34Z',
+      location: 'Taheri Rural District, Bushehr Province, Iran',
     },
     pointGeometry: {
       coordinates: [52.166558990043626, 27.74706988870123, 0],
@@ -31182,6 +31163,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20230215t203354'],
       mapEndTime: '2023-02-15T20:33:55Z',
+      location: 'Minco, Oklahoma, United States',
     },
     pointGeometry: {
       coordinates: [-97.98955498439004, 35.26403931701526, 0],
@@ -31358,6 +31340,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230216t133626'],
       mapEndTime: '2023-02-16T13:36:27Z',
+      location: 'Hassi Messaoud, Ouargla, Algeria',
     },
     pointGeometry: {
       coordinates: [6.215606293438081, 31.78236430444914, 0],
@@ -31532,6 +31515,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230216t133626'],
       mapEndTime: '2023-02-16T13:36:27Z',
+      location: 'Hassi Messaoud, Ouargla, Algeria',
     },
     pointGeometry: {
       coordinates: [6.194459225148083, 31.669579940235813, 0],
@@ -31710,6 +31694,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230216t133626'],
       mapEndTime: '2023-02-16T13:36:27Z',
+      location: 'Hassi Messaoud, Ouargla, Algeria',
     },
     pointGeometry: {
       coordinates: [5.99925551785579, 31.74766142315273, 0],
@@ -31893,6 +31878,7 @@ export const Plumes = {
       daacSceneNumber: ['013'],
       sceneFID: ['emit20230216t133626'],
       mapEndTime: '2023-02-16T13:36:27Z',
+      location: 'Hassi Messaoud, Ouargla, Algeria',
     },
     pointGeometry: {
       coordinates: [5.994375425173483, 31.77802644428709, 0],
@@ -32081,6 +32067,7 @@ export const Plumes = {
       daacSceneNumber: ['016'],
       sceneFID: ['emit20230216t133701'],
       mapEndTime: '2023-02-16T13:36:27Z',
+      location: 'Debdeb, Illizi, Algeria',
     },
     pointGeometry: {
       coordinates: [8.09010411596434, 30.260317620089516, 0],
@@ -32256,6 +32243,7 @@ export const Plumes = {
       daacSceneNumber: ['014'],
       sceneFID: ['emit20230217t063221'],
       mapEndTime: '2023-02-17T06:32:22Z',
+      location: 'Ürümqi, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [87.85521900827725, 44.036819262243014, 0],
@@ -32440,6 +32428,7 @@ export const Plumes = {
       daacSceneNumber: ['012'],
       sceneFID: ['emit20230217t111603'],
       mapEndTime: '2023-02-17T11:16:04Z',
+      location: 'Marka Sub-District, Amman, Jordan',
     },
     pointGeometry: {
       coordinates: [36.185882153048006, 31.93635834020197, 0],
@@ -32639,6 +32628,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20230217t203134'],
       mapEndTime: '2023-02-17T20:31:35Z',
+      location: 'Dilkon CDP, Arizona, United States',
     },
     pointGeometry: {
       coordinates: [-110.33239384298538, 35.38712609911347, 0],
@@ -32815,6 +32805,7 @@ export const Plumes = {
       daacSceneNumber: ['032'],
       sceneFID: ['emit20230217t203432'],
       mapEndTime: '2023-02-17T20:31:35Z',
+      location: 'Sabinas, Coahuila de Zaragoza, Mexico',
     },
     pointGeometry: {
       coordinates: [-101.18167783113893, 27.81756011633459, 0],
@@ -32991,6 +32982,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230218t085651'],
       mapEndTime: '2023-02-18T08:56:52Z',
+      location: 'Guddu, Sindh, Pakistan',
     },
     pointGeometry: {
       coordinates: [69.69368297481043, 28.427029469102738, 0],
@@ -33170,6 +33162,7 @@ export const Plumes = {
       daacSceneNumber: ['034'],
       sceneFID: ['emit20230218t085651'],
       mapEndTime: '2023-02-18T08:56:52Z',
+      location: 'Garki Dodu, Punjab, Pakistan',
     },
     pointGeometry: {
       coordinates: [69.90135803006862, 28.411304726015306, 0],
@@ -33344,6 +33337,7 @@ export const Plumes = {
       daacSceneNumber: ['035'],
       sceneFID: ['emit20230218t085703'],
       mapEndTime: '2023-02-18T08:56:52Z',
+      location: 'Daharki, Sindh, Pakistan',
     },
     pointGeometry: {
       coordinates: [69.81026296666555, 27.96125173420252, 0],
@@ -33529,6 +33523,7 @@ export const Plumes = {
       daacSceneNumber: ['038'],
       sceneFID: ['emit20230218t085739'],
       mapEndTime: '2023-02-18T08:56:52Z',
+      location: 'Barmer, Rajasthan, India',
     },
     pointGeometry: {
       coordinates: [71.57306089001901, 25.900768157228324, 0],
@@ -33730,6 +33725,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230218t102723'],
       mapEndTime: '2023-02-18T10:27:24Z',
+      location: 'Unknown, Homs Governorate, Syria',
     },
     pointGeometry: {
       coordinates: [38.62430179664086, 34.68168159025989, 0],
@@ -33930,6 +33926,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20230218t120210'],
       mapEndTime: '2023-02-18T12:02:11Z',
+      location: 'Unknown, Ajdabiya, Libya',
     },
     pointGeometry: {
       coordinates: [21.544519641085532, 29.25176513241269, 0],
@@ -34106,6 +34103,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20230218t120210'],
       mapEndTime: '2023-02-18T12:02:11Z',
+      location: 'Unknown, Al Wahat, Libya',
     },
     pointGeometry: {
       coordinates: [21.42522848662913, 29.183443834860388, 0],
@@ -34287,6 +34285,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20230218t120210'],
       mapEndTime: '2023-02-18T12:02:11Z',
+      location: 'Unknown, Al Wahat, Libya',
     },
     pointGeometry: {
       coordinates: [21.45234011264195, 29.14277639584116, 0],
@@ -34461,6 +34460,7 @@ export const Plumes = {
       daacSceneNumber: ['005'],
       sceneFID: ['emit20230218t181054'],
       mapEndTime: '2023-02-18T18:10:55Z',
+      location: 'Harrisburg, North Carolina, United States',
     },
     pointGeometry: {
       coordinates: [-80.65655024187502, 35.339951869851205, 0],
@@ -34647,6 +34647,7 @@ export const Plumes = {
       daacSceneNumber: ['020'],
       sceneFID: ['emit20230219t063155'],
       mapEndTime: '2023-02-19T06:31:56Z',
+      location: 'Shayar County, Xinjiang, China',
     },
     pointGeometry: {
       coordinates: [83.67460627710064, 40.79860665127203, 0],
@@ -34824,6 +34825,7 @@ export const Plumes = {
       daacSceneNumber: ['015'],
       sceneFID: ['emit20230219t080503'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Kerpiçli, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [61.0445320442011, 40.051410238358784, 0],
@@ -35052,6 +35054,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20230219t080527'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Chardjuy District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [62.72924848463763, 38.568404295457626, 0],
@@ -35228,6 +35231,7 @@ export const Plumes = {
       daacSceneNumber: ['017'],
       sceneFID: ['emit20230219t080527'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Chardjuy District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [62.78401396918352, 38.564608667815826, 0],
@@ -35407,6 +35411,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t080539'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Sayat District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [63.479156060152185, 37.951343687405874, 0],
@@ -35579,6 +35584,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t080539'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Sayat District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [63.4975919658409, 37.94321019960203, 0],
@@ -35754,6 +35760,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t080539'],
       mapEndTime: '2023-02-19T08:05:04Z',
+      location: 'Sayat District, Lebap Region, Turkmenistan',
     },
     pointGeometry: {
       coordinates: [63.52904145201577, 37.95297038496665, 0],
@@ -35932,6 +35939,7 @@ export const Plumes = {
       daacSceneNumber: ['007'],
       sceneFID: ['emit20230219t093908'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: "Khirbat al Bi'r, Al-Hasaka Governorate, Syria",
     },
     pointGeometry: {
       coordinates: [42.12603941245648, 36.94224896720875, 0],
@@ -36110,6 +36118,7 @@ export const Plumes = {
       daacSceneNumber: ['010'],
       sceneFID: ['emit20230219t093943'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'Kirkuk, Kirkuk, Iraq',
     },
     pointGeometry: {
       coordinates: [44.1973676398358, 35.414237725126306, 0],
@@ -36286,6 +36295,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t094118'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان مشراگه, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [49.32580281642051, 31.12951635006049, 0],
@@ -36458,6 +36468,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t094118'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان غیزانیه, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [49.13493696929027, 31.12409402485793, 0],
@@ -36638,6 +36649,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t094118'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان مشرحات, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [48.914248333545935, 31.25097643459792, 0],
@@ -36814,6 +36826,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t094118'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان مشرحات, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [48.88388331241158, 31.269954572806892, 0],
@@ -36995,6 +37008,7 @@ export const Plumes = {
       daacSceneNumber: ['018'],
       sceneFID: ['emit20230219t094118'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان مشرحات, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [48.99016088638182, 31.24013178419279, 0],
@@ -37171,6 +37185,7 @@ export const Plumes = {
       daacSceneNumber: ['019'],
       sceneFID: ['emit20230219t094130'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان هندیجان شرقی, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [49.88213338220355, 30.360630636336964, 0],
@@ -37392,6 +37407,7 @@ export const Plumes = {
       daacSceneNumber: ['019'],
       sceneFID: ['emit20230219t094130'],
       mapEndTime: '2023-02-19T09:39:09Z',
+      location: 'دهستان تشان غربی, Khuzestan Province, Iran',
     },
     pointGeometry: {
       coordinates: [49.985699793572515, 30.761882701326677, 0],
@@ -37414,6 +37430,190 @@ export const Plumes = {
           [49.9913932, 30.764865],
           [49.9881398, 30.7659494],
           [49.9827175, 30.7659494],
+        ],
+      ],
+      type: 'Polygon',
+    },
+    stac_version: '1.0.0',
+    stac_extensions: [
+      'https://stac-extensions.github.io/raster/v1.1.0/schema.json',
+      'https://stac-extensions.github.io/projection/v1.1.0/schema.json',
+    ],
+  },
+  EMIT_L2B_CH4PLM_001_20220810T064957_000485: {
+    id: 'EMIT_L2B_CH4PLM_001_20220810T064957_000485',
+    bbox: [
+      35.192241059678175, 31.111893793152127, 35.22206384829227,
+      31.13575202404341,
+    ],
+    type: 'Feature',
+    lat: 31.12788965249969,
+    lon: 35.20281459382317,
+    links: [
+      {
+        rel: 'collection',
+        type: 'application/json',
+        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1',
+      },
+      {
+        rel: 'parent',
+        type: 'application/json',
+        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1',
+      },
+      {
+        rel: 'root',
+        type: 'application/json',
+        href: 'https://earth.gov/ghgcenter/api/stac/',
+      },
+      {
+        rel: 'self',
+        type: 'application/geo+json',
+        href: 'https://earth.gov/ghgcenter/api/stac/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485',
+      },
+      {
+        title: 'Map of Item',
+        href: 'https://earth.gov/ghgcenter/api/raster/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485/map?bidx=1&assets=ch4-plume-emissions&nodata=-9999&rescale=1%2C1500&resampling=bilinear&colormap_name=plasma',
+        rel: 'preview',
+        type: 'text/html',
+      },
+    ],
+    assets: {
+      'ch4-plume-emissions': {
+        href: 's3://lp-prod-protected/EMITL2BCH4PLM.001/EMIT_L2B_CH4PLM_001_20220810T064957_000485/EMIT_L2B_CH4PLM_001_20220810T064957_000485.tif',
+        type: 'image/tiff; application=geotiff',
+        roles: ['data', 'layer'],
+        title: 'EMIT Methane Point Source Plume Complexes',
+        'proj:bbox': [
+          35.192241059678175, 31.111893793152127, 35.22206384829227,
+          31.13575202404341,
+        ],
+        'proj:wkt2':
+          'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],AUTHORITY["EPSG","4326"]]',
+        'proj:shape': [44, 55],
+        description: 'Methane plume complexes from point source emitters.',
+        'raster:bands': [
+          {
+            scale: 1,
+            nodata: -9999,
+            offset: 0,
+            sampling: 'area',
+            data_type: 'float32',
+            histogram: {
+              max: 2895.019775390625,
+              min: -1102.5279541015625,
+              count: 11,
+              buckets: [12, 111, 470, 642, 405, 204, 99, 32, 10, 5],
+            },
+            statistics: {
+              mean: 415.6500942211055,
+              stddev: 552.766888972329,
+              maximum: 2895.019775390625,
+              minimum: -1102.5279541015625,
+              valid_percent: 82.23140495867769,
+            },
+          },
+        ],
+        'proj:geometry': {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [35.192241059678175, 31.111893793152127],
+              [35.22206384829227, 31.111893793152127],
+              [35.22206384829227, 31.13575202404341],
+              [35.192241059678175, 31.13575202404341],
+              [35.192241059678175, 31.111893793152127],
+            ],
+          ],
+        },
+        'proj:transform': [
+          0.000542232520256367, 0, 35.192241059678175, 0, -0.000542232520256367,
+          31.13575202404341, 0, 0, 1,
+        ],
+      },
+      rendered_preview: {
+        title: 'Rendered preview',
+        href: 'https://earth.gov/ghgcenter/api/raster/collections/emit-ch4plume-v1/items/EMIT_L2B_CH4PLM_001_20220810T064957_000485/preview.png?bidx=1&assets=ch4-plume-emissions&nodata=-9999&rescale=1%2C1500&resampling=bilinear&colormap_name=plasma',
+        rel: 'preview',
+        roles: ['overview'],
+        type: 'image/png',
+      },
+    },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [35.192241059678175, 31.111893793152127],
+          [35.22206384829227, 31.111893793152127],
+          [35.22206384829227, 31.13575202404341],
+          [35.192241059678175, 31.13575202404341],
+          [35.192241059678175, 31.111893793152127],
+        ],
+      ],
+    },
+    collection: 'emit-ch4plume-v1',
+    properties: {
+      datetime: '2022-08-10T06:49:57+00:00',
+    },
+    plumeProperties: {
+      longitudeOfMaxConcentration: 35.20281459382317,
+      latitudeOfMaxConcentration: 31.12788965249969,
+      plumeId: 'CH4_PlumeComplex-485',
+      concentrationUncertanity: 553,
+      maxConcentration: 2895,
+      orbit: 2222205,
+      utcTimeObserved: '2022-08-10T06:49:57Z',
+      pointStyle: {
+        color: 'red',
+        fillOpacity: 0,
+        maxZoom: 9,
+        minZoom: 0,
+        opacity: 1,
+        radius: 10,
+        weight: 2,
+      },
+      polygonStyle: {
+        color: 'white',
+        fillOpacity: 0,
+        maxZoom: 20,
+        minZoom: 0,
+        opacity: 1,
+        radius: 10,
+        weight: 2,
+      },
+      plumeCountNumber: 1,
+      assetLink:
+        'https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/EMITL2BCH4PLM.001/EMIT_L2B_CH4PLM_001_20220810T064957_000485/EMIT_L2B_CH4PLM_001_20220810T064957_000485.tif',
+      dcid: '1344041727',
+      daacSceneNumber: ['033'],
+      sceneFID: ['emit20220810t064957'],
+      mapEndTime: '2022-08-10T06:49:58Z',
+      location: 'Tamar Regional Council, South District,  Israel',
+    },
+    pointGeometry: {
+      coordinates: [35.20281459382317, 31.12788965249969, 0],
+      type: 'Point',
+    },
+    polygonGeometry: {
+      coordinates: [
+        [
+          [35.2030857, 31.135752],
+          [35.1954945, 31.1352098],
+          [35.1927833, 31.1319564],
+          [35.1922411, 31.1227384],
+          [35.1938678, 31.1200273],
+          [35.19441, 31.1167739],
+          [35.1982056, 31.1129783],
+          [35.2025435, 31.1113516],
+          [35.2123037, 31.1113516],
+          [35.2193527, 31.1140627],
+          [35.2215216, 31.1162317],
+          [35.2215216, 31.1178584],
+          [35.2226061, 31.1189428],
+          [35.2220638, 31.1265341],
+          [35.2193527, 31.1308719],
+          [35.2133881, 31.1330409],
+          [35.2057969, 31.1330409],
+          [35.2030857, 31.135752],
         ],
       ],
       type: 'Polygon',
