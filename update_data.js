@@ -1,6 +1,6 @@
 const fs = require('fs');
 const GEOAPIFY_KEY = process.env.REACT_APP_GEOAPIFY_APIKEY;
-const LOCATION_LOOKUP = './src/lookups/plumeIdLocation.json';
+const LOCATION_LOOKUP = './public/lookups/plumeIdLocation.json';
 const UNKNOWN = 'unknown';
 const fetchData = async (endpoint) => {
   try {
