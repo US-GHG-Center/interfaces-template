@@ -8,6 +8,7 @@ export { VizItemAnimation } from './map/itemAnimation/index.jsx';
 export { MeasurementLayer } from './map/measurementLayer';
 export { MarkerFeature } from './map/mapMarker';
 export { MapZoom } from './map/mapZoom';
+export { CoverageLayers } from './map/coverage';
 
 // Map Layers
 export { VisualizationLayers } from './map/mapLayer';

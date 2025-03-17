@@ -22,6 +22,32 @@ export const fetchCollectionMetadata = async (collectionUrl) => {
   }
 };
 
+export const getCoverageData = async (url) => {
+  const coverageData = await fetchData(url);
+  const roundCoordinates = (geometry) => {
+    if (geometry && geometry.coordinates) {
+      geometry.coordinates = geometry.coordinates.map((polygon) =>
+        polygon.map(
+          (coord) => coord.map((value) => Math.round(value * 100) / 100) // Round to 2 decimal places
+        )
+      );
+    }
+    return geometry;
+  };
+  // Build a valid GeoJSON object
+  const processedCoverage = {
+    type: 'FeatureCollection',
+    features: coverageData.features.map((feature) => ({
+      properties: {
+        start_time: feature.properties['start_time'],
+        end_time: feature.properties['end_time'],
+      },
+      geometry: roundCoordinates(feature.geometry),
+    })),
+  };
+  return processedCoverage;
+};
+
 export const getLocationForFeature = async (feature) => {
   const response = await fetch(LOCATION_LOOKUP_PATH);
   const lookup_location = await response.json();

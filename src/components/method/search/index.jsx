@@ -26,7 +26,7 @@ export function Search({ vizItems, onSelectedVizItemSearch }) {
 
   const handleSearch = (prefix) => {
     const searchResult = trieSearch.current.getRecommendations(prefix);
-    return searchResult;
+
   };
 
   const handleOnInputTextChange = (event) => {

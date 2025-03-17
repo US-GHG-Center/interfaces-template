@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Slider, Typography, Box } from '@mui/material';
 import moment from 'moment';
+
 /*
       Filter stacItem based on the date range
 
@@ -9,12 +10,13 @@ import moment from 'moment';
       
 */
 
-export function FilterByDate({ vizItems, onFilteredItems }) {
+export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
   const minDate = moment('2018-01-01').valueOf();
   const maxDate = moment().valueOf();
   const [dateRange, setDateRange] = useState([minDate, maxDate]);
 
   const handleSliderChange = (_, dateRange) => {
+    onDateChange(dateRange);
     const filteredVizItems = vizItems.filter((vizItem) => {
       const vizItemDate = moment(vizItem?.properties?.datetime).valueOf();
       const item = vizItemDate >= dateRange[0] && vizItemDate <= dateRange[1];
@@ -43,7 +45,9 @@ export function FilterByDate({ vizItems, onFilteredItems }) {
         {/* MUI Slider */}
         <Slider
           value={dateRange}
-          onChange={(_, newValue) => setDateRange(newValue)}
+          onChange={(_, newValue) => {
+            setDateRange(newValue);
+          }}
           onChangeCommitted={(_, newValue) => handleSliderChange(_, newValue)}
           getAriaLabel={() => 'Date range'}
           min={minDate}

@@ -14,8 +14,10 @@ import {
   MapZoom,
   Search,
   FilterByDate,
+  CoverageLayers,
+  useMapbox,
 } from '@components';
-import { useMapbox } from '../../components';
+
 import styled from 'styled-components';
 import { isFeatureWithinBounds } from './helper';
 import './index.css';
@@ -36,7 +38,7 @@ const HorizontalLayout = styled.div`
 function Dashboard({
   plumes,
   collectionMeta,
-  vizItemMetaData,
+  coverage,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
@@ -51,7 +53,7 @@ function Dashboard({
   const [selectedVizItems, setSelectedVizItems] = useState([]); // all visualization items for the selected region (marker)
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState([]); // visualization items for the selected region with the filter applied
-
+  const [coverageFeatures, setCoverageFeatures] = useState([]);
   const [vizItemIds, setVizItemIds] = useState([]); // list of vizItem_ids for the search feature.
   const [vizItemsForAnimation, setVizItemsForAnimation] = useState([]); // list of subdaily_visualization_item used for animation
 
@@ -145,6 +147,10 @@ function Dashboard({
     setFilteredVizItems(newItems);
   };
 
+  const handleFilteredCoverages = (result) => {
+    console.log({ length: result.length });
+  };
+
   useEffect(() => {
     if (!map) return;
     const handleZoom = () => {
@@ -181,6 +187,18 @@ function Dashboard({
   }, [plumes]);
 
   useEffect(() => {
+    if (!coverage) return;
+    console.log({ coverage });
+    const features = coverage?.features;
+    // const coverageFeatures = {};
+    // features?.forEach((item) => {
+    //   coverageFeatures[item?.properties?.start_time] = item;
+    // });
+    // console.log({ coverageFeatures });
+    setCoverageFeatures(features);
+  }, [coverage]);
+
+  useEffect(() => {
     const colormap = collectionMeta?.renders?.dashboard?.colormap_name;
     const rescaleValues = collectionMeta?.renders?.dashboard?.rescale;
     const VMIN = rescaleValues && rescaleValues[0][0];
@@ -189,6 +207,10 @@ function Dashboard({
     setVMAX(VMAX);
     setColormap(colormap);
   }, [collectionMeta]);
+
+  const handleDateRangeChange = (dateRange) => {
+    console.log({ dateRange });
+  };
 
   return (
     <Box className='fullSize'>
@@ -208,7 +230,9 @@ function Dashboard({
             <HorizontalLayout>
               <FilterByDate
                 vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                coverage={coverageFeatures}
                 onFilteredItems={handleFilterVizItems}
+                onDateChange={handleDateRangeChange}
               />
             </HorizontalLayout>
           </div>
@@ -226,6 +250,7 @@ function Dashboard({
           )}
           onSelectVizItem={handleSelectedVizItem}
         ></MarkerFeature>
+        <CoverageLayers coverage={coverageFeatures} />
         <VisualizationLayers
           vizItems={visualizationLayers}
           VMIN={VMIN}
@@ -263,6 +288,7 @@ function Dashboard({
 
 export function EmitDashboard({
   plumes,
+  coverage,
   collectionMeta,
   zoomLocation,
   setZoomLocation,
@@ -275,6 +301,7 @@ export function EmitDashboard({
     <MainMap>
       <Dashboard
         plumes={plumes}
+        coverage={coverage}
         zoomLocation={zoomLocation}
         zoomLevel={zoomLevel}
         setZoomLocation={setZoomLocation}
