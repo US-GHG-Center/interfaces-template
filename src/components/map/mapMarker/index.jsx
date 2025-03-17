@@ -10,7 +10,7 @@ import './index.css';
 */
 
 // eslint-disable-next-line prettier/prettier
-export const MarkerFeature = ({ vizItems, onSelectVizItem }) => {
+export const MarkerFeature = ({ vizItems, onSelectVizItem, zoomThreshold=0, markerColor='#00b7eb' }) => {
   const { map } = useMapbox();
   const [markersVisible, setMarkersVisible] = useState(true);
   useEffect(() => {
@@ -19,7 +19,7 @@ export const MarkerFeature = ({ vizItems, onSelectVizItem }) => {
     const plottedMarkers = vizItems.map((item) => {
       const location = item.geometry.coordinates[0][0];
       const [lon, lat] = location;
-      const marker = addMarker(map, lon, lat);
+      const marker = addMarker(map, lon, lat, markerColor);
       const mel = marker.getElement();
       mel.addEventListener('click', (e) => {
         onSelectVizItem && onSelectVizItem(item.id);
@@ -37,12 +37,11 @@ export const MarkerFeature = ({ vizItems, onSelectVizItem }) => {
   }, [vizItems, map, onSelectVizItem, markersVisible]);
 
   useEffect(() => {
-    if (!map) return;
-
-    const threshold = 8;
+    if (!map || !zoomThreshold) return;
+    
     map.on('zoom', () => {
       const currentZoom = map.getZoom();
-      if (currentZoom <= threshold) {
+      if (currentZoom <= zoomThreshold) {
         setMarkersVisible(true);
       } else {
         setMarkersVisible(false);
@@ -53,10 +52,10 @@ export const MarkerFeature = ({ vizItems, onSelectVizItem }) => {
   return null;
 };
 
-const addMarker = (map, longitude, latitude) => {
+const addMarker = (map, longitude, latitude, color) => {
   const el = document.createElement('div');
   el.className = 'marker';
-  const markerColor = '#00b7eb';
+  const markerColor = color || '#00b7eb';
   el.innerHTML = getMarkerSVG(markerColor);
   let marker = new mapboxgl.Marker(el)
     .setLngLat([longitude, latitude])
