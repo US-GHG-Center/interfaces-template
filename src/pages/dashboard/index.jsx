@@ -21,12 +21,14 @@ import styled from 'styled-components';
 
 import './index.css';
 
-const TITLE = 'GOES Methane Plume Viewer';
-const DESCRIPTION =
-  'The Geostationary Operational Environmental Satellites collect \
-images of the surface every 5 minutes. Only very large emission events can be detected, \
-but plume expansion is easy to see over time. More plumes will be added soon.';
 
+
+const TITLE = 'EMIT Methane Plume Viewer';
+const DESCRIPTION =
+  'Using a special technique, the EMIT hyperspectral data\
+   is used to visualize large methane plumes whenever the instrument \
+   observes the surface. Due variations of the International Space Station orbit,\
+   EMIT does not have a regular observation repeat cycle.';
 const HorizontalLayout = styled.div`
   width: 90%;
   display: flex;
@@ -34,20 +36,18 @@ const HorizontalLayout = styled.div`
   justify-content: space-between;
   margin: 12px;
 `;
-export function Dashboard({
-  data,
-  dataTree,
-  metaDataTree,
+function Dashboard({
+  plumes,
   collectionMeta,
   vizItemMetaData,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
   setZoomLevel,
+  collectionId,
   loadingData,
 }) {
   // states for data
-  const [regions, setRegions] = useState([]); // store all available regions
   const [vizItems, setVizItems] = useState([]); // store all available visualization items
   const [selectedRegionId, setSelectedRegionId] = useState(''); // region_id of the selected region (marker)
   const prevSelectedRegionId = useRef(''); // to be able to restore to previously selected region.
@@ -57,77 +57,46 @@ export function Dashboard({
 
   const [vizItemIds, setVizItemIds] = useState([]); // list of vizItem_ids for the search feature.
   const [vizItemsForAnimation, setVizItemsForAnimation] = useState([]); // list of subdaily_visualization_item used for animation
-  const [collectionMetadata, setCollectionMetadata] = useState({});
-  const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
-  const [showMarkerFeature, setShowMarkerFeature] = useState(true);
-  const [visualizationLayers, setVisualizationLayers] = useState(true);
 
-  //color map
-  const [VMAX, setVMAX] = useState(100);
-  const [VMIN, setVMIN] = useState(-92);
-  const [colormap, setColormap] = useState('default');
-  const [assets, setAssets] = useState('rad');
+  const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
+  const [visualizationLayers, setVisualizationLayers] = useState(true);
 
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState(false);
-  // console.log("data", data);
-  const collectionId = data[0]?.collection;
-  // console.log({dataTree})
+
+  //colormap states
+  const [VMAX, setVMAX] = useState(100);
+  const [VMIN, setVMIN] = useState(-92);
+  const [colormap, setColormap] = useState('plasma');
+  const [assets, setAssets] = useState('ch4-plume-emissions');
+  
+  // console.log({collectionMeta})
+
+  //states for data
 
   // handler functions
   const handleSelectedVizItem = (vizItemId) => {
-    if (
-      !dataTree.current ||
-      !Object.keys(dataTree.current).length ||
-      !vizItemId
-    )
-      return;
-    setShowVisualizationLayers(true); // all the available visualization items  layers should be visible when region is selected
-    prevSelectedRegionId.current = vizItemId;
-    const regionIdFromVizId = vizItemId?.split('_')[3];
-    setSelectedRegionId(regionIdFromVizId); // an useEffect handles it further
-    const region = dataTree.current[regionIdFromVizId];
-
-    setZoomLocation(region.location);
-    setZoomLevel(null); // take the default zoom level
+    if (!vizItemId) return;
+    setShowVisualizationLayers(true);
+    const vizItem = plumes[vizItemId];
+    const location = vizItem?.geometry?.coordinates[0][0];
+    setVisualizationLayers([vizItem]);
+    setZoomLocation(location);
+    setZoomLevel(12); // take the default zoom level
     setOpenDrawer(true);
     setSelectedVizItems([]); // reset the visualization items shown, to trigger re-evaluation of selected visualization item
   };
 
   const handleSelectedVizLayer = (vizLayerId) => {
     if (!vizItems || !vizLayerId) return;
-    const vizItem = vizItems[vizLayerId];
-    const { location } = vizItem;
-    handleSelectedVizItemSearch(vizLayerId);
-    handleAnimationReady(vizLayerId);
-    setZoomLocation(location);
-    setZoomLevel(null); // take the default zoom level
-    setSelectedRegionId(''); //to reset the visualization item that was shown
-  };
-
-  const handleAnimationReady = (vizItemId) => {
-    // will make the visualization item ready for animation.
-    if (!vizItems || !vizItemId) return;
-
-    const vizItem = vizItems[vizItemId];
-    setVizItemsForAnimation(vizItem.subDailyPlumes);
-    // just clear the previous visualization item layers and not the cards
-    setShowVisualizationLayers(false);
+    // console.log({ vizLayerId });
   };
 
   const handleSelectedVizItemSearch = (vizItemId) => {
     // will focus on the visualization item along with its visualization item metadata card
     // will react to update the metadata on the sidedrawer
     if (!vizItems || !vizItemId) return;
-    const vizItem = vizItems[vizItemId];
-    const location = vizItem?.geometry?.coordinates[0][0];
-    console.log({ location });
-    setSelectedVizItems([vizItem]);
-    setOpenDrawer(true);
-    setZoomLocation(location);
-    setZoomLevel(null); // take the default zoom level
-    setSelectedRegionId(''); //to reset the visualization item that was shown
-    setVizItemsForAnimation([]); // to reset the previous animation
+    // console.log({ vizItemId });
   };
 
   const handleResetHome = () => {
@@ -140,57 +109,20 @@ export function Dashboard({
     setZoomLocation([-98.771556, 32.967243]);
   };
 
-  // const handleResetToSelectedRegion = () => {
-  //   setHoveredVizItemId("");
-  //   setVizItemsForAnimation([]);
-  //   if (!prevSelectedRegionId.current) {
-  //     return handleResetHome();
-  //   }
-  //   handleSelectedVizItem(prevSelectedRegionId.current);
-  // }
+  const handleResetToSelectedRegion = () => {
+    // setHoveredVizItemId("");
+    setVizItemsForAnimation([]);
+    if (!prevSelectedRegionId.current) {
+      return handleResetHome();
+    }
+    handleSelectedVizItem(prevSelectedRegionId.current);
+  };
 
   // Component Effects
   useEffect(() => {
-    if (!dataTree.current) return;
-
-    const vizItems = {}; // visualization_items[string] = visualization_item
-    const regions = []; // string[]
-    const vizItemIds = []; // string[] // for search
-    const testData = data.slice(0, 10);
-    // Object.keys(dataTree.current).forEach(region => {
-    //   regions.push(dataTree.current[region]);
-    //   dataTree.current[region].plumes.forEach(vizItem => {
-    //     // check what visualization_item is in dataModels.ts
-    //     vizItems[vizItem.id] = vizItem;
-    //     vizItemIds.push(vizItem.id);
-    //   });
-    // });
-
-    testData.forEach((items) => {
-      vizItems[items.id] = items;
-      vizItemIds.push(items.id);
-    });
-    // console.log({vizItems})
-    setVizItems(vizItems);
-    setRegions(regions);
-    setVizItemIds(vizItemIds); // for search
-    // the reference to datatree is in current, so see changes with respect to that
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataTree.current]);
-
-  useEffect(() => {
-    if (!dataTree.current || !selectedRegionId) return;
-    const currentRegion = dataTree.current[selectedRegionId];
-    const visualizationLayers = currentRegion.plumes.map(
-      (layer) => layer.representationalPlume
-    );
-    setVisualizationLayers(visualizationLayers);
-    setSelectedVizItems(visualizationLayers);
-    setVizItemsForAnimation([]); // reset the animation
-    setShowVisualizationLayers(true); // all the available visualization items layers should be visible when region is selected
-    // the reference to datatree is in current, so see changes with respect to that
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataTree.current, selectedRegionId]);
+    if (!plumes) return;
+    setVizItems(plumes);
+  }, [plumes]);
 
   useEffect(() => {
     const colormap = collectionMeta?.renders?.dashboard?.colormap_name;
@@ -206,66 +138,56 @@ export function Dashboard({
     //   setFilteredVizItems(filteredVizItems);
     //   // console.log({ filteredVizItems });
   };
+  const handleHoveredVizLayer = (vizItemId) => {
+    // console.log({ vizItemId });
+  };
   // JSX
   return (
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
-        <MainMap>
-          <Paper className='title-container'>
-            <Title title={TITLE} description={DESCRIPTION} />
-            <div className='title-content'>
-              <HorizontalLayout>
-                <Search
-                  vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                  onSelectedVizItemSearch={handleSelectedVizItemSearch}
-                ></Search>
-              </HorizontalLayout>
-              <HorizontalLayout>
-                <FilterByDate
-                  vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                  onFilteredVizItems={onFilteredVizItems}
-                />
-              </HorizontalLayout>
-              <HorizontalLayout>
-                <VizItemAnimation
-                  VMIN={VMIN}
-                  VMAX={VMAX}
-                  colormap={colormap}
-                  assets={assets}
-                  vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                />
-              </HorizontalLayout>
-            </div>
-          </Paper>
+        <Paper className='title-container'>
+          <Title title={TITLE} description={DESCRIPTION} />
+          <div className='title-content'>
+            <HorizontalLayout>
+              <Search
+                vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                onSelectedVizItemSearch={handleSelectedVizItemSearch}
+              ></Search>
+            </HorizontalLayout>
+            <HorizontalLayout>
+              <FilterByDate
+                vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                onFilteredVizItems={onFilteredVizItems}
+              />
+            </HorizontalLayout>
+          </div>
+        </Paper>
+        <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
+        <MapControls
+          openDrawer={openDrawer}
+          setOpenDrawer={setOpenDrawer}
+          handleResetHome={handleResetHome}
+          handleResetToSelectedRegion={handleResetToSelectedRegion}
+        />
+        <MarkerFeature
+          vizItems={Object.keys(plumes).map((item) => plumes[item])}
+          onSelectVizItem={handleSelectedVizItem}
+        ></MarkerFeature>
+        <VisualizationLayers
+          vizItems={visualizationLayers}
+          VMIN={VMIN}
+          VMAX={VMAX}
+          colormap={colormap}
+          assets={assets}
+          onClickOnLayer={handleSelectedVizLayer}
+          onHoverOverLayer={handleHoveredVizLayer}
+        />
 
-          <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
-          <MapControls
-            openDrawer={openDrawer}
-            setOpenDrawer={setOpenDrawer}
-            handleResetHome={handleResetHome}
-            // handleResetToSelectedRegion={handleResetToSelectedRegion}
-          />
-          <MarkerFeature
-            vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-            onSelectVizItem={handleSelectedVizItem}
-          ></MarkerFeature>
-          <VisualizationLayers
-            vizItems={visualizationLayers}
-            VMIN={VMIN}
-            VMAX={VMAX}
-            colormap={colormap}
-            assets={assets}
-            handleLayerClick={handleSelectedVizLayer}
-            hoveredVizLayerId={hoveredVizLayerId}
-            setHoveredVizLayerId={setHoveredVizLayerId}
-          />
-        </MainMap>
         <PersistentDrawerRight
           open={openDrawer}
           setOpen={setOpenDrawer}
           selectedVizItems={filteredVizItems}
           vizItemMetaData={vizItemMetaData}
-          metaDataTree={metaDataTree}
           collectionId={collectionId}
           vizItemsMap={vizItems}
           handleSelectedVizItems={handleSelectedVizLayer}
@@ -284,5 +206,31 @@ export function Dashboard({
       )}
       {loadingData && <LoadingSpinner />}
     </Box>
+  );
+}
+
+export function EmitDashboard({
+  plumes,
+  collectionMeta,
+  zoomLocation,
+  setZoomLocation,
+  zoomLevel,
+  setZoomLevel,
+  collectionId,
+  loadingData,
+}) {
+  return (
+    <MainMap>
+      <Dashboard
+        plumes={plumes}
+        zoomLocation={zoomLocation}
+        zoomLevel={zoomLevel}
+        setZoomLocation={setZoomLocation}
+        setZoomLevel={setZoomLevel}
+        collectionMeta={collectionMeta}
+        collectionId={collectionId}
+        loadingData={loadingData}
+      />
+    </MainMap>
   );
 }
