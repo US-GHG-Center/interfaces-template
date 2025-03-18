@@ -165,3 +165,48 @@ export const addFillPolygonToMap = (
     },
   });
 };
+
+export const addCoveragePolygon = (
+  map,
+  polygonSourceId,
+  polygonLayerId,
+  polygonFeature
+) => {
+  if (!map.isStyleLoaded()) {
+    map.once('style.load', () =>
+      addCoveragePolygon(map, polygonSourceId, polygonLayerId, polygonFeature)
+    );
+    return;
+  }
+
+  if (!map.getSource(polygonSourceId)) {
+    map.addSource(polygonSourceId, {
+      type: 'geojson',
+      data: polygonFeature,
+    });
+  }
+
+  if (!map.getLayer(polygonLayerId)) {
+    map.addLayer({
+      id: polygonLayerId,
+      type: 'fill',
+      source: polygonSourceId,
+      layout: {},
+      paint: {
+        'fill-outline-color': '#1E90FF',
+        'fill-color': 'rgba(173, 216, 230, 0.4)',
+      },
+    });
+
+    // Ensure coverage layer stays below rasters
+    const layers = map.getStyle().layers;
+    // console.log({ layers });
+    const rasterLayers = layers.filter((layer) =>
+      layer.id.startsWith('raster-')
+    );
+    if (rasterLayers.length > 0) {
+      const firstRasterLayerId = rasterLayers[0].id;
+      map.moveLayer(polygonLayerId, firstRasterLayerId);
+    }
+  }
+};

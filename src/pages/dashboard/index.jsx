@@ -147,9 +147,6 @@ function Dashboard({
     setFilteredVizItems(newItems);
   };
 
-  const handleFilteredCoverages = (result) => {
-    console.log({ length: result.length });
-  };
 
   useEffect(() => {
     if (!map) return;
@@ -161,10 +158,19 @@ function Dashboard({
         setVisualizationLayers([]);
       }
     };
+    // const handleMouseMove = () => {
+    //   const layers = map.getStyle().layers;
+    //   console.log({ layers });
+    // };
     map.on('zoomend', handleZoom);
     map.on('dragend', handleZoom);
+
+    // map.on('mousemove', handleMouseMove);
+
     return () => {
       map.off('zoomend', handleZoom);
+      map.off('dragend', handleZoom);
+      // map.off('mousemove', handleMouseMove);
     };
   }, [map, filteredVizItems]);
 
@@ -187,15 +193,8 @@ function Dashboard({
   }, [plumes]);
 
   useEffect(() => {
-    if (!coverage) return;
-    console.log({ coverage });
-    const features = coverage?.features;
-    // const coverageFeatures = {};
-    // features?.forEach((item) => {
-    //   coverageFeatures[item?.properties?.start_time] = item;
-    // });
-    // console.log({ coverageFeatures });
-    setCoverageFeatures(features);
+    if (!coverage?.features?.length) return;
+    setCoverageFeatures(coverage);
   }, [coverage]);
 
   useEffect(() => {
@@ -209,7 +208,7 @@ function Dashboard({
   }, [collectionMeta]);
 
   const handleDateRangeChange = (dateRange) => {
-    console.log({ dateRange });
+    setCoverageFeatures(coverageFeatures);
   };
 
   return (
@@ -230,7 +229,6 @@ function Dashboard({
             <HorizontalLayout>
               <FilterByDate
                 vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                coverage={coverageFeatures}
                 onFilteredItems={handleFilterVizItems}
                 onDateChange={handleDateRangeChange}
               />

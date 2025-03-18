@@ -1,16 +1,20 @@
-export const CoverageLayers = ({ coverage }) => {
-  console.log({ coverage });
-  if (!coverage?.length < 0) return;
-  return (
-    <>
-      {coverage?.map((item) => (
-        <CoverageLayer key={item?.properties?.start_time} layer={item} />
-      ))}
-    </>
-  );
-};
+import { useEffect } from 'react';
+import { useMapbox } from '../../../context/mapContext';
+import { addCoveragePolygon, layerExists, sourceExists } from '../utils';
 
-export const CoverageLayer = ({ layer }) => {
-  console.log({ layer });
-  return <div></div>;
+export const CoverageLayers = ({ coverage }) => {
+  const { map } = useMapbox();
+  const layerId = 'coverage';
+  useEffect(() => {
+    if (!map || !coverage?.features?.length) return;
+
+    addCoveragePolygon(map, layerId, layerId, coverage);
+    return () => {
+      if (map) {
+        if (sourceExists(map, layerId)) map.removeSource(layerId);
+        if (layerExists(map, layerId)) map.removeLayer(layerId);
+      }
+    };
+  }, [map, coverage]);
+  return null;
 };
