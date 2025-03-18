@@ -21,7 +21,7 @@ const reverseGeocoding = async (
     const lat = feature.properties['Latitude of max concentration'];
     const lon = feature.properties['Longitude of max concentration'];
     const location = await fetchLocationFromEndpoint(lat, lon);
-    console.log({ location });
+    // console.log({ location });
     return location;
   }
 };
