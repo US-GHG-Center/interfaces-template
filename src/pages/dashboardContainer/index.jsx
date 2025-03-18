@@ -9,6 +9,7 @@ import {
   getCoverageData,
 } from '../../services/api.js';
 import { transformMetadata } from './helper/dataTransform.ts';
+import { createIndexedCoverageData } from './helper/dataTransform.ts';
 
 export function DashboardContainer() {
   // get the query params
@@ -70,9 +71,10 @@ export function DashboardContainer() {
         const coverageUrl = process.env.REACT_APP_COVERAGE_URL;
         // const coverageUrl = `${process.env.PUBLIC_URL}/data/coverages.json`;
         const coverageData = await getCoverageData(coverageUrl);
+        const indexedCoverageData = createIndexedCoverageData(coverageData);
         // const coverageData = coverages;
         if (isMounted && coverageData?.features?.length > 0) {
-          setCoverage(coverageData);
+          setCoverage(indexedCoverageData);
         }
       } catch (error) {
         console.error('Error fetching coverage data:', error);
