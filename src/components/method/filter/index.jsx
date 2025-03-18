@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Slider, Typography, Box } from '@mui/material';
 import moment from 'moment';
 
@@ -11,7 +11,7 @@ import moment from 'moment';
 */
 
 export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
-  const minDate = moment('2018-01-01').valueOf();
+  const minDate = moment('2022-08-09').valueOf();
   const maxDate = moment().valueOf();
   const [dateRange, setDateRange] = useState([minDate, maxDate]);
 
@@ -26,23 +26,23 @@ export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
   };
 
   return (
-    <Box sx={{ width: '90%', padding: '20px' }}>
+    <Box sx={{ width: '100%', padding: '20px' }}>
       <Typography
         gutterBottom
         sx={{
-          marginBottom: '10px',
+          marginBottom: '0px',
           color: '#082A63',
           display: 'flex',
           justifyContent: 'center',
           fontWeight: 550,
+          fontSize: '16px',
+          fontFamily: 'inherit',
         }}
       >
         {moment(dateRange[0]).format('ddd, DD MMM YYYY')} -{' '}
         {moment(dateRange[1]).format('ddd, DD MMM YYYY')}
       </Typography>
-
-      <Box sx={{ position: 'relative', height: '8px', marginTop: '10px' }}>
-        {/* MUI Slider */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Slider
           value={dateRange}
           onChange={(_, newValue) => {
@@ -54,6 +54,7 @@ export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
           max={maxDate}
           step={86400000} // One day step
           sx={{
+            display: 'flex',
             height: '8px',
             '& .MuiSlider-track': {
               backgroundColor: '#082A63',
@@ -79,7 +80,44 @@ export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
             },
           }}
         />
-      </Box>
+
+        <div
+          style={{
+            display: 'flex',
+            margin: '-4px',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Typography
+            gutterBottom
+            sx={{
+              marginBottom: '0px',
+              color: '#082A63',
+              display: 'flex',
+              justifyContent: 'center',
+              fontWeight: 550,
+              fontSize: '14px',
+              fontFamily: 'inherit',
+            }}
+          >
+            Start Date
+          </Typography>
+          <Typography
+            gutterBottom
+            sx={{
+              marginBottom: '0px',
+              color: '#082A63',
+              display: 'flex',
+              justifyContent: 'center',
+              fontWeight: 550,
+              fontSize: '14px',
+              fontFamily: 'inherit',
+            }}
+          >
+            End Date
+          </Typography>
+        </div>
+      </div>
     </Box>
   );
 }

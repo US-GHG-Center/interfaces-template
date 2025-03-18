@@ -15,14 +15,21 @@ export const Title = ({ title, description }) => {
       >
         {title}
       </Typography>
-      {description && <Typography
-        variant='body2'
+      {description && (
+        <Typography
+          variant='body2'
+          component='div'
+          className='title-note'
+          sx={{ margin: '0 0.9rem', color: 'text.secondary' }}
+        >
+          {description}
+        </Typography>
+      )}
+      <Divider
         component='div'
-        className='title-note'
-        sx={{ margin: '0 0.9rem', color: 'text.secondary' }}
-      >
-        {description}
-      </Typography>}
+        className='title-divider'
+        sx={{ margin: '0 1.5rem' }}
+      />
     </>
   );
 };
