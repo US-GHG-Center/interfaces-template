@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './index.css';
 
-const ToggleSwitch = ({ title, onToggle }) => {
+const ToggleSwitch = ({ title, onToggle, enabled }) => {
   const [isChecked, setIsChecked] = useState(false);
 
   const handleToggle = () => {
@@ -21,6 +21,7 @@ const ToggleSwitch = ({ title, onToggle }) => {
           className='toggle-input'
           id='showCoverage'
           checked={isChecked}
+          disabled={!enabled}
           onChange={handleToggle}
         />
         <span className='slider'></span>
