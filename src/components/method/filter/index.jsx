@@ -26,7 +26,12 @@ export function FilterByDate({ vizItems, onFilteredItems, onDateChange }) {
   };
 
   return (
-    <Box sx={{ width: '100%', padding: '20px' }}>
+    <Box
+      sx={{
+        width: '100%',
+        padding: '20px 15px 20px 10px',
+      }}
+    >
       <Typography
         gutterBottom
         sx={{
