@@ -22,6 +22,7 @@ import styled from 'styled-components';
 
 import './index.css';
 import ToggleSwitch from '../../components/ui/toggle';
+import { filterByDateRange } from './helper';
 
 const TITLE = 'EMIT Methane Plume Viewer';
 const DESCRIPTION =
@@ -61,6 +62,7 @@ export function Dashboard({
   const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
   const [visualizationLayers, setVisualizationLayers] = useState(true);
   const [showCoverage, setShowCoverages] = useState(false);
+  const [enableToggle, setEnableToggle] = useState(false);
 
   // console.log('Rerendering dashboard');
 
@@ -144,6 +146,7 @@ export function Dashboard({
 
   useEffect(() => {
     if (!coverage?.features?.length) return;
+    setEnableToggle(true);
     setCoverageFeatures(coverage);
   }, [coverage]);
 
@@ -158,11 +161,11 @@ export function Dashboard({
   }, [collectionMeta]);
 
   const handleDateRangeChange = (dateRange) => {
-    setCoverageFeatures(coverageFeatures);
+    const filteredCoverages = filterByDateRange(coverage, dateRange);
+    setCoverageFeatures(filteredCoverages);
   };
 
   const handleCoverageToggle = (switchState) => {
-    console.log({ switchState });
     setShowCoverages(switchState);
   };
 
@@ -192,6 +195,7 @@ export function Dashboard({
                 <ToggleSwitch
                   title={'Show EMIT Coverages'}
                   onToggle={handleCoverageToggle}
+                  enabled={enableToggle}
                 />
               </HorizontalLayout>
             </div>
@@ -249,4 +253,3 @@ export function Dashboard({
     </Box>
   );
 }
-
