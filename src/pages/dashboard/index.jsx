@@ -15,12 +15,13 @@ import {
   Search,
   FilterByDate,
   CoverageLayers,
-  useMapbox,
+  MapViewPortComponent,
 } from '@components';
 
 import styled from 'styled-components';
-import { isFeatureWithinBounds } from './helper';
+
 import './index.css';
+import ToggleSwitch from '../../components/ui/toggle';
 
 const TITLE = 'EMIT Methane Plume Viewer';
 const DESCRIPTION =
@@ -35,7 +36,7 @@ const HorizontalLayout = styled.div`
   justify-content: space-between;
   margin: 12px;
 `;
-function Dashboard({
+export function Dashboard({
   plumes,
   collectionMeta,
   coverage,
@@ -59,9 +60,10 @@ function Dashboard({
 
   const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
   const [visualizationLayers, setVisualizationLayers] = useState(true);
+  const [showCoverage, setShowCoverages] = useState(false);
 
   // console.log('Rerendering dashboard');
-  const { map } = useMapbox();
+
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState(false);
 
@@ -118,23 +120,9 @@ function Dashboard({
     handleSelectedVizItem(prevSelectedRegionId.current);
   };
 
-  const renderRasterOnZoomed = (map, filteredVizItems) => {
-    const bounds = map.getBounds();
-    const itemsInsideZoomedRegion = Object.values(filteredVizItems)?.filter(
-      (value) => isFeatureWithinBounds(value?.polygonGeometry, bounds)
-    );
-    if (itemsInsideZoomedRegion.length > 0) {
-      setVisualizationLayers(itemsInsideZoomedRegion);
-      setOpenDrawer(true);
-    } else {
-      setVisualizationLayers([]);
-    }
-    // console.log({itemsInsideZoomedRegion})
-  };
-
   const handleHoveredVizLayer = (vizItemId) => {
     // console.log({ HoveredItemDashboard: vizItemId });
-    if (!map) return;
+    // if (!map) return;
     // console.log({ layers: map.getStyle().layers });
     setHoveredVizLayerId(vizItemId);
   };
@@ -146,44 +134,6 @@ function Dashboard({
     });
     setFilteredVizItems(newItems);
   };
-
-
-  useEffect(() => {
-    if (!map) return;
-    const handleZoom = () => {
-      const zoom = map.getZoom();
-      if (zoom > 8) {
-        renderRasterOnZoomed(map, filteredVizItems);
-      } else {
-        setVisualizationLayers([]);
-      }
-    };
-    // const handleMouseMove = () => {
-    //   const layers = map.getStyle().layers;
-    //   console.log({ layers });
-    // };
-    map.on('zoomend', handleZoom);
-    map.on('dragend', handleZoom);
-
-    // map.on('mousemove', handleMouseMove);
-
-    return () => {
-      map.off('zoomend', handleZoom);
-      map.off('dragend', handleZoom);
-      // map.off('mousemove', handleMouseMove);
-    };
-  }, [map, filteredVizItems]);
-
-  useEffect(() => {
-    if (!map) return;
-    const zoom = map.getZoom();
-    // console.log('Here i am', zoom);
-    if (zoom > 8 && !!filteredVizItems) {
-      renderRasterOnZoomed(map, filteredVizItems);
-    }
-  }, [map, filteredVizItems]);
-
-  //
 
   // Component Effects
   useEffect(() => {
@@ -211,55 +161,71 @@ function Dashboard({
     setCoverageFeatures(coverageFeatures);
   };
 
+  const handleCoverageToggle = (switchState) => {
+    console.log({ switchState });
+    setShowCoverages(switchState);
+  };
+
   return (
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
-        {/* <MainMap> */}
-        <Paper className='title-container'>
-          <Title title={TITLE} description={DESCRIPTION} />
-          <div className='title-content'>
-            <HorizontalLayout>
-              <Search
-                vizItems={Object.keys(filteredVizItems).map(
-                  (key) => filteredVizItems[key]
-                )}
-                onSelectedVizItemSearch={handleSelectedVizItemSearch}
-              ></Search>
-            </HorizontalLayout>
-            <HorizontalLayout>
-              <FilterByDate
-                vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                onFilteredItems={handleFilterVizItems}
-                onDateChange={handleDateRangeChange}
-              />
-            </HorizontalLayout>
-          </div>
-        </Paper>
-        <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
-        <MapControls
-          openDrawer={openDrawer}
-          setOpenDrawer={setOpenDrawer}
-          handleResetHome={handleResetHome}
-          handleResetToSelectedRegion={handleResetToSelectedRegion}
-        />
-        <MarkerFeature
-          vizItems={Object.keys(filteredVizItems).map(
-            (item) => filteredVizItems[item]
-          )}
-          onSelectVizItem={handleSelectedVizItem}
-        ></MarkerFeature>
-        <CoverageLayers coverage={coverageFeatures} />
-        <VisualizationLayers
-          vizItems={visualizationLayers}
-          VMIN={VMIN}
-          VMAX={VMAX}
-          colormap={colormap}
-          assets={assets}
-          highlightedLayer={hoveredVizLayerId}
-          onClickOnLayer={handleSelectedVizLayer}
-          onHoverOverLayer={handleHoveredVizLayer}
-        />
-        {/* </MainMap> */}
+        <MainMap>
+          <Paper className='title-container'>
+            <Title title={TITLE} description={DESCRIPTION} />
+            <div className='title-content'>
+              <HorizontalLayout>
+                <Search
+                  vizItems={Object.keys(filteredVizItems).map(
+                    (key) => filteredVizItems[key]
+                  )}
+                  onSelectedVizItemSearch={handleSelectedVizItemSearch}
+                ></Search>
+              </HorizontalLayout>
+              <HorizontalLayout>
+                <FilterByDate
+                  vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                  onFilteredItems={handleFilterVizItems}
+                  onDateChange={handleDateRangeChange}
+                />
+              </HorizontalLayout>
+              <HorizontalLayout>
+                <ToggleSwitch
+                  title={'Show EMIT Coverages'}
+                  onToggle={handleCoverageToggle}
+                />
+              </HorizontalLayout>
+            </div>
+          </Paper>
+          <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
+          <MapControls
+            openDrawer={openDrawer}
+            setOpenDrawer={setOpenDrawer}
+            handleResetHome={handleResetHome}
+            handleResetToSelectedRegion={handleResetToSelectedRegion}
+          />
+          <MapViewPortComponent
+            filteredVizItems={filteredVizItems}
+            setVisualizationLayers={setVisualizationLayers}
+            setOpenDrawer={setOpenDrawer}
+          ></MapViewPortComponent>
+          <MarkerFeature
+            vizItems={Object.keys(filteredVizItems).map(
+              (item) => filteredVizItems[item]
+            )}
+            onSelectVizItem={handleSelectedVizItem}
+          ></MarkerFeature>
+          {showCoverage && <CoverageLayers coverage={coverageFeatures} />}
+          <VisualizationLayers
+            vizItems={visualizationLayers}
+            VMIN={VMIN}
+            VMAX={VMAX}
+            colormap={colormap}
+            assets={assets}
+            highlightedLayer={hoveredVizLayerId}
+            onClickOnLayer={handleSelectedVizLayer}
+            onHoverOverLayer={handleHoveredVizLayer}
+          />
+        </MainMap>
         <PersistentDrawerRight
           open={openDrawer}
           setOpen={setOpenDrawer}
@@ -284,30 +250,3 @@ function Dashboard({
   );
 }
 
-export function EmitDashboard({
-  plumes,
-  coverage,
-  collectionMeta,
-  zoomLocation,
-  setZoomLocation,
-  zoomLevel,
-  setZoomLevel,
-  collectionId,
-  loadingData,
-}) {
-  return (
-    <MainMap>
-      <Dashboard
-        plumes={plumes}
-        coverage={coverage}
-        zoomLocation={zoomLocation}
-        zoomLevel={zoomLevel}
-        setZoomLocation={setZoomLocation}
-        setZoomLevel={setZoomLevel}
-        collectionMeta={collectionMeta}
-        collectionId={collectionId}
-        loadingData={loadingData}
-      />
-    </MainMap>
-  );
-}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { EmitDashboard } from '../dashboard/index.jsx';
+import { Dashboard, EmitDashboard } from '../dashboard/index.jsx';
 import { Plumes } from '../../assets/dataset/testData.js';
 import {
   fetchCollectionMetadata,
@@ -67,8 +67,8 @@ export function DashboardContainer() {
     let isMounted = true;
     const fetchCoverage = async () => {
       try {
-        // const coverageUrl = process.env.REACT_APP_COVERAGE_URL;
-        const coverageUrl = `${process.env.PUBLIC_URL}/data/coverages.json`;
+        const coverageUrl = process.env.REACT_APP_COVERAGE_URL;
+        // const coverageUrl = `${process.env.PUBLIC_URL}/data/coverages.json`;
         const coverageData = await getCoverageData(coverageUrl);
         // const coverageData = coverages;
         if (isMounted && coverageData?.features?.length > 0) {
@@ -86,7 +86,7 @@ export function DashboardContainer() {
   }, []);
 
   return (
-    <EmitDashboard
+    <Dashboard
       plumes={plumes}
       coverage={coverage}
       zoomLocation={zoomLocation}

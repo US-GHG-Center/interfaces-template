@@ -4,6 +4,7 @@ export { useMapbox } from '../context/mapContext/index.js';
 export { MapControls } from './map/mapControls/index.jsx';
 
 // Map Features
+export { MapViewPortComponent } from './map/viewport';
 export { VizItemAnimation } from './map/itemAnimation/index.jsx';
 export { MeasurementLayer } from './map/measurementLayer';
 export { MarkerFeature } from './map/mapMarker';
