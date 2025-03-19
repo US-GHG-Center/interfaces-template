@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 
@@ -14,14 +14,11 @@ import {
   MapZoom,
   Search,
   FilterByDate,
-  VizItemAnimation,
 } from '@components';
-
+import { useMapbox } from '../../components';
 import styled from 'styled-components';
-
+import { isFeatureWithinBounds } from './helper';
 import './index.css';
-
-
 
 const TITLE = 'EMIT Methane Plume Viewer';
 const DESCRIPTION =
@@ -61,6 +58,8 @@ function Dashboard({
   const [showVisualizationLayers, setShowVisualizationLayers] = useState(true);
   const [visualizationLayers, setVisualizationLayers] = useState(true);
 
+  // console.log('Rerendering dashboard');
+  const { map } = useMapbox();
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState(false);
 
@@ -78,7 +77,8 @@ function Dashboard({
   const handleSelectedVizItem = (vizItemId) => {
     if (!vizItemId) return;
     setShowVisualizationLayers(true);
-    const vizItem = plumes[vizItemId];
+    const vizItem = filteredVizItems[vizItemId];
+    // console.log({ vizItem });
     const location = vizItem?.geometry?.coordinates[0][0];
     setVisualizationLayers([vizItem]);
     setZoomLocation(location);
@@ -118,10 +118,68 @@ function Dashboard({
     handleSelectedVizItem(prevSelectedRegionId.current);
   };
 
+  const renderRasterOnZoomed = (map, filteredVizItems) => {
+    const bounds = map.getBounds();
+    const itemsInsideZoomedRegion = Object.values(filteredVizItems)?.filter(
+      (value) => isFeatureWithinBounds(value?.polygonGeometry, bounds)
+    );
+    if (itemsInsideZoomedRegion.length > 0) {
+      setVisualizationLayers(itemsInsideZoomedRegion);
+      setOpenDrawer(true);
+    } else {
+      setVisualizationLayers([]);
+    }
+    // console.log({itemsInsideZoomedRegion})
+  };
+
+  const handleHoveredVizLayer = (vizItemId) => {
+    // console.log({ HoveredItemDashboard: vizItemId });
+    if (!map) return;
+    // console.log({ layers: map.getStyle().layers });
+    setHoveredVizLayerId(vizItemId);
+  };
+
+  const handleFilterVizItems = (result) => {
+    const newItems = {};
+    result.forEach((item) => {
+      newItems[item?.id] = item;
+    });
+    setFilteredVizItems(newItems);
+  };
+
+  useEffect(() => {
+    if (!map) return;
+    const handleZoom = () => {
+      const zoom = map.getZoom();
+      if (zoom > 8) {
+        renderRasterOnZoomed(map, filteredVizItems);
+      } else {
+        setVisualizationLayers([]);
+      }
+    };
+    map.on('zoomend', handleZoom);
+    map.on('dragend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map, filteredVizItems]);
+
+  useEffect(() => {
+    if (!map) return;
+    const zoom = map.getZoom();
+    // console.log('Here i am', zoom);
+    if (zoom > 8 && !!filteredVizItems) {
+      renderRasterOnZoomed(map, filteredVizItems);
+    }
+  }, [map, filteredVizItems]);
+
+  //
+
   // Component Effects
   useEffect(() => {
     if (!plumes) return;
     setVizItems(plumes);
+    setFilteredVizItems(plumes);
   }, [plumes]);
 
   useEffect(() => {
@@ -134,30 +192,25 @@ function Dashboard({
     setColormap(colormap);
   }, [collectionMeta]);
 
-  const onFilteredVizItems = (filteredVizItems) => {
-    //   setFilteredVizItems(filteredVizItems);
-    //   // console.log({ filteredVizItems });
-  };
-  const handleHoveredVizLayer = (vizItemId) => {
-    // console.log({ vizItemId });
-  };
-  // JSX
   return (
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
+        {/* <MainMap> */}
         <Paper className='title-container'>
           <Title title={TITLE} description={DESCRIPTION} />
           <div className='title-content'>
             <HorizontalLayout>
               <Search
-                vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
+                vizItems={Object.keys(filteredVizItems).map(
+                  (key) => filteredVizItems[key]
+                )}
                 onSelectedVizItemSearch={handleSelectedVizItemSearch}
               ></Search>
             </HorizontalLayout>
             <HorizontalLayout>
               <FilterByDate
                 vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                onFilteredVizItems={onFilteredVizItems}
+                onFilteredItems={handleFilterVizItems}
               />
             </HorizontalLayout>
           </div>
@@ -170,7 +223,9 @@ function Dashboard({
           handleResetToSelectedRegion={handleResetToSelectedRegion}
         />
         <MarkerFeature
-          vizItems={Object.keys(plumes).map((item) => plumes[item])}
+          vizItems={Object.keys(filteredVizItems).map(
+            (item) => filteredVizItems[item]
+          )}
           onSelectVizItem={handleSelectedVizItem}
         ></MarkerFeature>
         <VisualizationLayers
@@ -179,20 +234,19 @@ function Dashboard({
           VMAX={VMAX}
           colormap={colormap}
           assets={assets}
+          highlightedLayer={hoveredVizLayerId}
           onClickOnLayer={handleSelectedVizLayer}
           onHoverOverLayer={handleHoveredVizLayer}
         />
-
+        {/* </MainMap> */}
         <PersistentDrawerRight
           open={openDrawer}
           setOpen={setOpenDrawer}
-          selectedVizItems={filteredVizItems}
-          vizItemMetaData={vizItemMetaData}
+          selectedVizItems={visualizationLayers}
+          hoveredVizLayerId={hoveredVizLayerId}
           collectionId={collectionId}
-          vizItemsMap={vizItems}
-          handleSelectedVizItems={handleSelectedVizLayer}
-          hoveredVizItemId={hoveredVizLayerId}
-          setHoveredVizItemId={setHoveredVizLayerId}
+          onSelectVizLayer={handleSelectedVizLayer}
+          onHoverOnVizLayer={handleHoveredVizLayer}
         />
       </div>
       {VMAX && (
@@ -201,7 +255,7 @@ function Dashboard({
           VMAX={VMAX}
           VMIN={VMIN}
           colormap={colormap}
-          STEPSIZE={1}
+          STEPS={5}
         />
       )}
       {loadingData && <LoadingSpinner />}

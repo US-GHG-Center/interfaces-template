@@ -7,7 +7,7 @@ import {
   layerExists,
   sourceExists,
 } from '../utils';
-import { addSourcePolygonToMap } from '../utils/index';
+import { addSourcePolygonToMap, addFillPolygonToMap } from '../utils/index';
 
 // eslint-disable-next-line prettier/prettier
 export const VisualizationLayer = ({
@@ -16,6 +16,7 @@ export const VisualizationLayer = ({
   colormap,
   assets,
   vizItem,
+  highlightedLayer,
   onClickOnLayer,
   onHoverOverLayer,
 }) => {
@@ -25,8 +26,19 @@ export const VisualizationLayer = ({
   useEffect(() => {
     if (!map || !vizItem) return;
     const feature = vizItem;
+    const polygonFeature = {
+      geometry: vizItem?.polygonGeometry,
+      properties: vizItem?.plumeProperties,
+      type: 'Feature',
+    };
+    let polygonBorderWidth = 2;
+    if (highlightedLayer === vizItemId) {
+      polygonBorderWidth = 4;
+    }
     const rasterSourceId = getSourceId('raster' + vizItemId);
     const rasterLayerId = getLayerId('raster' + vizItemId);
+    const polygonFillSourceId = getSourceId('fill' + vizItemId);
+    const polygonFillLayerId = getLayerId('fill' + vizItemId);
     const polygonSourceId = getSourceId('polygon' + vizItemId);
     const polygonLayerId = getLayerId('polygon' + vizItemId);
 
@@ -40,7 +52,14 @@ export const VisualizationLayer = ({
       rasterSourceId,
       rasterLayerId
     );
-    addSourcePolygonToMap(map, feature, polygonSourceId, polygonLayerId);
+    addSourcePolygonToMap(
+      map,
+      polygonFeature,
+      polygonSourceId,
+      polygonLayerId,
+      polygonBorderWidth
+    );
+    addFillPolygonToMap(map, feature, polygonFillSourceId, polygonFillLayerId);
 
     const onClickHandler = (e) => {
       onClickOnLayer && onClickOnLayer(vizItemId);
@@ -49,10 +68,14 @@ export const VisualizationLayer = ({
     const onHoverHandler = (e) => {
       onHoverOverLayer && onHoverOverLayer(vizItemId);
     };
+    const onHoverClearHandler = (e) => {
+      onHoverOverLayer && onHoverOverLayer('');
+    };
 
     map.setLayoutProperty(rasterLayerId, 'visibility', 'visible');
-    map.on('click', polygonLayerId, onClickHandler);
-    map.on('mousemove', polygonLayerId, onHoverHandler);
+    map.on('click', polygonFillLayerId, onClickHandler);
+    map.on('mouseover', polygonFillLayerId, onHoverHandler);
+    map.on('mouseleave', polygonFillLayerId, onHoverClearHandler);
 
     return () => {
       // cleanups
@@ -62,7 +85,14 @@ export const VisualizationLayer = ({
         if (layerExists(map, polygonLayerId)) map.removeLayer(polygonLayerId);
         if (sourceExists(map, polygonSourceId))
           map.removeSource(polygonSourceId);
-        map.off('click', 'clusters', onClickHandler);
+        if (layerExists(map, polygonFillLayerId))
+          map.removeLayer(polygonFillLayerId);
+        if (sourceExists(map, polygonFillSourceId))
+          map.removeSource(polygonFillSourceId);
+
+        map.off('click', polygonFillLayerId, onClickHandler);
+        map.off('mouseenter', polygonFillLayerId, onHoverHandler);
+        map.off('mouseleave', polygonFillLayerId, onHoverClearHandler);
       }
     };
   }, [
@@ -75,6 +105,7 @@ export const VisualizationLayer = ({
     VMAX,
     colormap,
     assets,
+    highlightedLayer,
   ]);
 
   return null;
@@ -97,6 +128,7 @@ export const VisualizationLayers = ({
   colormap,
   assets,
   vizItems,
+  highlightedLayer,
   onHoverOverLayer,
   onClickOnLayer,
 }) => {
@@ -109,6 +141,7 @@ export const VisualizationLayers = ({
           <VisualizationLayer
             key={vizItem.id}
             vizItem={vizItem}
+            highlightedLayer={highlightedLayer}
             onClickOnLayer={onClickOnLayer}
             onHoverOverLayer={onHoverOverLayer}
             VMIN={VMIN}

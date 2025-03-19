@@ -44,8 +44,9 @@ export const addSourceLayerToMap = (
   let itemId = feature.id;
 
   const TILE_URL =
-    `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${itemId}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x` +
-    '?assets=' +
+    `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?item=` +
+    itemId +
+    '&assets=' +
     assets +
     '&bidx=1' +
     '&colormap_name=' +
@@ -53,8 +54,8 @@ export const addSourceLayerToMap = (
     '&rescale=' +
     VMIN +
     '%2C' +
-    VMAX;
-  // "&nodata=-9999";
+    VMAX +
+    '&nodata=-9999';
 
   map.addSource(sourceId, {
     type: 'raster',
@@ -105,7 +106,8 @@ export const addSourcePolygonToMap = (
   map,
   feature,
   polygonSourceId,
-  polygonLayerId
+  polygonLayerId,
+  width
 ) => {
   if (
     !map ||
@@ -117,15 +119,49 @@ export const addSourcePolygonToMap = (
     type: 'geojson',
     data: feature,
   });
-
   map.addLayer({
     id: polygonLayerId,
-    type: 'fill',
+    type: 'line',
     source: polygonSourceId,
     layout: {},
     paint: {
-      'fill-outline-color': '#20B2AA',
-      'fill-color': 'transparent',
+      'line-color': '#0098d7',
+      'line-width': width,
+    },
+  });
+};
+/*
+      Add source and layer of polygon fill layer on map
+      @param {map object} map - instance of map 
+      @param {STACItem} feature -  polygon features to add on map 
+      @param {string} polygonSourceId - id of the polygon source to add
+      @param {string} polygonLayerId - id of the polygon layer to add source on 
+*/
+export const addFillPolygonToMap = (
+  map,
+  feature,
+  polygonFillSourceId,
+  polygonFillLayerId
+) => {
+  if (
+    !map ||
+    (sourceExists(map, polygonFillSourceId) &&
+      layerExists(map, polygonFillLayerId))
+  )
+    return;
+
+  map.addSource(polygonFillSourceId, {
+    type: 'geojson',
+    data: feature,
+  });
+
+  map.addLayer({
+    id: polygonFillLayerId,
+    type: 'fill',
+    source: polygonFillSourceId,
+    layout: {},
+    paint: {
+      'fill-opacity': 0,
     },
   });
 };

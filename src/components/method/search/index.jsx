@@ -13,7 +13,14 @@ import { TrieSearch } from './helper/trieSearch';
       
 */
 export function Search({ vizItems, onSelectedVizItemSearch }) {
-  const ids = vizItems?.map((vizItem) => vizItem.id);
+  const ids = vizItems?.map((vizItem) => {
+    const id = vizItem?.id
+    const location = vizItem?.plumeProperties?.location
+    const idString = id.split('_').join('-')
+    const locationString = location?.split(',').reverse().map((part) => part.trim()).join('_')
+    return `${locationString}_${idString}`
+  });
+  
   const trieSearch = useRef(null);
   const [searchOptions, setSearchOptions] = useState([]);
 

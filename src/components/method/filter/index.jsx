@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { Slider, Typography, Box } from '@mui/material';
 import moment from 'moment';
 /*
       Filter stacItem based on the date range
@@ -9,36 +9,73 @@ import moment from 'moment';
       
 */
 
-export function FilterByDate({ vizItems, onFilteredVizItems }) {
-  const [startDate, setStartDate] = useState(moment('2018-01-01'));
-  const [endDate, setEndDate] = useState(() => moment());
-  useEffect(() => {
-    if (!vizItems.length) return;
-    const filteredVizItems = vizItems.filter((vizItem) => {
-      const vizItemDate = moment(vizItem?.properties?.datetime);
+export function FilterByDate({ vizItems, onFilteredItems }) {
+  const minDate = moment('2018-01-01').valueOf();
+  const maxDate = moment().valueOf();
+  const [dateRange, setDateRange] = useState([minDate, maxDate]);
 
-      if (
-        vizItemDate.isSameOrAfter(startDate) &&
-        vizItemDate.isSameOrBefore(endDate)
-      ) {
-        return vizItem;
-      } else return null;
+  const handleSliderChange = (_, dateRange) => {
+    const filteredVizItems = vizItems.filter((vizItem) => {
+      const vizItemDate = moment(vizItem?.properties?.datetime).valueOf();
+      const item = vizItemDate >= dateRange[0] && vizItemDate <= dateRange[1];
+      return item;
     });
-    onFilteredVizItems(filteredVizItems.map((vizItem) => vizItem));
-  }, [startDate, endDate, vizItems, onFilteredVizItems, vizItems.length]);
+    onFilteredItems(filteredVizItems);
+  };
 
   return (
-    <>
-      <div style={{ width: '45%', height: '90%' }}>
-        <DatePicker
-          label='Start Date'
-          value={startDate}
-          onChange={setStartDate}
+    <Box sx={{ width: '90%', padding: '20px' }}>
+      <Typography
+        gutterBottom
+        sx={{
+          marginBottom: '10px',
+          color: '#082A63',
+          display: 'flex',
+          justifyContent: 'center',
+          fontWeight: 550,
+        }}
+      >
+        {moment(dateRange[0]).format('ddd, DD MMM YYYY')} -{' '}
+        {moment(dateRange[1]).format('ddd, DD MMM YYYY')}
+      </Typography>
+
+      <Box sx={{ position: 'relative', height: '8px', marginTop: '10px' }}>
+        {/* MUI Slider */}
+        <Slider
+          value={dateRange}
+          onChange={(_, newValue) => setDateRange(newValue)}
+          onChangeCommitted={(_, newValue) => handleSliderChange(_, newValue)}
+          getAriaLabel={() => 'Date range'}
+          min={minDate}
+          max={maxDate}
+          step={86400000} // One day step
+          sx={{
+            height: '8px',
+            '& .MuiSlider-track': {
+              backgroundColor: '#082A63',
+              height: '14px',
+              borderRadius: '1px',
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: '#ffffff',
+              height: '14px',
+              borderRadius: '3px',
+              border: '1px solid #aaaaaa',
+            },
+            '& .MuiSlider-thumb': {
+              width: '22px',
+              height: '26px',
+              backgroundColor: '#fffffe',
+              border: '1px solid #eeeeee',
+              borderRadius: 2,
+              boxShadow: '0 0 0px rgba(0,0,0,0.2)',
+              '&:hover': {
+                boxShadow: '0 0 8px rgba(0,0,0,0.3)',
+              },
+            },
+          }}
         />
-      </div>
-      <div style={{ width: '45%', height: '90%' }}>
-        <DatePicker label='End Date' value={endDate} onChange={setEndDate} />
-      </div>
-    </>
+      </Box>
+    </Box>
   );
 }
