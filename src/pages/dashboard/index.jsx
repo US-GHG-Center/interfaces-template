@@ -74,6 +74,8 @@ export function Dashboard({
   const [VMIN, setVMIN] = useState(-92);
   const [colormap, setColormap] = useState('plasma');
   const [assets, setAssets] = useState('ch4-plume-emissions');
+  
+  // console.log({collectionMeta})
 
   //states for data
 

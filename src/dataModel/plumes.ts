@@ -2,24 +2,12 @@ export type DateTime = string;
 export type Lon = string;
 export type Lat = string;
 
-export interface Plume {
-  id: string;
-  bbox: number[];
-  type: string;
-  links: Link[];
+export interface Plume extends STACItem {
   lat?: number;
   lon?: number;
-  assets: Record<string, Asset>;
-  geometry: Geometry;
-  collection: string;
-  properties: {
-    datetime: string;
-  };
   plumeProperties: Properties;
   pointGeometry?: PointGeometry;
   polygonGeometry?: Geometry;
-  stac_version: string;
-  stac_extensions?: string[];
 }
 export interface Properties {
   longitudeOfMaxConcentration?: number;
@@ -55,10 +43,7 @@ export interface STACItem {
   bbox: number[];
   type: string;
   links: Link[];
-  assets: {
-    rad: Asset;
-    rendered_preview: Asset;
-  };
+  assets: Record<string,Asset>;
   geometry: Geometry;
   collection: string;
   properties: {
