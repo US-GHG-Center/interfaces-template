@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { Dashboard } from '../dashboard/index.jsx';
+import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
 import {
   dataTransformationPlume,

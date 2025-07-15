@@ -5,6 +5,8 @@ import {
   STACItem,
   PlumeMeta,
   PlumeRegionMeta,
+  Target,
+  SAM
 } from '../../../dataModel';
 
 interface PlumeRegionMap {
