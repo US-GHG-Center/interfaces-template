@@ -10,11 +10,13 @@ export interface STACItem {
   };
   geometry: Geometry;
   collection: string;
-  properties: {
-    datetime: string;
-  };
+  properties: Properties;
   stac_version: string;
   stac_extensions: string[];
+}
+
+interface Properties {
+  [key: string]: any;
 }
 
 interface Link {

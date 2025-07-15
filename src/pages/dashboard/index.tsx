@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
+import { Typography } from '@mui/material';
 import styled from 'styled-components';
 import './index.css';
 
@@ -17,6 +18,7 @@ import {
   Search,
   FilterByDate,
   VizItemAnimation,
+  VisualizationItemCard
 } from '../../components/index.js';
 
 import { STACItem } from '../../dataModel';
@@ -101,7 +103,6 @@ export function Dashboard({
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
   // console.log("data", data);
-  const collectionId = data[0]?.collection;
   // console.log({dataTree})
 
   // handler functions
@@ -267,10 +268,10 @@ export function Dashboard({
             handleResetHome={handleResetHome}
             handleResetToSelectedRegion={() => {}}
           />
-          <MarkerFeature
+          {/* <MarkerFeature
             vizItems={Object.keys(vizItemsDict).map((key) => vizItemsDict[key])}
             onSelectVizItem={handleSelectedVizItem}
-          ></MarkerFeature>
+          ></MarkerFeature> */}
           <VisualizationLayers
             vizItems={visualizationLayers}
             VMIN={VMIN}
@@ -281,18 +282,50 @@ export function Dashboard({
             onHoverOverLayer={setHoveredVizLayerId}
           />
         </MainMap>
-        {/* <PersistentDrawerRight
+        <PersistentDrawerRight
           open={openDrawer}
-          setOpen={setOpenDrawer}
-          selectedVizItems={filteredVizItems} // list of selected layers.
-          vizItemMetaData={vizItemMetaData} // metadata to display on the cards
-          metaDataTree={metaDataTree} // tree form of the same metadata // UNUSED
-          collectionId={collectionId} // ???
-          vizItemsMap={vizItemsDict} // tree form of the actual item data
-          handleSelectedVizItems={handleSelectedVizLayer} // callback when the card is clicked.
-          setHoveredVizItemId={setHoveredVizLayerId} // callback when the card is hovered over.
-          hoveredVizItemId={hoveredVizLayerId} // layerId of the hovered over layer.
-        /> */}
+          header={
+            <>
+              <Typography
+                variant='h6'
+                component='div'
+                fontWeight='bold'
+                className='drawer-head-content'
+              >
+                USA
+              </Typography>
+              <Typography
+                variant='subtitle1'
+                component='div'
+                className='drawer-head-content'
+              >
+                - Denver
+              </Typography>
+            </>
+          }
+          body={
+            !!selectedVizItems.length &&
+            selectedVizItems.map((vizItem) => (
+              <VisualizationItemCard
+                key={vizItem.id}
+                vizItemSourceId={vizItem.id}
+                vizItemSourceName={vizItem.id}
+                imageUrl={`xyz`}
+                tiffUrl={`abc`}
+                lon={vizItem.geometry.coordinates[0][0][0]}
+                lat={vizItem.geometry.coordinates[0][0][1]}
+                totalReleaseMass={vizItem.properties.releaseMass}
+                colEnhancements={vizItem.properties.colEnhancements}
+                startDatetime={vizItem.properties.startDatetime}
+                endDatetime={vizItem.properties.endDatetime}
+                duration={vizItem.properties.duration}
+                handleSelectedVizItemCard={handleSelectedVizItem}
+                hoveredVizItemId={hoveredVizLayerId}
+                setHoveredVizItemId={setHoveredVizLayerId}
+              />
+            ))
+          }
+        />
       </div>
       {VMAX && (
         <ColorBar
