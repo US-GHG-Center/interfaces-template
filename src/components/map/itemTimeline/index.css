@@ -1,0 +1,64 @@
+.timeline-card {
+  font-family: sans-serif;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.timeline-title {
+  font-weight: 600;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeline-button {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.timeline-button-circle svg {
+  font-size: 20px;
+}
+
+.timeline-button:hover {
+  background-color: #e2e8f0;
+}
+
+.timeline-footer {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 12px;
+  margin-top: 8px;
+  color: #475569;
+}
+
+.timeline-footer-item {
+  font-weight: 500;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.timeline-icon-divider {
+  width: 2px;
+  height: 20px;
+  margin: 0 4px;
+}

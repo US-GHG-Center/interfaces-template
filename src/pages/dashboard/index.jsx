@@ -15,18 +15,17 @@ import {
   Search,
   FilterByDate,
   VizItemAnimation,
+  VizItemTimeline,
 } from '@components';
 
 import styled from 'styled-components';
 
 import './index.css';
 
-const TITLE = 'GOES Methane Plume Viewer';
+const TITLE = 'OCO-3 SAMs';
 const DESCRIPTION =
-  'The Geostationary Operational Environmental Satellites collect \
-images of the surface every 5 minutes. Only very large emission events can be detected, \
-but plume expansion is easy to see over time. More plumes will be added soon.';
-
+  'OCO-3 uses the same instrument as OCO-2, but it has been adapted to work on the ISS. the OCO-3 instrument has an agile 2-D pointing mechanism, i.e., a Pointing Mirror Assembly (PMA) that allows for rapid transitions in pointing. The PMA is used to collect Snapshot Area Maps (SAMs) which are data collections over ~80km by 80km in 2 minutes.'
+  
 const HorizontalLayout = styled.div`
   width: 90%;
   display: flex;
@@ -211,7 +210,14 @@ export function Dashboard({
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
         <MainMap>
-          <Paper className='title-container'>
+          <Paper 
+            className='title-container'
+            sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'blur(4px)',
+              borderRadius: '16px',
+            }}
+          >
             <Title title={TITLE} description={DESCRIPTION} />
             <div className='title-content'>
               <HorizontalLayout>
@@ -227,13 +233,7 @@ export function Dashboard({
                 />
               </HorizontalLayout>
               <HorizontalLayout>
-                <VizItemAnimation
-                  VMIN={VMIN}
-                  VMAX={VMAX}
-                  colormap={colormap}
-                  assets={assets}
-                  vizItems={Object.keys(vizItems).map((key) => vizItems[key])}
-                />
+                <VizItemTimeline/>
               </HorizontalLayout>
             </div>
           </Paper>
