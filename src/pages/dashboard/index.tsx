@@ -23,7 +23,7 @@ import {
 
 import { STACItem } from '../../dataModel';
 
-type VizItem = STACItem;
+interface VizItem extends STACItem {}
 
 const TITLE: string = 'GOES Methane Plume Viewer';
 const DESCRIPTION: string =
@@ -50,7 +50,6 @@ interface DashboardProps {
    * - representing one to many relationships - hence requiring n-tree instead of simple dictionary.
    */
   dataTree: React.MutableRefObject<VizItemDict | null>;
-  metaDataTree: { [key: string]: any };
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
   zoomLevel: number | null;

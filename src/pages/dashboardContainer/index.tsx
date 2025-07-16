@@ -10,26 +10,30 @@ import {
   dataTransformationPlumeRegionMeta,
   metaDatetimeFix,
 } from './helper/dataTransform';
-import { PlumeMetas } from '../../assets/dataset/metadata.ts';
 
-export function DashboardContainer() {
+import { STACItem } from '../../dataModel';
+
+import { PlumeMetas } from '../../assets/dataset/metadata';
+
+interface DataTree {
+  [key: string]: STACItem;
+}
+
+export function DashboardContainer(): React.JSX.Element {
   // get the query params
   const [searchParams] = useSearchParams();
-  const [zoomLocation, setZoomLocation] = useState(
-    searchParams.get('zoom-location') || []
-  ); // let default zoom location be controlled by map component
-  const [zoomLevel, setZoomLevel] = useState(
-    searchParams.get('zoom-level') || null
+
+  const zoomLon:string = searchParams.get('Zoomlon') || ''; 
+  const zoomLat:string = searchParams.get('Zoomlat') || ''; 
+  const [zoomLocation, setZoomLocation] = useState<number[]>((zoomLat && zoomLon) ? [Number(zoomLon), Number(zoomLat)] : []); // let default zoom location be controlled by map component
+  const [zoomLevel, setZoomLevel] = useState<number | null>(
+    searchParams.get('zoom-level')? Number(searchParams.get('zoom-level')) : null
   ); // let default zoom level be controlled by map component
-  const [collectionId] = useState(
+  const [collectionId] = useState<string>(
     searchParams.get('collection-id') || 'goes-ch4plume-v1'
   );
-
-  const dataTree = useRef(null);
-  const [metaDataTree, setMetaDataTree] = useState({});
-  const [vizItemMetaData, setVizItemMetaData] = useState({});
-
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
+  const dataTree = useRef<DataTree | null>(null);
 
   useEffect(() => {
     setLoadingData(true);
@@ -37,11 +41,11 @@ export function DashboardContainer() {
     const fetchData = async () => {
       try {
         // get all the collection items
-        const collectionItemUrl = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
-        const data = await fetchAllFromSTACAPI(collectionItemUrl);
+        const collectionItemUrl:string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
+        const data: STACItem[] = await fetchAllFromSTACAPI(collectionItemUrl);
 
-        const vizItemsDict = {}; // visualization_items[string] = visualization_item
-        const testSample = data.slice(0, 10);
+        const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
+        const testSample: STACItem[] = data.slice(0, 10);
         testSample.forEach((items) => {
           vizItemsDict[items.id] = items;
         });
