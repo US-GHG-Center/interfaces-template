@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import moment from 'moment';
 /*
@@ -12,20 +12,24 @@ import moment from 'moment';
 export function FilterByDate({ vizItems, onFilteredVizItems }) {
   const [startDate, setStartDate] = useState(moment('2018-01-01'));
   const [endDate, setEndDate] = useState(() => moment());
-  useEffect(() => {
-    if (!vizItems.length) return;
-    const filteredVizItems = vizItems.filter((vizItem) => {
-      const vizItemDate = moment(vizItem?.properties?.datetime);
+  let vizItemsMem = useMemo(() => vizItems, [vizItems]);
 
-      if (
-        vizItemDate.isSameOrAfter(startDate) &&
-        vizItemDate.isSameOrBefore(endDate)
-      ) {
-        return vizItem;
-      } else return null;
-    });
-    onFilteredVizItems(filteredVizItems.map((vizItem) => vizItem));
-  }, [startDate, endDate, vizItems, onFilteredVizItems, vizItems.length]);
+  useEffect(() => {
+    if (!vizItemsMem.length) return;
+
+    const filteredVizItems = vizItemsMem
+      .filter((vizItem) => {
+        const vizItemDate = moment(vizItem?.properties?.datetime);
+        if (
+          vizItemDate.isSameOrAfter(startDate) &&
+          vizItemDate.isSameOrBefore(endDate)
+        ) {
+          return vizItem;
+        } else return null;
+      })
+      .map((vizItem) => vizItem);
+    onFilteredVizItems(filteredVizItems);
+  }, [startDate, endDate, vizItemsMem, onFilteredVizItems]);
 
   return (
     <>

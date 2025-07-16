@@ -113,7 +113,7 @@ export function Dashboard({
   const handleAnimationReady = (vizItemId: string) => {
     if (!vizItemId) return;
     // Provide a sorted list of (by start date) items for animation
-    const vizItemsForAnimation: VizItem[] = Object.values(vizItemsDict).slice(0, 10);
+    const vizItemsForAnimation: VizItem[] = selectedVizItems.slice(0, 10);
     setVizItemsForAnimation(vizItemsForAnimation);
   };
 
@@ -145,6 +145,7 @@ export function Dashboard({
 
     // Mocked data initialization for the application.
     setVizItemsDict(dataTree.current);
+    setSelectedVizItems(Object.values(dataTree.current));
 
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
@@ -156,9 +157,6 @@ export function Dashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataTree.current]);
 
-  const onFilteredVizItems = (filteredVizItems: VizItem[]) => {
-    setFilteredVizItems(filteredVizItems);
-  };
   // JSX
   return (
     <Box className='fullSize'>
@@ -169,17 +167,17 @@ export function Dashboard({
             <div className='title-content'>
               <HorizontalLayout>
                 <Search
-                  vizItems={Object.values(vizItemsDict)}
+                  vizItems={selectedVizItems}
                   onSelectedVizItemSearch={handleSelectedVizItemSearch}
                   placeHolderText={'Search by vizItem ID and substring'}
                 ></Search>
               </HorizontalLayout>
-              {/* <HorizontalLayout>
+              <HorizontalLayout>
                 <FilterByDate
-                  vizItems={Object.keys(vizItemsDict).map((key) => vizItemsDict[key])}
-                  onFilteredVizItems={onFilteredVizItems}
+                  vizItems={selectedVizItems}
+                  onFilteredVizItems={setFilteredVizItems}
                 />
-              </HorizontalLayout> */}
+              </HorizontalLayout>
               <HorizontalLayout>
                 <VizItemAnimation
                   VMIN={VMIN}
@@ -200,7 +198,7 @@ export function Dashboard({
             handleResetToSelectedRegion={() => {}}
           />
           <MarkerFeature
-            vizItems={Object.keys(vizItemsDict).map((key) => vizItemsDict[key])}
+            vizItems={filteredVizItems}
             onClickOnMarker={handleSelectedVizItem}
           ></MarkerFeature>
           <VisualizationLayers
