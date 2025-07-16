@@ -49,7 +49,9 @@ export function Search({ vizItems, onSelectedVizItemSearch }) {
         <TextField
           {...params}
           id='outlined-basic'
-          label='Search by Plume ID or Location'
+          label={
+            placeHolderText ? placeHolderText : 'Search by STAC Item Id'
+          }
           variant='outlined'
           style={{ width: '100%', backgroundColor: '#EEEEEE' }}
           onChange={handleOnInputTextChange}

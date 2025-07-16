@@ -25,9 +25,8 @@ import { STACItem } from '../../dataModel';
 
 interface VizItem extends STACItem {}
 
-const TITLE: string = 'GOES Methane Plume Viewer';
-const DESCRIPTION: string =
-  'The Geostationary Operational Environmental Satellites collect images of the surface every 5 minutes. Only very large emission events can be detected, \but plume expansion is easy to see over time. More plumes will be added soon.';
+const TITLE: string = 'Interface Template';
+const DESCRIPTION: string = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book`;
 
 const HorizontalLayout = styled.div`
   width: 90%;
@@ -38,11 +37,11 @@ const HorizontalLayout = styled.div`
 `;
 
 interface VizItemDict {
-  [key: string]: VizItem
+  [key: string]: VizItem;
 }
 
 interface DashboardProps {
-   /**
+  /**
    * The dataTree refers to the STACItems(/vizItems), structured in certain way
    * inorder to fullfill the application needs (refers. data Interfaces).
    * Example 1: Here, its simple map between STACItem.id and STACItem.
@@ -72,8 +71,6 @@ export function Dashboard({
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
 
   const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>([]); // list of subdaily_visualization_item used for animation
-  const [showVisualizationLayers, setShowVisualizationLayers] = useState<boolean>(true);
-  const [showMarkerFeature, setShowMarkerFeature] = useState<boolean>(true);
   const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]);
 
   //color map
@@ -91,7 +88,6 @@ export function Dashboard({
     let vizItem = vizItemsDict[vizItemId];
 
     setVisualizationLayers([vizItem]);
-    setShowVisualizationLayers(true); // all the available visualization items layers should be visible when region is selected
     let location = [
       Number(vizItem.geometry.coordinates[0][0][0]),
       Number(vizItem.geometry.coordinates[0][0][1]),
@@ -119,8 +115,6 @@ export function Dashboard({
     // Provide a sorted list of (by start date) items for animation
     const vizItemsForAnimation: VizItem[] = Object.values(vizItemsDict).slice(0, 10);
     setVizItemsForAnimation(vizItemsForAnimation);
-    // just clear the previous visualization item layers and not the cards
-    setShowVisualizationLayers(false);
   };
 
   const handleSelectedVizItemSearch = (vizItemId: string) => {
@@ -177,6 +171,7 @@ export function Dashboard({
                 <Search
                   vizItems={Object.values(vizItemsDict)}
                   onSelectedVizItemSearch={handleSelectedVizItemSearch}
+                  placeHolderText={'Search by vizItem ID and substring'}
                 ></Search>
               </HorizontalLayout>
               {/* <HorizontalLayout>

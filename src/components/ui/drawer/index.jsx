@@ -57,6 +57,12 @@ const HorizontalLayout = styled.div`
   margin-bottom: 5px;
 `;
 
+// interface PersistentDrawerRightProps {
+//   open: boolean;
+//   header: React.ReactNode;
+//   body: React.ReactNode;
+// }
+
 export function PersistentDrawerRight({ open, header, body }) {
   return (
     <Box sx={{ display: 'flex' }}>
