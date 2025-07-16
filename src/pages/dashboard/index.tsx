@@ -178,12 +178,12 @@ export function Dashboard({
           <Paper className='title-container'>
             <Title title={TITLE} description={DESCRIPTION} />
             <div className='title-content'>
-              {/* <HorizontalLayout>
+              <HorizontalLayout>
                 <Search
-                  vizItems={vizItemIds}
+                  vizItems={data}
                   onSelectedVizItemSearch={handleSelectedVizItemSearch}
                 ></Search>
-              </HorizontalLayout> */}
+              </HorizontalLayout>
               {/* <HorizontalLayout>
                 <FilterByDate
                   vizItems={Object.keys(vizItemsDict).map((key) => vizItemsDict[key])}
