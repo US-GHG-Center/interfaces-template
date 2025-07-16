@@ -42,8 +42,14 @@ interface VizItemDict {
 }
 
 interface DashboardProps {
-  data: VizItem[];
-  dataTree: React.MutableRefObject<{ [key: string]: any } | null>;
+   /**
+   * The dataTree refers to the STACItems(/vizItems), structured in certain way
+   * inorder to fullfill the application needs (refers. data Interfaces).
+   * Example 1: Here, its simple map between STACItem.id and STACItem.
+   * Example 2: Complex application needs might ask for somekind of complex dataTree
+   * - representing one to many relationships - hence requiring n-tree instead of simple dictionary.
+   */
+  dataTree: React.MutableRefObject<VizItemDict | null>;
   metaDataTree: { [key: string]: any };
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
@@ -53,7 +59,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  data,
+  dataTree,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
@@ -66,7 +72,6 @@ export function Dashboard({
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState<string>(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
 
-  const [vizItemIds, setVizItemIds] = useState<string[]>([]); // list of vizItem_ids for the search feature.
   const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>([]); // list of subdaily_visualization_item used for animation
   const [showVisualizationLayers, setShowVisualizationLayers] = useState<boolean>(true);
   const [showMarkerFeature, setShowMarkerFeature] = useState<boolean>(true);
@@ -113,7 +118,7 @@ export function Dashboard({
   const handleAnimationReady = (vizItemId: string) => {
     if (!vizItemId) return;
     // Provide a sorted list of (by start date) items for animation
-    const vizItemsForAnimation: VizItem[] = data.slice(0, 10);
+    const vizItemsForAnimation: VizItem[] = Object.values(vizItemsDict).slice(0, 10);
     setVizItemsForAnimation(vizItemsForAnimation);
     // just clear the previous visualization item layers and not the cards
     setShowVisualizationLayers(false);
@@ -143,19 +148,10 @@ export function Dashboard({
 
   // Component Effects
   useEffect(() => {
-    // Mocked data initialization for the application.
-    if (!data) return;
+    if (!dataTree.current) return;
 
-    const vizItemsDict: VizItemDict = {}; // visualization_items[string] = visualization_item
-    const vizItemIds: string[] = []; // string[] // for search
-    const testData = data.slice(0, 10);
-    testData.forEach((items) => {
-      vizItemsDict[items.id] = items;
-      vizItemIds.push(items.id);
-    });
-    setVizItemsDict(vizItemsDict);
-    setVizItemIds(vizItemIds); // for search
-    // the reference to datatree is in current, so see changes with respect to that
+    // Mocked data initialization for the application.
+    setVizItemsDict(dataTree.current);
 
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
@@ -165,7 +161,7 @@ export function Dashboard({
     setVMAX(VMAX);
     setColormap(colormap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [dataTree.current]);
 
   const onFilteredVizItems = (filteredVizItems: VizItem[]) => {
     setFilteredVizItems(filteredVizItems);
@@ -180,7 +176,7 @@ export function Dashboard({
             <div className='title-content'>
               <HorizontalLayout>
                 <Search
-                  vizItems={data}
+                  vizItems={Object.values(vizItemsDict)}
                   onSelectedVizItemSearch={handleSelectedVizItemSearch}
                 ></Search>
               </HorizontalLayout>
