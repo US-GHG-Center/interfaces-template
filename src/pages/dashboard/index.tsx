@@ -268,10 +268,10 @@ export function Dashboard({
             handleResetHome={handleResetHome}
             handleResetToSelectedRegion={() => {}}
           />
-          {/* <MarkerFeature
+          <MarkerFeature
             vizItems={Object.keys(vizItemsDict).map((key) => vizItemsDict[key])}
-            onSelectVizItem={handleSelectedVizItem}
-          ></MarkerFeature> */}
+            onClickOnMarker={handleSelectedVizItem}
+          ></MarkerFeature>
           <VisualizationLayers
             vizItems={visualizationLayers}
             VMIN={VMIN}
