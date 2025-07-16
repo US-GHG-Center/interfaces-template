@@ -3,17 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
-import {
-  dataTransformationPlume,
-  dataTransformationPlumeRegion,
-  dataTransformationPlumeMeta,
-  dataTransformationPlumeRegionMeta,
-  metaDatetimeFix,
-} from './helper/dataTransform';
 
 import { STACItem } from '../../dataModel';
-
-import { PlumeMetas } from '../../assets/dataset/metadata';
 
 interface DataTree {
   [key: string]: STACItem;
@@ -23,11 +14,15 @@ export function DashboardContainer(): React.JSX.Element {
   // get the query params
   const [searchParams] = useSearchParams();
 
-  const zoomLon:string = searchParams.get('Zoomlon') || ''; 
-  const zoomLat:string = searchParams.get('Zoomlat') || ''; 
-  const [zoomLocation, setZoomLocation] = useState<number[]>((zoomLat && zoomLon) ? [Number(zoomLon), Number(zoomLat)] : []); // let default zoom location be controlled by map component
+  const zoomLon: string = searchParams.get('Zoomlon') || '';
+  const zoomLat: string = searchParams.get('Zoomlat') || '';
+  const [zoomLocation, setZoomLocation] = useState<number[]>(
+    zoomLat && zoomLon ? [Number(zoomLon), Number(zoomLat)] : []
+  ); // let default zoom location be controlled by map component
   const [zoomLevel, setZoomLevel] = useState<number | null>(
-    searchParams.get('zoom-level')? Number(searchParams.get('zoom-level')) : null
+    searchParams.get('zoom-level')
+      ? Number(searchParams.get('zoom-level'))
+      : null
   ); // let default zoom level be controlled by map component
   const [collectionId] = useState<string>(
     searchParams.get('collection-id') || 'goes-ch4plume-v1'
@@ -50,6 +45,9 @@ export function DashboardContainer(): React.JSX.Element {
           vizItemsDict[items.id] = items;
         });
         dataTree.current = vizItemsDict;
+
+        // NOTE: incase we need metadata and other added information,
+        // add that to the STAC Item Property
 
         // remove loading
         setLoadingData(false);
