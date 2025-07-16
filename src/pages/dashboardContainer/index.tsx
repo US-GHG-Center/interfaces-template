@@ -41,7 +41,7 @@ export function DashboardContainer(): React.JSX.Element {
     const fetchData = async () => {
       try {
         // get all the collection items
-        const collectionItemUrl:string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
+        const collectionItemUrl: string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
         const data: STACItem[] = await fetchAllFromSTACAPI(collectionItemUrl);
 
         const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
