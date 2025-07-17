@@ -1,158 +1,11905 @@
 import {
-  PlumeRegion,
-  Plume,
-  SubDailyPlume,
+  SAM,
   STACItem,
-  PlumeMeta,
-  PlumeRegionMeta,
-  Target,
-  SAM
+  STACItemSAM,
+  SamsTarget,
+  DataTree,
+  SAMMissingMetaData,
+  SAMProperties,
 } from '../../../dataModel';
 
-interface PlumeRegionMap {
-  [key: string]: PlumeRegion;
-}
+export function dataTransformation(stacItems: STACItem[], missingSamsProps: SAMMissingMetaData[]): DataTree {
+  // for each STAC item, it has an id
+  // the the id has a pattern such as: "<data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>. e.g. "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
+  // get the target id, it will be used as DataTree key
+  // if the target_id exists, just append the STACItem as SAM
+  // if the target_id doesnot exist, add the key as dataTree key and add the STAC item as SAM there.
 
-interface PlumeMap {
-  [key: string]: Plume;
-}
+  // Also note: we have a list of SAM missing MetaData called missingSAMProp and then add it to StacItem properties.
+  interface SAMMissingMetaDataDict {
+    [key: string]: SAMMissingMetaData;
+  }
+  const samMissingMetaDataDict: SAMMissingMetaDataDict = {};
 
-type DataTree = PlumeRegionMap;
-
-export function dataTransformationPlume(
-  data: STACItem[],
-  plumeMetaData: PlumeMetaMap
-): PlumeMap {
-  // format of FeatureCollection Id: <something>_<region>_<plumeid>_<datetime>
-  // goes_ch4_<country>_<administrativeDivision>_<plumeSourceId>_<plumeId>_<datetime>
-  const plumeMap: PlumeMap = {};
-
-  // sort by data by time
-  const sortedData = data.sort((prev: STACItem, next: STACItem): number => {
-    const prev_date = new Date(prev.properties.datetime).getTime();
-    const next_date = new Date(next.properties.datetime).getTime();
-    return prev_date - next_date;
+  missingSamsProps.forEach((missingSamsProp: SAMMissingMetaData) => {
+    samMissingMetaDataDict[missingSamsProp.target_id] = missingSamsProp;
   });
 
-  // create a plumemap
-  sortedData.forEach((item: STACItem) => {
-    const itemId = item.id;
-    const destructuredId = itemId.split('_');
-    // goes-ch4_<country>_<administrativeDivision>_<plumeSourceId>_<plumeId>_<datetime>
-    const [_, country, administrativeDivision, region, plumeId, __] =
-      destructuredId;
-    const newPlumeId: string = `${country}_${administrativeDivision}_${region}_${plumeId}`;
-    if (!(newPlumeId in plumeMap)) {
-      let [lon, lat] = item.geometry.coordinates[0][0];
-      if (newPlumeId in plumeMetaData) {
-        lon = plumeMetaData[newPlumeId].lon;
-        lat = plumeMetaData[newPlumeId].lat;
-      }
-      const plume: Plume = {
-        id: newPlumeId,
-        region: region,
-        representationalPlume: item,
-        location: [lon, lat],
-        startDate: item.properties.datetime,
-        endDate: item.properties.datetime,
-        subDailyPlumes: [],
-      };
-      plumeMap[newPlumeId] = plume;
+  const fullStacItems: STACItemSAM[] = [];
+  stacItems.forEach((item: STACItem) => {
+    //<data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>
+    const stacItemId = item.id;
+    const targetId = stacItemId.split('_')[1];
+
+    if (!(targetId in samMissingMetaDataDict)) {
+      return;
     }
-    plumeMap[newPlumeId].subDailyPlumes.push(item);
+
+    let addedProperties: SAMProperties = {
+      ...samMissingMetaDataDict[targetId],
+      start_date: item.properties.start_date,
+      end_date: item.properties.end_date,
+    };
+    fullStacItems.push({
+      ...item,
+      properties: addedProperties
+    });
   });
 
-  return plumeMap;
-}
+  const DATA_TREE: DataTree = {};
 
-export function dataTransformationPlumeRegion(
-  plumeMap: PlumeMap
-): PlumeRegionMap {
-  const dataTree: DataTree = {};
-  // create a data tree
-  Object.keys(plumeMap).forEach((plumeId) => {
-    // datetime correction in the plume. Note: plumes are in sorted order (by datetime)
-    const noOfSubDailyPlumes: number = plumeMap[plumeId].subDailyPlumes.length;
-    const firstSubDailyPlume: SubDailyPlume =
-      plumeMap[plumeId].subDailyPlumes[0];
-    const lastSubDailyPlume: SubDailyPlume =
-      plumeMap[plumeId].subDailyPlumes[noOfSubDailyPlumes - 1];
-    plumeMap[plumeId].startDate = firstSubDailyPlume.properties.datetime;
-    plumeMap[plumeId].endDate = lastSubDailyPlume.properties.datetime;
-    // datetime correction end
-
-    const plume = plumeMap[plumeId];
-    const region = plume.region;
-
-    if (!(region in dataTree)) {
-      const plumeRegion: PlumeRegion = {
-        id: region,
-        location: plume.location,
-        startDate: plume.startDate,
-        endDate: plume.endDate,
-        plumes: [],
-      };
-      dataTree[region] = plumeRegion;
+  fullStacItems.forEach((stacItem: STACItemSAM): void => {
+    let targetId: string = stacItem.properties.target_id;
+    let siteName: string = stacItem.properties.target_name;
+    let location: [string, string] = [
+      stacItem.properties.target_location.coordinates[0].toString(),
+      stacItem.properties.target_location.coordinates[1].toString(),
+    ];
+    if (!(targetId in DATA_TREE)) {
+      DATA_TREE[targetId] = new SamsTarget(
+        targetId,
+        siteName,
+        location,
+        stacItem
+      );
     }
-    dataTree[region].plumes.push(plume);
-    dataTree[region].endDate = plume.endDate; // to get realistic endDate for the PlumeRegion.
+    DATA_TREE[targetId].addSAM(stacItem);
   });
 
-  return dataTree;
+  return DATA_TREE;
 }
 
-interface PlumeMetaMap {
-  [key: string]: PlumeMeta;
-}
 
-interface PlumeRegionMetaMap {
-  [key: string]: PlumeRegionMeta;
-}
-
-export function dataTransformationPlumeMeta(
-  plumeMetas: PlumeMeta[]
-): PlumeMetaMap {
-  // basically array to hashmap conversion.
-  const plumeMetaMap: PlumeMetaMap = {};
-  plumeMetas.forEach((plumeMeta: PlumeMeta) => {
-    if (!(plumeMeta.id in plumeMetaMap)) {
-      plumeMetaMap[plumeMeta.id] = plumeMeta;
+(function main() {
+  let mockItems: STACItem[] = [
+    {
+      "id": "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2",
+      "bbox": [
+        149.82812448437133, -6.551877537567416, 152.83187917773805,
+        -3.548122605483732
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            149.82812448437133, -6.551877537567416, 152.83187917773805,
+            -3.548122605483732
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 416.4984436035156,
+                "min": 406.9324645996094,
+                "count": 11,
+                "buckets": [50, 0, 0, 0, 0, 0, 58, 0, 0, 45]
+              },
+              "statistics": {
+                "mean": 411.99474060457516,
+                "stddev": 3.8245573926457967,
+                "maximum": 416.4984436035156,
+                "minimum": 406.9324645996094,
+                "valid_percent": 0.02390625
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [149.82812448437133, -6.551877537567416],
+                [152.83187917773805, -6.551877537567416],
+                [152.83187917773805, -3.548122605483732],
+                [149.82812448437133, -3.548122605483732],
+                [149.82812448437133, -6.551877537567416]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 149.82812448437133, 0.0,
+            -0.0037546936651046046, -3.548122605483732, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [149.82812448437133, -6.551877537567416],
+            [152.83187917773805, -6.551877537567416],
+            [152.83187917773805, -3.548122605483732],
+            [149.82812448437133, -3.548122605483732],
+            [149.82812448437133, -6.551877537567416]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_texmex005_2025-03-30T185902Z_filtered_xco2",
+      "bbox": [
+        -103.2413640410193, 33.797095736812736, -100.2376093476526,
+        36.800850430179445
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_texmex005_2025-03-30T185902Z_filtered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_texmex005_2025-03-30T185902Z_filtered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            -103.2413640410193, 33.797095736812736, -100.2376093476526,
+            36.800850430179445
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 432.38861083984375,
+                "min": 431.38861083984375,
+                "count": 11,
+                "buckets": [0, 0, 0, 0, 0, 59, 0, 0, 0, 0]
+              },
+              "statistics": {
+                "mean": 431.8886056673729,
+                "stddev": 5.1724708782785456e-6,
+                "maximum": 431.88861083984375,
+                "minimum": 431.88861083984375,
+                "valid_percent": 0.00921875
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [-103.2413640410193, 33.797095736812736],
+                [-100.2376093476526, 33.797095736812736],
+                [-100.2376093476526, 36.800850430179445],
+                [-103.2413640410193, 36.800850430179445],
+                [-103.2413640410193, 33.797095736812736]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, -103.2413640410193, 0.0,
+            -0.0037546933667083854, 36.800850430179445, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.2413640410193, 33.797095736812736],
+            [-100.2376093476526, 33.797095736812736],
+            [-100.2376093476526, 36.800850430179445],
+            [-103.2413640410193, 36.800850430179445],
+            [-103.2413640410193, 33.797095736812736]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_texmex005_2025-03-30T185751Z_unfiltered_xco2",
+      "bbox": [
+        -103.2413640410193, 33.797095736812736, -100.2376093476526,
+        36.800850430179445
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_texmex005_2025-03-30T185751Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_texmex005_2025-03-30T185751Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            -103.2413640410193, 33.797095736812736, -100.2376093476526,
+            36.800850430179445
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 434.72406005859375,
+                "min": 425.8970642089844,
+                "count": 11,
+                "buckets": [169, 432, 626, 1111, 1165, 1010, 447, 560, 110, 107]
+              },
+              "statistics": {
+                "mean": 429.9073121840683,
+                "stddev": 1.7594254446294177,
+                "maximum": 434.72406005859375,
+                "minimum": 425.8970642089844,
+                "valid_percent": 0.89640625
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [-103.2413640410193, 33.797095736812736],
+                [-100.2376093476526, 33.797095736812736],
+                [-100.2376093476526, 36.800850430179445],
+                [-103.2413640410193, 36.800850430179445],
+                [-103.2413640410193, 33.797095736812736]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, -103.2413640410193, 0.0,
+            -0.0037546933667083854, 36.800850430179445, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.2413640410193, 33.797095736812736],
+            [-100.2376093476526, 33.797095736812736],
+            [-100.2376093476526, 36.800850430179445],
+            [-103.2413640410193, 36.800850430179445],
+            [-103.2413640410193, 33.797095736812736]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon137_2025-03-30T050330Z_unfiltered_xco2",
+      "bbox": [
+        115.4581217377893, 38.29812189037719, 118.461876431156, 41.3018765837439
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon137_2025-03-30T050330Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon137_2025-03-30T050330Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            115.4581217377893, 38.29812189037719, 118.461876431156,
+            41.3018765837439
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 431.60101318359375,
+                "min": 422.8279113769531,
+                "count": 11,
+                "buckets": [26, 0, 9, 29, 100, 405, 5280, 10669, 6107, 935]
+              },
+              "statistics": {
+                "mean": 429.45738539898133,
+                "stddev": 0.7682479039463812,
+                "maximum": 431.60101318359375,
+                "minimum": 422.8279113769531,
+                "valid_percent": 3.68125
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [115.4581217377893, 38.29812189037719],
+                [118.461876431156, 38.29812189037719],
+                [118.461876431156, 41.3018765837439],
+                [115.4581217377893, 41.3018765837439],
+                [115.4581217377893, 38.29812189037719]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 115.4581217377893, 0.0,
+            -0.0037546933667083854, 41.3018765837439, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.4581217377893, 38.29812189037719],
+            [118.461876431156, 38.29812189037719],
+            [118.461876431156, 41.3018765837439],
+            [115.4581217377893, 41.3018765837439],
+            [115.4581217377893, 38.29812189037719]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon137_2025-03-30T050330Z_filtered_xco2",
+      "bbox": [
+        115.4581217377893, 38.29812189037719, 118.461876431156, 41.3018765837439
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon137_2025-03-30T050330Z_filtered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon137_2025-03-30T050330Z_filtered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            115.4581217377893, 38.29812189037719, 118.461876431156,
+            41.3018765837439
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 431.60101318359375,
+                "min": 424.9544372558594,
+                "count": 11,
+                "buckets": [17, 0, 75, 156, 654, 4518, 8212, 6128, 2587, 337]
+              },
+              "statistics": {
+                "mean": 429.43224299065423,
+                "stddev": 0.7235686636377668,
+                "maximum": 431.60101318359375,
+                "minimum": 424.9544372558594,
+                "valid_percent": 3.5443750000000005
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [115.4581217377893, 38.29812189037719],
+                [118.461876431156, 38.29812189037719],
+                [118.461876431156, 41.3018765837439],
+                [115.4581217377893, 41.3018765837439],
+                [115.4581217377893, 38.29812189037719]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 115.4581217377893, 0.0,
+            -0.0037546933667083854, 41.3018765837439, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.4581217377893, 38.29812189037719],
+            [118.461876431156, 38.29812189037719],
+            [118.461876431156, 41.3018765837439],
+            [115.4581217377893, 41.3018765837439],
+            [115.4581217377893, 38.29812189037719]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon135_2025-03-30T213953Z_filtered_xco2",
+      "bbox": [
+        149.3526300996057, -35.952477017093514, 152.35638479297242,
+        -32.948722323726805
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon135_2025-03-30T213953Z_filtered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon135_2025-03-30T213953Z_filtered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            149.3526300996057, -35.952477017093514, 152.35638479297242,
+            -32.948722323726805
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 418.9591064453125,
+                "min": 417.9591064453125,
+                "count": 11,
+                "buckets": [0, 0, 0, 0, 0, 66, 0, 0, 0, 0]
+              },
+              "statistics": {
+                "mean": 418.4591027462121,
+                "stddev": 3.699100375342823e-6,
+                "maximum": 418.4591064453125,
+                "minimum": 418.4591064453125,
+                "valid_percent": 0.0103125
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [149.3526300996057, -35.952477017093514],
+                [152.35638479297242, -35.952477017093514],
+                [152.35638479297242, -32.948722323726805],
+                [149.3526300996057, -32.948722323726805],
+                [149.3526300996057, -35.952477017093514]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 149.3526300996057, 0.0,
+            -0.0037546933667083854, -32.948722323726805, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [149.3526300996057, -35.952477017093514],
+            [152.35638479297242, -35.952477017093514],
+            [152.35638479297242, -32.948722323726805],
+            [149.3526300996057, -32.948722323726805],
+            [149.3526300996057, -35.952477017093514]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon135_2025-03-30T213913Z_unfiltered_xco2",
+      "bbox": [
+        149.3526300996057, -35.952477017093514, 152.35638479297242,
+        -32.948722323726805
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon135_2025-03-30T213913Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon135_2025-03-30T213913Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            149.3526300996057, -35.952477017093514, 152.35638479297242,
+            -32.948722323726805
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 418.95208740234375,
+                "min": 402.4077453613281,
+                "count": 11,
+                "buckets": [127, 262, 223, 0, 112, 178, 160, 35, 137, 135]
+              },
+              "statistics": {
+                "mean": 409.9332542001461,
+                "stddev": 4.930724742472859,
+                "maximum": 418.95208740234375,
+                "minimum": 402.4077453613281,
+                "valid_percent": 0.21390625
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [149.3526300996057, -35.952477017093514],
+                [152.35638479297242, -35.952477017093514],
+                [152.35638479297242, -32.948722323726805],
+                [149.3526300996057, -32.948722323726805],
+                [149.3526300996057, -35.952477017093514]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 149.3526300996057, 0.0,
+            -0.0037546933667083854, -32.948722323726805, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [149.3526300996057, -35.952477017093514],
+            [152.35638479297242, -35.952477017093514],
+            [152.35638479297242, -32.948722323726805],
+            [149.3526300996057, -32.948722323726805],
+            [149.3526300996057, -35.952477017093514]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon112_2025-03-30T124315Z_filtered_xco2",
+      "bbox": [
+        -18.019876995731206, 26.795133075069575, -15.016122302364497,
+        29.798887768436284
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon112_2025-03-30T124315Z_filtered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon112_2025-03-30T124315Z_filtered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            -18.019876995731206, 26.795133075069575, -15.016122302364497,
+            29.798887768436284
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 431.7141418457031,
+                "min": 421.5003356933594,
+                "count": 11,
+                "buckets": [47, 121, 380, 429, 602, 520, 214, 258, 78, 58]
+              },
+              "statistics": {
+                "mean": 426.37222940524566,
+                "stddev": 1.976488971483604,
+                "maximum": 431.7141418457031,
+                "minimum": 421.5003356933594,
+                "valid_percent": 0.42296875
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [-18.019876995731206, 26.795133075069575],
+                [-15.016122302364497, 26.795133075069575],
+                [-15.016122302364497, 29.798887768436284],
+                [-18.019876995731206, 29.798887768436284],
+                [-18.019876995731206, 26.795133075069575]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, -18.019876995731206, 0.0,
+            -0.0037546933667083854, 29.798887768436284, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-18.019876995731206, 26.795133075069575],
+            [-15.016122302364497, 26.795133075069575],
+            [-15.016122302364497, 29.798887768436284],
+            [-18.019876995731206, 29.798887768436284],
+            [-18.019876995731206, 26.795133075069575]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_tccon112_2025-03-30T124312Z_unfiltered_xco2",
+      "bbox": [
+        -18.019876995731206, 26.795133075069575, -15.016122302364497,
+        29.798887768436284
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_tccon112_2025-03-30T124312Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_tccon112_2025-03-30T124312Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            -18.019876995731206, 26.795133075069575, -15.016122302364497,
+            29.798887768436284
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "nodata": "nan",
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 438.8441162109375,
+                "min": 406.0989074707031,
+                "count": 11,
+                "buckets": [56, 48, 38, 239, 482, 1460, 1651, 915, 315, 104]
+              },
+              "statistics": {
+                "mean": 426.06617370007535,
+                "stddev": 4.818092507460315,
+                "maximum": 438.8441162109375,
+                "minimum": 406.0989074707031,
+                "valid_percent": 0.8293750000000001
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [-18.019876995731206, 26.795133075069575],
+                [-15.016122302364497, 26.795133075069575],
+                [-15.016122302364497, 29.798887768436284],
+                [-18.019876995731206, 29.798887768436284],
+                [-18.019876995731206, 26.795133075069575]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, -18.019876995731206, 0.0,
+            -0.0037546933667083854, 29.798887768436284, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-18.019876995731206, 26.795133075069575],
+            [-15.016122302364497, 26.795133075069575],
+            [-15.016122302364497, 29.798887768436284],
+            [-18.019876995731206, 29.798887768436284],
+            [-18.019876995731206, 26.795133075069575]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
+    },
+    {
+      "id": "oco3-co2_fossil0244_2025-03-30T124906Z_unfiltered_xco2",
+      "bbox": [
+        3.443630656551509, 41.935855349849845, 6.447385349918218,
+        44.939610043216554
+      ],
+      "type": "Feature",
+      "links": [
+        {
+          "rel": "collection",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "https://staging.openveda.cloud/api/stac/"
+        },
+        {
+          "rel": "self",
+          "type": "application/geo+json",
+          "href": "https://staging.openveda.cloud/api/stac/collections/oco3-co2-sam-cogs/items/oco3-co2_fossil0244_2025-03-30T124906Z_unfiltered_xco2"
+        }
+      ],
+      "assets": {
+        "cog_default": {
+          "href": "s3://veda-data-store-staging/oco3-co2-sam-cogs_v2025.04.16/oco3-co2_fossil0244_2025-03-30T124906Z_unfiltered_xco2.tif",
+          "type": "image/tiff; application=geotiff",
+          "roles": ["data", "layer"],
+          "title": "Default COG Layer",
+          "proj:bbox": [
+            3.443630656551509, 41.935855349849845, 6.447385349918218,
+            44.939610043216554
+          ],
+          "proj:epsg": 4326,
+          "proj:shape": [800, 800],
+          "description": "Cloud optimized default layer to display on map",
+          "raster:bands": [
+            {
+              "scale": 1.0,
+              "offset": 0.0,
+              "sampling": "area",
+              "data_type": "float32",
+              "histogram": {
+                "max": 1.0000000200408773e20,
+                "min": 421.114501953125,
+                "count": 11,
+                "buckets": [28185, 0, 0, 0, 0, 0, 0, 0, 0, 611815]
+              },
+              "statistics": {
+                "mean": 9.55961588676821e19,
+                "stddev": 0.0,
+                "maximum": 1.0000000200408773e20,
+                "minimum": 421.114501953125,
+                "valid_percent": 0.00015625
+              }
+            }
+          ],
+          "proj:geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [3.443630656551509, 41.935855349849845],
+                [6.447385349918218, 41.935855349849845],
+                [6.447385349918218, 44.939610043216554],
+                [3.443630656551509, 44.939610043216554],
+                [3.443630656551509, 41.935855349849845]
+              ]
+            ]
+          },
+          "proj:transform": [
+            0.0037546933667083854, 0.0, 3.443630656551509, 0.0,
+            -0.0037546933667083854, 44.939610043216554, 0.0, 0.0, 1.0
+          ]
+        }
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.443630656551509, 41.935855349849845],
+            [6.447385349918218, 41.935855349849845],
+            [6.447385349918218, 44.939610043216554],
+            [3.443630656551509, 44.939610043216554],
+            [3.443630656551509, 41.935855349849845]
+          ]
+        ]
+      },
+      "collection": "oco3-co2-sam-cogs",
+      "properties": {
+        "end_datetime": "2025-03-30T23:59:59Z",
+        "start_datetime": "2025-03-30T00:00:00Z"
+      },
+      "stac_version": "1.0.0",
+      "stac_extensions": [
+        "https://stac-extensions.github.io/raster/v1.1.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.1.0/schema.json"
+      ]
     }
-  });
-  return plumeMetaMap;
-}
+  ];
 
-export function dataTransformationPlumeRegionMeta(
-  plumeMetaMap: PlumeMetaMap
-): PlumeRegionMetaMap {
-  const plumeRegionMetaMap: PlumeRegionMetaMap = {};
-
-  Object.keys(plumeMetaMap).forEach((plumeId) => {
-    let plumeMeta: PlumeMeta = plumeMetaMap[plumeId];
-    if (!(plumeMeta.plumeSourceId in plumeRegionMetaMap)) {
-      const plumeRegionMeta: PlumeRegionMeta = {
-        id: plumeMeta.plumeSourceId, // Format: <region>. e.g. BV1
-        plumeSourceName: plumeMeta.plumeSourceName,
-        country: plumeMeta.country,
-        administrativeDivision: plumeMeta.administrativeDivision,
-        plumes: [],
-      };
-      plumeRegionMetaMap[plumeMeta.plumeSourceId] = plumeRegionMeta;
+  let mockMeta: SAMMissingMetaData[] = [
+    {
+      "target_id": "cal001",
+      "target_name": "railroadValley",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-115.6902, 38.497]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-115.6902, 38.40691400534001],
+            [-115.6902, 38.40691400534001],
+            [-115.6902, 38.58708460525842],
+            [-115.6902, 38.58708460525842],
+            [-115.6902, 38.40691400534001]
+          ]
+        ]
+      },
+      "target_altitude": "1.4359",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "cal002",
+      "target_name": "calibration_Algeria4",
+      "target_location": { "type": "Point", "coordinates": [5.59, 30.04] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.59, 30.04],
+            [5.59, 30.04],
+            [5.59, 30.04],
+            [5.59, 30.04],
+            [5.59, 30.04]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal003",
+      "target_name": "calibration_Niger3",
+      "target_location": { "type": "Point", "coordinates": [7.96, 21.57] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.96, 21.57],
+            [7.96, 21.57],
+            [7.96, 21.57],
+            [7.96, 21.57],
+            [7.96, 21.57]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal004",
+      "target_name": "calibration_Egypt1",
+      "target_location": { "type": "Point", "coordinates": [26.1, 27.12] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [26.1, 27.12],
+            [26.1, 27.12],
+            [26.1, 27.12],
+            [26.1, 27.12],
+            [26.1, 27.12]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal005",
+      "target_name": "calibration_Arabia5",
+      "target_location": { "type": "Point", "coordinates": [46.76, 18.88] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [46.76, 18.88],
+            [46.76, 18.88],
+            [46.76, 18.88],
+            [46.76, 18.88],
+            [46.76, 18.88]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal006",
+      "target_name": "calibration_Algeria1",
+      "target_location": { "type": "Point", "coordinates": [-0.4, 23.8] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.4, 23.8],
+            [-0.4, 23.8],
+            [-0.4, 23.8],
+            [-0.4, 23.8],
+            [-0.4, 23.8]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal007",
+      "target_name": "calibration_Mauritania1",
+      "target_location": { "type": "Point", "coordinates": [-9.3, 19.4] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-9.3, 19.4],
+            [-9.3, 19.4],
+            [-9.3, 19.4],
+            [-9.3, 19.4],
+            [-9.3, 19.4]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal008",
+      "target_name": "calibration_Libya4",
+      "target_location": { "type": "Point", "coordinates": [23.39, 28.55] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [23.39, 28.55],
+            [23.39, 28.55],
+            [23.39, 28.55],
+            [23.39, 28.55],
+            [23.39, 28.55]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal009",
+      "target_name": "calibration_Algeria2",
+      "target_location": { "type": "Point", "coordinates": [-1.38, 26.09] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-1.38, 26.09],
+            [-1.38, 26.09],
+            [-1.38, 26.09],
+            [-1.38, 26.09],
+            [-1.38, 26.09]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal010",
+      "target_name": "calibration_Niger1",
+      "target_location": { "type": "Point", "coordinates": [9.81, 19.67] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [9.81, 19.67],
+            [9.81, 19.67],
+            [9.81, 19.67],
+            [9.81, 19.67],
+            [9.81, 19.67]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "cal011",
+      "target_name": "calibration_Mauritania2",
+      "target_location": { "type": "Point", "coordinates": [-8.78, 20.85] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-8.78, 20.85],
+            [-8.78, 20.85],
+            [-8.78, 20.85],
+            [-8.78, 20.85],
+            [-8.78, 20.85]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "calibration"
+    },
+    {
+      "target_id": "coccon100",
+      "target_name": "val_Thessaloniki_Greece",
+      "target_location": { "type": "Point", "coordinates": [22.97, 40.63] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [22.97, 40.53994714361965],
+            [22.97, 40.53994714361965],
+            [22.97, 40.72005144764703],
+            [22.97, 40.72005144764703],
+            [22.97, 40.53994714361965]
+          ]
+        ]
+      },
+      "target_altitude": "0.01",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "coccon101",
+      "target_name": "val_Gobabeb_Namibia",
+      "target_location": { "type": "Point", "coordinates": [15.04, -23.56] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [15.03999999999999, -23.6502913724985],
+            [15.03999999999999, -23.6502913724985],
+            [15.03999999999999, -23.46970757937232],
+            [15.03999999999999, -23.46970757937232],
+            [15.03999999999999, -23.6502913724985]
+          ]
+        ]
+      },
+      "target_altitude": "0.456",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "coccon102",
+      "target_name": "val_Biust_Botswana",
+      "target_location": { "type": "Point", "coordinates": [27.12, -22.59] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [27.12, -22.68030247023841],
+            [27.12, -22.68030247023841],
+            [27.12, -22.4996965150162],
+            [27.12, -22.4996965150162],
+            [27.12, -22.68030247023841]
+          ]
+        ]
+      },
+      "target_altitude": "0.914",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "coccon103",
+      "target_name": "val_Jinja_Uganda",
+      "target_location": { "type": "Point", "coordinates": [33.209, 0.503] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [33.209, 0.4125631104551672],
+            [33.209, 0.4125631104551672],
+            [33.209, 0.593436864378323],
+            [33.209, 0.593436864378323],
+            [33.209, 0.4125631104551672]
+          ]
+        ]
+      },
+      "target_altitude": "1.203",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "coccon104",
+      "target_name": "validation_portovelho",
+      "target_location": { "type": "Point", "coordinates": [-63.87, -8.774] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-63.87, -8.774],
+            [-63.87, -8.774],
+            [-63.87, -8.774],
+            [-63.87, -8.774],
+            [-63.87, -8.774]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "desert0000",
+      "target_name": "Flat_Desert_Test_0000",
+      "target_location": { "type": "Point", "coordinates": [2.99, 30.5] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.39, 30.9],
+            [3.39, 30.1],
+            [2.59, 30.1],
+            [2.59, 30.9],
+            [3.39, 30.9]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0001",
+      "target_name": "Flat_Desert_Test_0001",
+      "target_location": { "type": "Point", "coordinates": [24.3, 28.4] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [24.7, 28.8],
+            [24.7, 28],
+            [23.9, 28],
+            [23.9, 28.8],
+            [24.7, 28.8]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0002",
+      "target_name": "Flat_Desert_Test_0002",
+      "target_location": { "type": "Point", "coordinates": [139.85, -23.99] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [140.25, -23.59],
+            [140.25, -24.39],
+            [139.45, -24.39],
+            [139.45, -23.59],
+            [140.25, -23.59]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0003",
+      "target_name": "Flat_Desert_Test_0003",
+      "target_location": { "type": "Point", "coordinates": [10, 30.84] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [10.4, 31.24],
+            [10.4, 30.44],
+            [9.6, 30.44],
+            [9.6, 31.24],
+            [10.4, 31.24]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0004",
+      "target_name": "Flat_Desert_Test_0004",
+      "target_location": { "type": "Point", "coordinates": [30.86, 26.13] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [31.26, 26.53],
+            [31.26, 25.73],
+            [30.46, 25.73],
+            [30.46, 26.53],
+            [31.26, 26.53]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0005",
+      "target_name": "Flat_Desert_Test_0005",
+      "target_location": { "type": "Point", "coordinates": [121.45, -21.9] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.85, -21.5],
+            [121.85, -22.3],
+            [121.05, -22.3],
+            [121.05, -21.5],
+            [121.85, -21.5]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0006",
+      "target_name": "Flat_Desert_Test_0006",
+      "target_location": { "type": "Point", "coordinates": [7.52, 31.89] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.92, 32.29],
+            [7.92, 31.49],
+            [7.12, 31.49],
+            [7.12, 32.29],
+            [7.92, 32.29]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0007",
+      "target_name": "Flat_Desert_Test_0007",
+      "target_location": { "type": "Point", "coordinates": [125.75, -19.31] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.15, -18.91],
+            [126.15, -19.71],
+            [125.35, -19.71],
+            [125.35, -18.91],
+            [126.15, -18.91]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0008",
+      "target_name": "Flat_Desert_Test_0008",
+      "target_location": { "type": "Point", "coordinates": [-1, 31.36] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.6, 31.76],
+            [-0.6, 30.96],
+            [-1.4, 30.96],
+            [-1.4, 31.76],
+            [-0.6, 31.76]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0009",
+      "target_name": "Flat_Desert_Test_0009",
+      "target_location": { "type": "Point", "coordinates": [18.84, 28.22] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [19.24, 28.62],
+            [19.24, 27.82],
+            [18.44, 27.82],
+            [18.44, 28.62],
+            [19.24, 28.62]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0010",
+      "target_name": "Flat_Desert_Test_0010",
+      "target_location": { "type": "Point", "coordinates": [7.3, 32.76] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.7, 33.16],
+            [7.7, 32.36],
+            [6.9, 32.36],
+            [6.9, 33.16],
+            [7.7, 33.16]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0011",
+      "target_name": "Flat_Desert_Test_0011",
+      "target_location": { "type": "Point", "coordinates": [25.56, 28.75] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [25.96, 29.15],
+            [25.96, 28.35],
+            [25.16, 28.35],
+            [25.16, 29.15],
+            [25.96, 29.15]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0012",
+      "target_name": "Flat_Desert_Test_0012",
+      "target_location": { "type": "Point", "coordinates": [11, 31.36] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [11.4, 31.76],
+            [11.4, 30.96],
+            [10.6, 30.96],
+            [10.6, 31.76],
+            [11.4, 31.76]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "desert0013",
+      "target_name": "Flat_Desert_Test_0013",
+      "target_location": { "type": "Point", "coordinates": [122.72, -22.11] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [123.12, -21.71],
+            [123.12, -22.51],
+            [122.32, -22.51],
+            [122.32, -21.71],
+            [123.12, -21.71]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "desert"
+    },
+    {
+      "target_id": "ecostress_afln",
+      "target_name": "ecostress_afln",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-4.291142, 53.310312]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.589940014269018, 53.13022712164176],
+            [-3.992343985730997, 53.13022712164176],
+            [-3.989823900155358, 53.48963675338252],
+            [-4.592460099844658, 53.48963675338252],
+            [-4.589940014269018, 53.13022712164176]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ar_slu",
+      "target_name": "ecostress_ar_slu",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-66.4598, -33.4648]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-66.67539314436642, -33.64493131982027],
+            [-66.24420685563358, -33.64493131982027],
+            [-66.24509782070977, -33.28429004710965],
+            [-66.67450217929023, -33.28429004710965],
+            [-66.67539314436642, -33.64493131982027]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ar_vir",
+      "target_name": "ecostress_ar_vir",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-56.1886, -28.2395]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-56.39272749464487, -28.41981204433139],
+            [-55.98447250535514, -28.41981204433139],
+            [-55.9851583899565, -28.05887948240836],
+            [-56.39204161004353, -28.05887948240836],
+            [-56.39272749464487, -28.41981204433139]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_asm",
+      "target_name": "ecostress_au_asm",
+      "target_location": { "type": "Point", "coordinates": [133.249, -22.283] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [133.0546803535051, -22.46349378268366],
+            [133.4433196464949, -22.46349378268366],
+            [133.4428211424578, -22.10227023033011],
+            [133.0551788575422, -22.10227023033011],
+            [133.0546803535051, -22.46349378268366]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_cum",
+      "target_name": "ecostress_au_cum",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [150.7236, -33.6153]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [150.5076303275388, -33.79542585833054],
+            [150.9395696724613, -33.79542585833054],
+            [150.9386720639716, -33.43479337350981],
+            [150.5085279360284, -33.43479337350981],
+            [150.5076303275388, -33.79542585833054]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_das",
+      "target_name": "ecostress_au_das",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [131.3881, -14.1592]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [131.2026973233534, -14.33989142607945],
+            [131.5735026766466, -14.33989142607945],
+            [131.5732096309808, -13.97836288352482],
+            [131.2029903690193, -13.97836288352482],
+            [131.2026973233534, -14.33989142607945]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_dry",
+      "target_name": "ecostress_au_dry",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [132.3706, -15.2588]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [132.1842547656041, -15.43946840185666],
+            [132.5569452343959, -15.43946840185666],
+            [132.5566267784989, -15.07797410986561],
+            [132.1845732215011, -15.07797410986561],
+            [132.1842547656041, -15.43946840185666]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_how",
+      "target_name": "ecostress_au_how",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [131.15005, -12.4952]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.9659282588832, -12.6759239235108],
+            [131.3341717411168, -12.6759239235108],
+            [131.3339160692381, -12.31434804500899],
+            [130.9661839307619, -12.31434804500899],
+            [130.9659282588832, -12.6759239235108]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_lit",
+      "target_name": "ecostress_au_lit",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [130.7945, -13.179]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.6098727647741, -13.35971091416863],
+            [130.979127235226, -13.35971091416863],
+            [130.9788563526843, -12.99815382435098],
+            [130.6101436473157, -12.99815382435098],
+            [130.6098727647741, -13.35971091416863]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_stp",
+      "target_name": "ecostress_au_stp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [133.3503, -17.1508]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [133.162147715072, -17.33142596769079],
+            [133.538452284928, -17.33142596769079],
+            [133.5380885886146, -16.96999597258115],
+            [133.1625114113854, -16.96999597258115],
+            [133.162147715072, -17.33142596769079]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_tum",
+      "target_name": "ecostress_au_tum",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [148.1517, -35.6566]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [147.9303366299656, -35.83665050657066],
+            [148.3730633700344, -35.83665050657066],
+            [148.3720707657301, -35.47613903000912],
+            [147.9313292342699, -35.47613903000912],
+            [147.9303366299656, -35.83665050657066]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_wom",
+      "target_name": "ecostress_au_wom",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [144.0944, -37.4222]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [143.867911540734, -37.6021835282658],
+            [144.320888459266, -37.6021835282658],
+            [144.3198055522711, -37.2417791209371],
+            [143.8689944477289, -37.2417791209371],
+            [143.867911540734, -37.6021835282658]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_au_ync",
+      "target_name": "ecostress_au_ync",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [146.2907, -34.9893]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [146.071160037282, -35.16937539439802],
+            [146.5102399627181, -35.16937539439802],
+            [146.5092794536714, -34.80882400526973],
+            [146.0721205463286, -34.80882400526973],
+            [146.071160037282, -35.16937539439802]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_bdog",
+      "target_name": "ecostress_bdog",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-1.481935, 51.530216]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-1.769011261461884, 51.35009981825127],
+            [-1.194858738538102, 51.35009981825127],
+            [-1.192588647342944, 51.70961867319674],
+            [-1.771281352657041, 51.70961867319674],
+            [-1.769011261461884, 51.35009981825127]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_be_lon",
+      "target_name": "ecostress_be_lon",
+      "target_location": { "type": "Point", "coordinates": [5.9981, 50.305] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [5.718417781356493, 50.12486078489908],
+            [6.277782218643495, 50.12486078489908],
+            [6.279899065994783, 50.48445573750933],
+            [5.716300934005204, 50.48445573750933],
+            [5.718417781356493, 50.12486078489908]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_be_vie",
+      "target_name": "ecostress_be_vie",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [4.746112999999999, 50.55184000000001]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.464982311066393, 50.37170551397033],
+            [5.027243688933623, 50.37170551397033],
+            [5.029390290272431, 50.73128508321069],
+            [4.462835709727585, 50.73128508321069],
+            [4.464982311066393, 50.37170551397033]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_br_cmt",
+      "target_name": "ecostress_br_cmt",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-56.0882, -13.2875]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-56.27291010670355, -13.46820880551857],
+            [-55.90348989329647, -13.46820880551857],
+            [-55.90376320777419, -13.1066547824628],
+            [-56.27263679222582, -13.1066547824628],
+            [-56.27291010670355, -13.46820880551857]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_br_no",
+      "target_name": "ecostress_br_no",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-56.76666700000001, -16.616667]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-56.95428493189533, -16.7973053035508],
+            [-56.57904906810469, -16.7973053035508],
+            [-56.57939978432185, -16.43585648135678],
+            [-56.95393421567819, -16.43585648135678],
+            [-56.95428493189533, -16.7973053035508]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ca_pr_emss",
+      "target_name": "ecostress_ca_pr_emss",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-118.344, 56.7438]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-118.669302470728, 56.56376657836598],
+            [-118.018697529272, 56.56376657836598],
+            [-118.0155790502933, 56.92297139684919],
+            [-118.6724209497067, 56.92297139684919],
+            [-118.669302470728, 56.56376657836598]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ca_tp",
+      "target_name": "ecostress_ca_tp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-80.431, 42.713075]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.67443943915981, 42.53277476427549],
+            [-80.18756056084018, 42.53277476427549],
+            [-80.18614921202546, 42.89284916078513],
+            [-80.67585078797453, 42.89284916078513],
+            [-80.67443943915981, 42.53277476427549]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ch_dav",
+      "target_name": "ecostress_ch_dav",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [9.855917, 46.815333]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [9.594725182637632, 46.63512290812367],
+            [10.11710881736238, 46.63512290812367],
+            [10.11885679560987, 46.99493739703703],
+            [9.592977204390138, 46.99493739703703],
+            [9.594725182637632, 46.63512290812367]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ch_fru",
+      "target_name": "ecostress_ch_fru",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [8.537778, 47.115833]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.275128651217187, 46.93562926785075],
+            [8.800427348782819, 46.93562926785075],
+            [8.802203691188708, 47.29542474237181],
+            [8.273352308811297, 47.29542474237181],
+            [8.275128651217187, 46.93562926785075]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ch_lae",
+      "target_name": "ecostress_ch_lae",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [8.364389, 47.478333]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.099949787487077, 47.29813688322951],
+            [8.6288282125129, 47.29813688322951],
+            [8.63063954764931, 47.65790943923712],
+            [8.098138452350668, 47.65790943923712],
+            [8.099949787487077, 47.29813688322951]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_cr_fsc",
+      "target_name": "ecostress_cr_fsc",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-85.4732, 10.4189]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-85.65575066850612, 10.23803328948057],
+            [-85.29064933149391, 10.23803328948057],
+            [-85.29043872370465, 10.59966042826978],
+            [-85.65596127629537, 10.59966042826978],
+            [-85.65575066850612, 10.23803328948057]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_cr_srnp_emss",
+      "target_name": "ecostress_cr_srnp_emss",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-85.6156, 10.8418]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-85.79839772832108, 10.66093594900254],
+            [-85.43280227167892, 10.66093594900254],
+            [-85.43258261177814, 11.02255336196035],
+            [-85.79861738822184, 11.02255336196035],
+            [-85.79839772832108, 10.66093594900254]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_cz_bk1",
+      "target_name": "ecostress_cz_bk1",
+      "target_location": { "type": "Point", "coordinates": [18.5369, 49.5021] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [18.2617925274287, 49.32194511519452],
+            [18.81200747257131, 49.32194511519452],
+            [18.81403118477908, 49.6815902666869],
+            [18.25976881522092, 49.6815902666869],
+            [18.2617925274287, 49.32194511519452]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_de_rus",
+      "target_name": "ecostress_de_rus",
+      "target_location": { "type": "Point", "coordinates": [6.4472, 50.8659] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [6.164196848134679, 50.68577146775371],
+            [6.730203151865339, 50.68577146775371],
+            [6.732388407810731, 51.04533150105323],
+            [6.162011592189288, 51.04533150105323],
+            [6.164196848134679, 50.68577146775371]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_de_tha",
+      "target_name": "ecostress_de_tha",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [13.56516, 50.96235]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.28157505294539, 50.78222328167838],
+            [13.8487449470546, 50.78222328167838],
+            [13.85094225751976, 51.14177732391667],
+            [13.27937774248022, 51.14177732391667],
+            [13.28157505294539, 50.78222328167838]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_efgf",
+      "target_name": "ecostress_efgf",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-0.192985, 52.470474]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.4861001079088396, 52.29037469548514],
+            [0.1001301079088535, 52.29037469548514],
+            [0.1025278964281142, 52.64983563975027],
+            [-0.4884978964281004, 52.64983563975027],
+            [-0.4861001079088396, 52.29037469548514]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_fr_fon",
+      "target_name": "ecostress_fr_fon",
+      "target_location": { "type": "Point", "coordinates": [2.7801, 48.4764] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2.510547286377914, 48.29622450586436],
+            [3.049652713622095, 48.29622450586436],
+            [3.05156501961784, 48.6559340963398],
+            [2.508634980382169, 48.6559340963398],
+            [2.510547286377914, 48.29622450586436]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_il_yat",
+      "target_name": "ecostress_il_yat",
+      "target_location": { "type": "Point", "coordinates": [35.0519, 31.3451] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [34.84212407287703, 31.16454393319275],
+            [35.26167592712295, 31.16454393319275],
+            [35.26247803957639, 31.52530678162645],
+            [34.84132196042358, 31.52530678162645],
+            [34.84212407287703, 31.16454393319275]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_it_cp2",
+      "target_name": "ecostress_it_cp2",
+      "target_location": { "type": "Point", "coordinates": [12.3573, 41.7043] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [12.11767934098208, 41.5239769331528],
+            [12.59692065901794, 41.5239769331528],
+            [12.59826151844919, 41.8841149830624],
+            [12.11633848155083, 41.8841149830624],
+            [12.11767934098208, 41.5239769331528]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_it_tor",
+      "target_name": "ecostress_it_tor",
+      "target_location": { "type": "Point", "coordinates": [7.5781, 45.8444] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [7.321460976111894, 45.66416909143581],
+            [7.834739023888119, 45.66416909143581],
+            [7.836399145814994, 46.0240450889006],
+            [7.319800854185019, 46.0240450889006],
+            [7.321460976111894, 45.66416909143581]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ke_mak",
+      "target_name": "ecostress_ke_mak",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [38.140667, -3.425806]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [37.96064978476159, -3.60665518821377],
+            [38.32068421523843, -3.60665518821377],
+            [38.32061664583151, -3.244922176761445],
+            [37.96071735416851, -3.244922176761445],
+            [37.96064978476159, -3.60665518821377]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_kr_gck",
+      "target_name": "ecostress_kr_gck",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [127.162222, 37.748333]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.9358373280877, 37.56791956456009],
+            [127.3886066719124, 37.56791956456009],
+            [127.3897071776801, 37.92830398497345],
+            [126.9347368223199, 37.92830398497345],
+            [126.9358373280877, 37.56791956456009]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ne_waf",
+      "target_name": "ecostress_ne_waf",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [2.63368891, 13.64758138]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2.448979930520807, 13.46673942215339],
+            [2.818397889479172, 13.46673942215339],
+            [2.818679312353055, 13.82828310073302],
+            [2.448698507646924, 13.82828310073302],
+            [2.448979930520807, 13.46673942215339]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_npbb",
+      "target_name": "ecostress_npbb",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-2.388, 54.69600000000001]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-2.696822943604332, 54.5159374432892],
+            [-2.079177056395679, 54.5159374432892],
+            [-2.076436116200483, 54.87526338172765],
+            [-2.699563883799527, 54.87526338172765],
+            [-2.696822943604332, 54.5159374432892]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_nz_bfm",
+      "target_name": "ecostress_nz_bfm",
+      "target_location": { "type": "Point", "coordinates": [171.928, -43.593] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [171.6795885558382, -43.77273823989805],
+            [172.1764114441618, -43.77273823989805],
+            [172.1749350217405, -43.41271951829628],
+            [171.6810649782595, -43.41271951829628],
+            [171.6795885558382, -43.77273823989805]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_nz_kop",
+      "target_name": "ecostress_nz_kop",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [175.554, -37.38800000000001]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [175.3276151305306, -37.56798484061121],
+            [175.7803848694693, -37.56798484061121],
+            [175.7793037906177, -37.20757834087424],
+            [175.3286962093823, -37.20757834087424],
+            [175.3276151305306, -37.56798484061121]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_nz_oxf",
+      "target_name": "ecostress_nz_oxf",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [172.2108, -43.2619]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [171.9637473390074, -43.44165178961836],
+            [172.4578526609926, -43.44165178961836],
+            [172.4564011347887, -43.08161210553905],
+            [171.9651988652113, -43.08161210553905],
+            [171.9637473390074, -43.44165178961836]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_nz_sco",
+      "target_name": "ecostress_nz_sco",
+      "target_location": { "type": "Point", "coordinates": [175.22, -37.46] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [174.9933968421212, -37.63998207711102],
+            [175.4466031578789, -37.63998207711102],
+            [175.4455182265009, -37.27957998323197],
+            [174.9944817734992, -37.27957998323197],
+            [174.9933968421212, -37.63998207711102]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_sleg",
+      "target_name": "ecostress_sleg",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-2.828505, 51.207282]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-3.113581886231742, 51.02715985670034],
+            [-2.543428113768272, 51.02715985670034],
+            [-2.541199795015245, 51.38669870356617],
+            [-3.115810204984768, 51.38669870356617],
+            [-3.113581886231742, 51.02715985670034]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ssh_czo_cal",
+      "target_name": "ecostress_ssh_czo_cal",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-81.72247, 34.60811]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-81.94005238561328, 34.4276254628511],
+            [-81.50488761438672, 34.4276254628511],
+            [-81.50394497417021, 34.7881995017363],
+            [-81.94099502582979, 34.7881995017363],
+            [-81.94005238561328, 34.4276254628511]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_ssh_czo_shale",
+      "target_name": "ecostress_ssh_czo_shale",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-77.904076, 40.66573]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.13996383995949, 40.48538328082554],
+            [-77.6681881600405, 40.48538328082554],
+            [-77.6669156496645, 40.84558659075418],
+            [-78.14123635033549, 40.84558659075418],
+            [-78.13996383995949, 40.48538328082554]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_arm",
+      "target_name": "ecostress_us_arm",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.4888, 36.6058]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.7118227963972, 36.42536053249493],
+            [-97.26577720360284, 36.42536053249493],
+            [-97.26473706416543, 36.78581469682457],
+            [-97.7128629358346, 36.78581469682457],
+            [-97.7118227963972, 36.42536053249493]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_bar",
+      "target_name": "ecostress_us_bar",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-71.28808000000001, 44.0646]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.5369546821178, 43.8843300292328],
+            [-71.03920531788222, 43.8843300292328],
+            [-71.03769254578104, 44.24431887249082],
+            [-71.53846745421897, 44.24431887249082],
+            [-71.5369546821178, 43.8843300292328]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_bi1",
+      "target_name": "ecostress_us_bi1",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-121.5042, 38.1022]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-121.731665125053, 37.92179464977591],
+            [-121.276734874947, 37.92179464977591],
+            [-121.2756149284371, 38.28215731693866],
+            [-121.7327850715629, 38.28215731693866],
+            [-121.731665125053, 37.92179464977591]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_bsg",
+      "target_name": "ecostress_us_bsg",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-119.6909, 43.4712]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.9373416875553, 43.29091679444529],
+            [-119.4444583124447, 43.29091679444529],
+            [-119.442991107287, 43.65094322898126],
+            [-119.938808892713, 43.65094322898126],
+            [-119.9373416875553, 43.29091679444529]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_ced",
+      "target_name": "ecostress_us_ced",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-74.3791, 39.8379]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.61214909938629, 39.65753436216117],
+            [-74.14605090061372, 39.65753436216117],
+            [-74.14483004084646, 40.01778943499342],
+            [-74.61336995915353, 40.01778943499342],
+            [-74.61214909938629, 39.65753436216117]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_cf1",
+      "target_name": "ecostress_us_cf1",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-117.0821, 46.7815]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-117.3431291799553, 46.60128918951632],
+            [-116.8210708200447, 46.60128918951632],
+            [-116.8193259995433, 46.96110582003502],
+            [-117.3448740004567, 46.96110582003502],
+            [-117.3431291799553, 46.60128918951632]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_cs1",
+      "target_name": "ecostress_us_cs1",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-89.53785500000001, 44.103051]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-89.78688992370881, 43.92278188360368],
+            [-89.2888200762912, 43.92278188360368],
+            [-89.28730429328391, 44.28276828993208],
+            [-89.7884057067161, 44.28276828993208],
+            [-89.78688992370881, 43.92278188360368]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_cz1",
+      "target_name": "ecostress_us_cz1",
+      "target_location": { "type": "Point", "coordinates": [-119.731, 37.109] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.9554800385048, 36.92857198131487],
+            [-119.5065199614953, 36.92857198131487],
+            [-119.5054536754459, 37.2889955250229],
+            [-119.9565463245541, 37.2889955250229],
+            [-119.9554800385048, 36.92857198131487]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_cz2",
+      "target_name": "ecostress_us_cz2",
+      "target_location": { "type": "Point", "coordinates": [-119.256, 37.031] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.4802517706919, 36.85057020477421],
+            [-119.0317482293081, 36.85057020477421],
+            [-119.0306860407187, 37.21099850514695],
+            [-119.4813139592813, 37.21099850514695],
+            [-119.4802517706919, 36.85057020477421]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_hn1",
+      "target_name": "ecostress_us_hn1",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-119.275, 46.408889]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.5342573180332, 46.22867024206168],
+            [-119.0157426819668, 46.22867024206168],
+            [-119.0140321703507, 46.58851046786585],
+            [-119.5359678296493, 46.58851046786585],
+            [-119.5342573180332, 46.22867024206168]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_hn2",
+      "target_name": "ecostress_us_hn2",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-119.464111, 46.688861]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.7246963609548, 46.50864821927032],
+            [-119.2035256390452, 46.50864821927032],
+            [-119.201789428316, 46.86847071453187],
+            [-119.726432571684, 46.86847071453187],
+            [-119.7246963609548, 46.50864821927032]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_kfs",
+      "target_name": "ecostress_us_kfs",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.1907, 39.0561]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95.42117408133417, 38.87571647191088],
+            [-94.96022591866588, 38.87571647191088],
+            [-94.95905169597992, 39.23602017974577],
+            [-95.42234830402013, 39.23602017974577],
+            [-95.42117408133417, 38.87571647191088]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_kon",
+      "target_name": "ecostress_us_kon",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.5603, 39.0824]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.79085908233039, 38.90201707383774],
+            [-96.32974091766962, 38.90201707383774],
+            [-96.3285651584644, 39.26231914991425],
+            [-96.79203484153561, 39.26231914991425],
+            [-96.79085908233039, 38.90201707383774]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_los",
+      "target_name": "ecostress_us_los",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-89.9792, 46.0827]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.23693479162547, 45.9024742365073],
+            [-89.72146520837452, 45.9024742365073],
+            [-89.71978404250213, 46.26233512979389],
+            [-90.23861595749788, 46.26233512979389],
+            [-90.23693479162547, 45.9024742365073]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_me2",
+      "target_name": "ecostress_us_me2",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-121.557, 44.4523]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-121.8075051167663, 44.27203862458],
+            [-121.3064948832338, 44.27203862458],
+            [-121.3049514179827, 44.63200289193756],
+            [-121.8090485820174, 44.63200289193756],
+            [-121.8075051167663, 44.27203862458]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_men",
+      "target_name": "ecostress_us_men",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-89.402984, 43.07725]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-89.64785104351374, 42.89695796055338],
+            [-89.15811695648627, 42.89695796055338],
+            [-89.15667909732517, 43.25700932874776],
+            [-89.64928890267484, 43.25700932874776],
+            [-89.64785104351374, 42.89695796055338]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_mms",
+      "target_name": "ecostress_us_mms",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-86.4131, 39.3232]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-86.64444254791192, 39.14282258500467],
+            [-86.18175745208808, 39.14282258500467],
+            [-86.18056752136496, 39.50310970641588],
+            [-86.64563247863504, 39.50310970641588],
+            [-86.64444254791192, 39.14282258500467]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_mrf",
+      "target_name": "ecostress_us_mrf",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-123.551, 44.6465]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-123.8023342351723, 44.46624291333306],
+            [-123.2996657648277, 44.46624291333306],
+            [-123.2981066417425, 44.82619486758404],
+            [-123.8038933582575, 44.82619486758404],
+            [-123.8023342351723, 44.46624291333306]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_ro4",
+      "target_name": "ecostress_us_ro4",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-93.0723, 44.6781]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.32376994328932, 44.49784361009636],
+            [-92.82083005671068, 44.49784361009636],
+            [-92.81926836756715, 44.85779356066475],
+            [-93.32533163243285, 44.85779356066475],
+            [-93.32376994328932, 44.49784361009636]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_rr",
+      "target_name": "ecostress_us_rr",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-121.863457, 38.557845]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.0923415943839, 38.37745007006468],
+            [-121.6345724056161, 38.37745007006468],
+            [-121.6334268811592, 38.73778463039331],
+            [-122.0934871188408, 38.73778463039331],
+            [-122.0923415943839, 38.37745007006468]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_scc",
+      "target_name": "ecostress_us_scc",
+      "target_location": { "type": "Point", "coordinates": [-116.45, 33.61] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-116.665058991226, 33.42949325626268],
+            [-116.234941008774, 33.42949325626268],
+            [-116.234043635036, 33.79012605088809],
+            [-116.665956364964, 33.79012605088809],
+            [-116.665058991226, 33.42949325626268]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_scs",
+      "target_name": "ecostress_us_scs",
+      "target_location": { "type": "Point", "coordinates": [-117.696, 33.734] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-117.9113657450693, 33.55349600137686],
+            [-117.4806342549306, 33.55349600137686],
+            [-117.4797313735277, 33.91412154146203],
+            [-117.9122686264723, 33.91412154146203],
+            [-117.9113657450693, 33.55349600137686]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_ses",
+      "target_name": "ecostress_us_ses",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-106.7442, 34.3349]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-106.961079231183, 34.15440936014871],
+            [-106.527320768817, 34.15440936014871],
+            [-106.5263907344947, 34.51499956283333],
+            [-106.9620092655053, 34.51499956283333],
+            [-106.961079231183, 34.15440936014871]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_slt",
+      "target_name": "ecostress_us_slt",
+      "target_location": { "type": "Point", "coordinates": [-74.596, 39.9138] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.82930449225464, 39.73343609823058],
+            [-74.36269550774537, 39.73343609823058],
+            [-74.36147001170886, 40.09368643586438],
+            [-74.83052998829115, 40.09368643586438],
+            [-74.82930449225464, 39.73343609823058]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_sp",
+      "target_name": "ecostress_us_sp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-119.924671, 36.234696]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-120.1466421030133, 36.05424810966297],
+            [-119.7026998969867, 36.05424810966297],
+            [-119.7016786137296, 36.41472475312912],
+            [-120.1476633862704, 36.41472475312912],
+            [-120.1466421030133, 36.05424810966297]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_syv",
+      "target_name": "ecostress_us_syv",
+      "target_location": { "type": "Point", "coordinates": [-89.3477, 46.242] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-89.6061750488911, 46.06177766326098],
+            [-89.0892249511089, 46.06177766326098],
+            [-89.08752953273023, 46.4216284620296],
+            [-89.60787046726978, 46.4216284620296],
+            [-89.6061750488911, 46.06177766326098]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_tx2",
+      "target_name": "ecostress_us_tx2",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.8827, 31.4802]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.09277461961817, 31.29964682703777],
+            [-96.67262538038185, 31.29964682703777],
+            [-96.67181785395799, 31.66040205584116],
+            [-97.09358214604202, 31.66040205584116],
+            [-97.09277461961817, 31.29964682703777]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_tx5",
+      "target_name": "ecostress_us_tx5",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.4252, 30.5328]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.63322201175768, 30.352226679817],
+            [-96.21717798824234, 30.352226679817],
+            [-96.21640776327081, 30.71303494558702],
+            [-96.63399223672921, 30.71303494558702],
+            [-96.63322201175768, 30.352226679817]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_tx6",
+      "target_name": "ecostress_us_tx6",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-98.2089, 27.6666]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-98.41127871490492, 27.4859680814435],
+            [-98.00652128509508, 27.4859680814435],
+            [-98.00585527197288, 27.84693072247834],
+            [-98.41194472802712, 27.84693072247834],
+            [-98.41127871490492, 27.4859680814435]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_tx9",
+      "target_name": "ecostress_us_tx9",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.614367, 28.780508]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95.81884148638652, 28.59989839872625],
+            [-95.40989251361347, 28.59989839872625],
+            [-95.4091874427964, 28.96080218781206],
+            [-95.8195465572036, 28.96080218781206],
+            [-95.81884148638652, 28.59989839872625]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_var",
+      "target_name": "ecostress_us_var",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-120.9507, 38.4133]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-121.1791308077014, 38.23290176350006],
+            [-120.7222691922986, 38.23290176350006],
+            [-120.7211318496975, 38.59324525165707],
+            [-121.1802681503025, 38.59324525165707],
+            [-121.1791308077014, 38.23290176350006]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_vcm",
+      "target_name": "ecostress_us_vcm",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-106.5321, 35.8884]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-106.7531069684814, 35.70794426808389],
+            [-106.3110930315186, 35.70794426808389],
+            [-106.3100890275138, 36.06844180523333],
+            [-106.7541109724862, 36.06844180523333],
+            [-106.7531069684814, 35.70794426808389]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_wjs",
+      "target_name": "ecostress_us_wjs",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-105.8615, 34.4255]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-106.0786113542675, 34.24501138197068],
+            [-105.6443886457326, 34.24501138197068],
+            [-105.6434544494846, 34.60559623111273],
+            [-106.0795455505155, 34.60559623111273],
+            [-106.0786113542675, 34.24501138197068]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_wkg",
+      "target_name": "ecostress_us_wkg",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-109.9419, 31.7365]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-110.1525468446329, 31.55595233517538],
+            [-109.7312531553671, 31.55595233517538],
+            [-109.7304352688083, 31.91669305839277],
+            [-110.1533647311917, 31.91669305839277],
+            [-110.1525468446329, 31.55595233517538]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_wpp",
+      "target_name": "ecostress_us_wpp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-123.182, 44.1368]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-123.4311758333185, 43.95653163315882],
+            [-122.9328241666815, 43.95653163315882],
+            [-122.9313057349986, 44.31651590046925],
+            [-123.4326942650014, 44.31651590046925],
+            [-123.4311758333185, 43.95653163315882]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "ecostress_us_wwt",
+      "target_name": "ecostress_us_wwt",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-122.666, 45.1089]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.9193425425419, 44.92865307703161],
+            [-122.4126574574581, 44.92865307703161],
+            [-122.4110602662855, 45.28857570952734],
+            [-122.9209397337145, 45.28857570952734],
+            [-122.9193425425419, 44.92865307703161]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_Low"
+    },
+    {
+      "target_id": "fossil0001",
+      "target_name": "fossil_Seoul_South_Korea",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [126.97783, 37.56826000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.5272246212152, 37.20699367514337],
+            [127.4284353787849, 37.20699367514337],
+            [127.4327984057156, 37.92776773943934],
+            [126.5228615942845, 37.92776773943934],
+            [126.5272246212152, 37.20699367514337]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0002",
+      "target_name": "fossil_Guangzhou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [113.2500000000001, 23.11667000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [112.8605407639531, 22.75499890479178],
+            [113.6394592360471, 22.75499890479178],
+            [113.64154899211, 23.47735807434417],
+            [112.8584510078903, 23.47735807434417],
+            [112.8605407639531, 22.75499890479178]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0003",
+      "target_name": "fossil_New_York_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-74.00713999999994, 40.71455000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.47799614624805, 40.35337698988508],
+            [-73.53628385375183, 40.35337698988508],
+            [-73.53118129863414, 41.07375908713141],
+            [-74.48309870136573, 41.07375908713141],
+            [-74.47799614624805, 40.35337698988508]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0004",
+      "target_name": "fossil_Hong_Kong_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [114.133713499, 22.36472318200003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.7463412197732, 22.00303564377897],
+            [114.5210857782268, 22.00303564377897],
+            [114.5230890743579, 22.72546293670989],
+            [113.7443379236421, 22.72546293670989],
+            [113.7463412197732, 22.00303564377897]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0005",
+      "target_name": "fossil_Los_Angeles_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-118.24532, 34.05349000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-118.6767427368623, 33.69211686842338],
+            [-117.8138972631377, 33.69211686842338],
+            [-117.8102283590276, 34.41331497392473],
+            [-118.6804116409723, 34.41331497392473],
+            [-118.6767427368623, 33.69211686842338]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0006",
+      "target_name": "fossil_Shanghai_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [121.45806, 31.22222000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.039835986776, 30.86076224417593],
+            [121.8762840132241, 30.86076224417593],
+            [121.8794728927211, 31.58228721592647],
+            [121.036647107279, 31.58228721592647],
+            [121.039835986776, 30.86076224417593]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0007",
+      "target_name": "fossil_Singapore_Singapore",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [103.7571100000001, 1.464780000000076]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [103.3977177363111, 1.103012204660774],
+            [104.1165022636891, 1.103012204660774],
+            [104.1166175485146, 1.826488609909706],
+            [103.3976024514856, 1.826488609909706],
+            [103.3977177363111, 1.103012204660774]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0008",
+      "target_name": "fossil_Chicago_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-87.63244999999995, 41.88425000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-88.11168676528034, 41.52311026938241],
+            [-87.15321323471956, 41.52311026938241],
+            [-87.14780069964795, 42.24334463282344],
+            [-88.11709930035195, 42.24334463282344],
+            [-88.11168676528034, 41.52311026938241]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0009",
+      "target_name": "fossil_Tokyo_Japan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [139.6917160900001, 35.68945633100003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [139.2517783047833, 35.32813293197606],
+            [140.1316538752169, 35.32813293197606],
+            [140.1356307429955, 36.04913585666624],
+            [139.2478014370047, 36.04913585666624],
+            [139.2517783047833, 35.32813293197606]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0010",
+      "target_name": "fossil_Riyadh_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [46.68719000000004, 24.68218000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [46.29309364033878, 24.32054529182815],
+            [47.08128635966131, 24.32054529182815],
+            [47.08356325426789, 25.04275711631926],
+            [46.2908167457322, 25.04275711631926],
+            [46.29309364033878, 24.32054529182815]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0011",
+      "target_name": "fossil_Dubai_UAE",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [55.30884000000003, 25.26951000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [54.91289870710585, 24.90788964535093],
+            [55.70478129289421, 24.90788964535093],
+            [55.70713106390892, 25.63004433780424],
+            [54.91054893609117, 25.63004433780424],
+            [54.91289870710585, 24.90788964535093]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0012",
+      "target_name": "fossil_Wuxi_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.28857, 31.56887000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [119.8688282306888, 31.2074224428035],
+            [120.7083117693113, 31.2074224428035],
+            [120.7115561743539, 31.92890822063994],
+            [119.8655838256462, 31.92890822063994],
+            [119.8688282306888, 31.2074224428035]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0013",
+      "target_name": "fossil_Johannesburg_South_Africa",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [28.04006000000004, -26.20490999999993]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [27.6385884358977, -26.56537493723464],
+            [28.44153156410238, -26.56537493723464],
+            [28.43906249002893, -25.84331323634569],
+            [27.64105750997115, -25.84331323634569],
+            [27.6385884358977, -26.56537493723464]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0014",
+      "target_name": "fossil_Tehran_Iran",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [51.42151000000007, 35.69439000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [50.98154547985223, 35.33306675120603],
+            [51.86147452014791, 35.33306675120603],
+            [51.86545235456282, 36.05406908114344],
+            [50.97756764543732, 36.05406908114344],
+            [50.98154547985223, 35.33306675120603]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0015",
+      "target_name": "fossil_London_UK",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-0.1272099999999341, 51.50642000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-0.6988246470891113, 51.14548733850116],
+            [0.4444046470892431, 51.14548733850116],
+            [0.4534726028119849, 51.86450084796164],
+            [-0.7078926028118531, 51.86450084796164],
+            [-0.6988246470891113, 51.14548733850116]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0016",
+      "target_name": "fossil_Benha_Egypt",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [31.17858000000007, 30.45906000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [30.76360579034244, 30.09758000397126],
+            [31.5935542096577, 30.09758000397126],
+            [31.59662376552595, 30.81919038015478],
+            [30.76053623447419, 30.81919038015478],
+            [30.76360579034244, 30.09758000397126]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0017",
+      "target_name": "fossil_Beijing_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [116.39723, 39.90750000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.9318752850915, 39.54630349646369],
+            [116.8625847149086, 39.54630349646369],
+            [116.8674851804889, 40.26678698125344],
+            [115.9269748195112, 40.26678698125344],
+            [115.9318752850915, 39.54630349646369]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0018",
+      "target_name": "fossil_Jakarta_Indonesia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [106.8264800000001, -6.171479999999974]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.4648209504148, -6.533053427942063],
+            [107.1881390495853, -6.533053427942063],
+            [107.1876488994113, -5.809656385420122],
+            [106.4653111005888, -5.809656385420122],
+            [106.4648209504148, -6.533053427942063]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0019",
+      "target_name": "fossil_Al-Ahmadi_Kuwait",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [48.07602000000003, 29.09426000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [47.66655438987777, 28.73274107810917],
+            [48.48548561012231, 28.73274107810917],
+            [48.4883511903133, 29.45450100227606],
+            [47.66368880968676, 29.45450100227606],
+            [47.66655438987777, 28.73274107810917]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0020",
+      "target_name": "fossil_Miami_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-80.19772999999998, 25.77481000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.59530594273419, 25.41320228088724],
+            [-79.80015405726577, 25.41320228088724],
+            [-79.79774034630432, 26.1353070402394],
+            [-80.59771965369563, 26.1353070402394],
+            [-80.59530594273419, 25.41320228088724]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0021",
+      "target_name": "fossil_Samut_Prakan_Thailand",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [100.5968872263649, 13.59946800439462]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [100.2278173682814, 13.23764917319291],
+            [100.9659570844483, 13.23764917319291],
+            [100.9670784341275, 13.96072791914691],
+            [100.2266960186022, 13.96072791914691],
+            [100.2278173682814, 13.23764917319291]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0022",
+      "target_name": "fossil_Paris_France",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [2.341400000000021, 48.85717000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [1.800174316502847, 48.49619663946908],
+            [2.882625683497196, 48.49619663946908],
+            [2.890436595393993, 49.21554358712489],
+            [1.79236340460605, 49.21554358712489],
+            [1.800174316502847, 48.49619663946908]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0023",
+      "target_name": "fossil_Dallas_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.79539999999997, 32.77815000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.22064691018014, 32.41673841761163],
+            [-96.37015308981981, 32.41673841761163],
+            [-96.3667081200021, 33.13808560792788],
+            [-97.22409187999784, 33.13808560792788],
+            [-97.22064691018014, 32.41673841761163]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0024",
+      "target_name": "fossil_Tianjin_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [117.1766700000001, 39.14222000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.7163307602468, 38.78100089459364],
+            [117.6370092397533, 38.78100089459364],
+            [117.6417263117265, 39.50158002785707],
+            [116.7116136882736, 39.50158002785707],
+            [116.7163307602468, 38.78100089459364]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0025",
+      "target_name": "fossil_Istanbul_Turkey",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [28.94966000000005, 41.01384000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.47670634493426, 40.65267559873763],
+            [29.42261365506585, 40.65267559873763],
+            [29.4277935403307, 41.37301997704922],
+            [28.47152645966941, 41.37301997704922],
+            [28.47670634493426, 40.65267559873763]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0026",
+      "target_name": "fossil_Detroit_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-83.04799999999994, 42.33168000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.53057592943941, 41.97055271609153],
+            [-82.56542407056048, 41.97055271609153],
+            [-82.55988724202699, 42.69073036599353],
+            [-83.5361127579729, 42.69073036599353],
+            [-83.53057592943941, 41.97055271609153]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0027",
+      "target_name": "fossil_Philadelphia_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-75.16217999999998, 39.95222000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.62783377192416, 39.59102480809455],
+            [-74.6965262280758, 39.59102480809455],
+            [-74.69161480293256, 40.31150268807477],
+            [-75.6327451970674, 40.31150268807477],
+            [-75.62783377192416, 39.59102480809455]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0028",
+      "target_name": "fossil_San_Jose_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-121.88542, 37.33865000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.3346678727425, 36.97737672723046],
+            [-121.4361721272574, 36.97737672723046],
+            [-121.4318583199345, 37.69817900065048],
+            [-122.3389816800654, 37.69817900065048],
+            [-122.3346678727425, 36.97737672723046]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0029",
+      "target_name": "fossil_New_Delhi_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [77.21728000000007, 28.63095000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.80959911030993, 28.2694181466221],
+            [77.62496088969021, 28.2694181466221],
+            [77.62775980344787, 28.99122786065415],
+            [76.80680019655233, 28.99122786065415],
+            [76.80959911030993, 28.2694181466221]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0030",
+      "target_name": "fossil_Cologne_Germany",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [6.955160000000035, 50.94167000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [6.390409565314144, 50.58073006227818],
+            [7.519910434685926, 50.58073006227818],
+            [7.52868935114887, 51.29981422438404],
+            [6.3816306488512, 51.29981422438404],
+            [6.390409565314144, 50.58073006227818]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0031",
+      "target_name": "fossil_Houston_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.36967999999996, 29.76058000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95.78178741114361, 29.39907993548257],
+            [-94.95757258885632, 29.39907993548257],
+            [-94.95460887962807, 30.12076737315947],
+            [-95.78475112037187, 30.12076737315947],
+            [-95.78178741114361, 29.39907993548257]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0032",
+      "target_name": "fossil_Jeddah_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [39.18279000000007, 21.48172000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [38.79775612224839, 21.12001406856408],
+            [39.56782387775175, 21.12001406856408],
+            [39.56972826932795, 21.84251907808761],
+            [38.79585173067218, 21.84251907808761],
+            [38.79775612224839, 21.12001406856408]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0033",
+      "target_name": "fossil_Washington_DC_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-77.03195999999997, 38.89037000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.4906900928948, 38.52914339792811],
+            [-76.57322990710514, 38.52914339792811],
+            [-76.56857152137728, 39.24975389243416],
+            [-77.49534847862266, 39.24975389243416],
+            [-77.4906900928948, 38.52914339792811]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0034",
+      "target_name": "fossil_Osaka_Japan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [135.5021619520001, 34.69372590900008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [135.0674886362812, 34.33237220841968],
+            [135.9368352677189, 34.33237220841968],
+            [135.9406217853279, 35.05349442828162],
+            [135.0637021186722, 35.05349442828162],
+            [135.0674886362812, 34.33237220841968]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0035",
+      "target_name": "fossil_Buenos_Aires_Argentina",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-58.37343999999996, -34.60848999999996]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-58.81144524536109, -34.96826607006663],
+            [-57.93543475463883, -34.96826607006663],
+            [-57.9392054042588, -34.24713370919442],
+            [-58.80767459574112, -34.24713370919442],
+            [-58.81144524536109, -34.96826607006663]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0036",
+      "target_name": "fossil_Mexico_City_Mexico",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-99.13314999999994, 19.43194000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.51320582415833, 19.07019545101694],
+            [-98.75309417584154, 19.07019545101694],
+            [-98.75140939384809, 19.79287098667811],
+            [-99.5148906061518, 19.79287098667811],
+            [-99.51320582415833, 19.07019545101694]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0037",
+      "target_name": "fossil_Shah_Alam_Malaysia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [101.4942800000001, 3.091980000000035]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [101.1345482846127, 2.730187498210553],
+            [101.8540117153874, 2.730187498210553],
+            [101.8542555233321, 3.453647483422462],
+            [101.134304476668, 3.453647483422462],
+            [101.1345482846127, 2.730187498210553]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0038",
+      "target_name": "fossil_Taipei_Taiwan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [121.5635500000001, 25.03737000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.1683449258114, 24.67574392851579],
+            [121.9587550741888, 24.67574392851579],
+            [121.9610758589009, 25.39792131995228],
+            [121.1660241410992, 25.39792131995228],
+            [121.1683449258114, 24.67574392851579]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0039",
+      "target_name": "fossil_Phoenix_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-112.0758, 33.44825000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-112.5042431446238, 33.08685856906219],
+            [-111.6473568553761, 33.08685856906219],
+            [-111.6437958886612, 33.80812778283742],
+            [-112.5078041113387, 33.80812778283742],
+            [-112.5042431446238, 33.08685856906219]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0040",
+      "target_name": "fossil_Wuhan_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [114.3247200000001, 30.64353000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.9089716418872, 30.28205535141615],
+            [114.7404683581129, 30.28205535141615],
+            [114.7435663973286, 31.00364519715916],
+            [113.9058736026716, 31.00364519715916],
+            [113.9089716418872, 30.28205535141615]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0041",
+      "target_name": "fossil_Hangzhou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.16142, 30.29365000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [119.7471338580362, 29.93216522534582],
+            [120.5757061419638, 29.93216522534582],
+            [120.5787503479042, 30.6537939480198],
+            [119.7440896520959, 30.6537939480198],
+            [119.7471338580362, 29.93216522534582]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0042",
+      "target_name": "fossil_Toronto_Canada",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-79.38543999999996, 43.64869000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.87829872296797, 43.28759827340157],
+            [-78.89258127703194, 43.28759827340157],
+            [-78.88665860894388, 44.00760850502196],
+            [-79.88422139105603, 44.00760850502196],
+            [-79.87829872296797, 43.28759827340157]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0043",
+      "target_name": "fossil_Nanjing_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.77778, 32.06167000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [118.3558347928944, 31.70023703369554],
+            [119.1997252071057, 31.70023703369554],
+            [119.2030500300927, 32.42166667736534],
+            [118.3525099699074, 32.42166667736534],
+            [118.3558347928944, 31.70023703369554]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0044",
+      "target_name": "fossil_Shenyang_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [123.4327800000001, 41.79222000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [122.9542207060614, 41.43107768852767],
+            [123.9113392939387, 41.43107768852767],
+            [123.9167266681674, 42.15132370454914],
+            [122.9488333318328, 42.15132370454914],
+            [122.9542207060614, 41.43107768852767]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0045",
+      "target_name": "fossil_Melbourne_Australia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [144.9671500000001, -37.81748999999996]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.5106364036571, -38.17697457824525],
+            [145.4236635963431, -38.17697457824525],
+            [145.4192464687657, -37.45623120295675],
+            [144.5150535312344, -37.45623120295675],
+            [144.5106364036571, -38.17697457824525]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0046",
+      "target_name": "fossil_Shantou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [116.7147900000001, 23.36814000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.3246128060812, 23.00647455782205],
+            [117.104967193919, 23.00647455782205],
+            [117.1070863446672, 23.72881055535464],
+            [116.3224936553329, 23.72881055535464],
+            [116.3246128060812, 23.00647455782205]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0047",
+      "target_name": "fossil_Madrid_Spain",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-3.705769999999973, 40.42028000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.174594353967393, 40.05909846871432],
+            [-3.236945646032581, 40.05909846871432],
+            [-3.23191784729778, 40.77951759119254],
+            [-4.179622152702166, 40.77951759119254],
+            [-4.174594353967393, 40.05909846871432]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0048",
+      "target_name": "fossil_Kolkata_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [88.37124000000006, 22.57054000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [87.98330534002241, 22.20885689265919],
+            [88.7591746599777, 22.20885689265919],
+            [88.76120141140865, 22.93126571471385],
+            [87.98127858859141, 22.93126571471385],
+            [87.98330534002241, 22.20885689265919]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0049",
+      "target_name": "fossil_Pusan_South_Korea",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [129.0402800000001, 35.31]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [128.6023790313168, 34.94866504749815],
+            [129.4781809686833, 34.94866504749815],
+            [129.4820841957757, 35.66971360945325],
+            [128.5984758042244, 35.66971360945325],
+            [128.6023790313168, 34.94866504749815]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0050",
+      "target_name": "fossil_Sydney_Australia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [151.2069100000001, -33.86959999999993]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [150.7727662361588, -34.22944107671659],
+            [151.6410537638415, -34.22944107671659],
+            [151.6374179811712, -33.50822130019899],
+            [150.776402018829, -33.50822130019899],
+            [150.7727662361588, -34.22944107671659]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0051",
+      "target_name": "fossil_Xian_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [108.92512, 34.27050000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [108.4926069855866, 33.90913344755847],
+            [109.3576330144135, 33.90913344755847],
+            [109.3613413800788, 34.63030590628238],
+            [108.4888986199213, 34.63030590628238],
+            [108.4926069855866, 33.90913344755847]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0052",
+      "target_name": "fossil_Chengdu_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [104.0758000000001, 30.67190000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [103.6599319449112, 30.31042617547351],
+            [104.4916680550889, 30.31042617547351],
+            [104.4947704948681, 31.03201285731109],
+            [103.656829505132, 31.03201285731109],
+            [103.6599319449112, 30.31042617547351]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0053",
+      "target_name": "fossil_Huhot_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.54583, 25.76444000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [118.1482880505816, 25.40283201898684],
+            [118.9433719494185, 25.40283201898684],
+            [118.9457843363251, 26.12493781023424],
+            [118.145875663675, 26.12493781023424],
+            [118.1482880505816, 25.40283201898684]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0054",
+      "target_name": "fossil_Boston_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-71.05673999999993, 42.35866000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.53951971757938, 41.9975334610992],
+            [-70.57396028242053, 41.9975334610992],
+            [-70.5684158529999, 42.71770768811299],
+            [-71.545064147, 42.71770768811299],
+            [-71.53951971757938, 41.9975334610992]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0055",
+      "target_name": "fossil_Baotou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [109.8222200000001, 40.65222000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [109.3517967223803, 40.29104518956779],
+            [110.2926432776198, 40.29104518956779],
+            [110.2977298938101, 41.01143513439498],
+            [109.34671010619, 41.01143513439498],
+            [109.3517967223803, 40.29104518956779]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0056",
+      "target_name": "fossil_Taiyuan_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [112.54952, 37.88141000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [112.0970381338729, 37.52015313107295],
+            [113.0020018661272, 37.52015313107295],
+            [113.0064329837939, 38.24088862417344],
+            [112.0926070162062, 38.24088862417344],
+            [112.0970381338729, 37.52015313107295]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0057",
+      "target_name": "fossil_Denver_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-104.99202, 39.74001000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-105.4562605798458, 39.37880857456348],
+            [-104.5277794201541, 39.37880857456348],
+            [-104.5229197593719, 40.09931303640251],
+            [-105.4611202406281, 40.09931303640251],
+            [-105.4562605798458, 39.37880857456348]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0058",
+      "target_name": "fossil_Athens_Greece",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [23.73640000000006, 37.97614000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [23.28334471993969, 37.61488598651998],
+            [24.18945528006043, 37.61488598651998],
+            [24.19390721837294, 38.33560978975403],
+            [23.27889278162718, 38.33560978975403],
+            [23.28334471993969, 37.61488598651998]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0059",
+      "target_name": "fossil_Atlanta_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-84.39110999999997, 33.74831000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.82101917107379, 33.38692763129029],
+            [-83.96120082892614, 33.38692763129029],
+            [-83.95758673514426, 34.10816167019384],
+            [-84.82463326485566, 34.10816167019384],
+            [-84.82101917107379, 33.38692763129029]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0060",
+      "target_name": "fossil_Seattle_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-122.32945, 47.60357000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.8577782081765, 47.24257215960529],
+            [-121.8011217918234, 47.24257215960529],
+            [-121.793827249403, 47.96207827887452],
+            [-122.865072750597, 47.96207827887452],
+            [-122.8577782081765, 47.24257215960529]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0061",
+      "target_name": "fossil_Yinchuan_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [106.2652100000001, 38.46662000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [105.8091422769001, 38.10538072817311],
+            [106.7212777231001, 38.10538072817311],
+            [106.7258391585178, 38.82604384945809],
+            [105.8045808414823, 38.82604384945809],
+            [105.8091422769001, 38.10538072817311]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0062",
+      "target_name": "fossil_Sao_Paulo_Brazil",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-46.65467999999998, -23.56286999999998]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-47.0475622270171, -23.92352690864139],
+            [-46.26179777298287, -23.92352690864139],
+            [-46.26393985627493, -23.20120898706307],
+            [-47.04542014372504, -23.20120898706307],
+            [-47.0475622270171, -23.92352690864139]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0063",
+      "target_name": "fossil_Berlin_Germany",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [13.37691000000007, 52.51604000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [12.79245342578753, 52.15511822704568],
+            [13.9613665742126, 52.15511822704568],
+            [13.97098349025941, 52.87400614025717],
+            [12.78283650974072, 52.87400614025717],
+            [12.79245342578753, 52.15511822704568]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0064",
+      "target_name": "fossil_Minneapolis_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-93.26493999999997, 44.97902000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.7689180723804, 44.61796227014347],
+            [-92.76096192761953, 44.61796227014347],
+            [-92.75461635714228, 45.33780293049721],
+            [-93.77526364285765, 45.33780293049721],
+            [-93.7689180723804, 44.61796227014347]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0065",
+      "target_name": "fossil_Zhengzhou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [113.6486100000001, 34.75778000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.2136057706243, 34.39642824650009],
+            [114.0836142293758, 34.39642824650009],
+            [114.0874127148367, 35.11754283791313],
+            [113.2098072851634, 35.11754283791313],
+            [113.2136057706243, 34.39642824650009]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0066",
+      "target_name": "fossil_Chongqing_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [106.55278, 29.56278000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.1414661791146, 29.2012743069914],
+            [106.9640938208855, 29.2012743069914],
+            [106.9670281165704, 29.9229833690706],
+            [106.1385318834297, 29.9229833690706],
+            [106.1414661791146, 29.2012743069914]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0067",
+      "target_name": "fossil_Doha_Qatar",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [51.51907000000006, 25.29502000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [51.12304724029713, 24.93340027700211],
+            [51.91509275970299, 24.93340027700211],
+            [51.91744573077747, 25.65555246574329],
+            [51.12069426922264, 25.65555246574329],
+            [51.12304724029713, 24.93340027700211]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0068",
+      "target_name": "fossil_Mumbai_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [72.83486000000005, 18.94017000000002]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [72.4559079657653, 18.57841708387648],
+            [73.21381203423482, 18.57841708387648],
+            [73.21544603408915, 19.30113140403939],
+            [72.45427396591094, 19.30113140403939],
+            [72.4559079657653, 18.57841708387648]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0069",
+      "target_name": "fossil_Ad_Damman_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [50.06027000000006, 26.44041000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [49.66047250840367, 26.07881931044243],
+            [50.46006749159645, 26.07881931044243],
+            [50.46256725586252, 26.80085722165757],
+            [49.6579727441376, 26.80085722165757],
+            [49.66047250840367, 26.07881931044243]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0070",
+      "target_name": "fossil_Wenzhou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.66682, 27.99942000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.2615044971148, 27.63787077754521],
+            [121.0721355028853, 27.63787077754521],
+            [121.0748455259006, 28.35974752458125],
+            [120.2587944740994, 28.35974752458125],
+            [120.2615044971148, 27.63787077754521]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0071",
+      "target_name": "fossil_Quanzhou_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.5805200000001, 24.91197000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [118.1857087995115, 24.5503408639302],
+            [118.9753312004887, 24.5503408639302],
+            [118.9776364266628, 25.2725304533287],
+            [118.1834035733374, 25.2725304533287],
+            [118.1857087995115, 24.5503408639302]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0072",
+      "target_name": "fossil_Brisbane_Australia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [153.0233400000001, -27.46843999999993]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [152.6173174554914, -27.82880876000389],
+            [153.4293625445087, -27.82880876000389],
+            [153.4267255591169, -27.10687641933376],
+            [152.6199544408832, -27.10687641933376],
+            [152.6173174554914, -27.82880876000389]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0073",
+      "target_name": "fossil_Dalian_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [121.6022200000001, 38.91222000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.1433510987806, 38.55099404936022],
+            [122.0610889012196, 38.55099404936022],
+            [122.0657523466084, 39.27160182543121],
+            [121.1386876533917, 39.27160182543121],
+            [121.1433510987806, 38.55099404936022]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0074",
+      "target_name": "fossil_Tel_Aviv-Yafo_Israel",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [34.78953000000007, 32.08556000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [34.36747659079845, 31.72412774360912],
+            [35.21158340920169, 31.72412774360912],
+            [35.2149121758863, 32.44555465383712],
+            [34.36414782411381, 32.44555465383712],
+            [34.36747659079845, 31.72412774360912]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0075",
+      "target_name": "fossil_Milan_Italy",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [9.18178000000006, 45.46796000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.673517846141579, 45.1069142044493],
+            [9.690042153858542, 45.1069142044493],
+            [9.696552340941452, 45.82669249486886],
+            [8.667007659058669, 45.82669249486886],
+            [8.673517846141579, 45.1069142044493]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0076",
+      "target_name": "fossil_Abu_Dhabi_UAE",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [54.37173000000007, 24.46918000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [53.97828831189895, 24.10754017799125],
+            [54.76517168810119, 24.10754017799125],
+            [54.76742252499116, 24.8297724765273],
+            [53.97603747500898, 24.8297724765273],
+            [53.97828831189895, 24.10754017799125]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0077",
+      "target_name": "fossil_Ankara_Turkey",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [32.85391000000004, 39.92109000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [32.38846447514521, 39.55989389517051],
+            [33.31935552485484, 39.55989389517051],
+            [33.32425931805037, 40.28037567688244],
+            [32.38356068194969, 40.28037567688244],
+            [32.38846447514521, 39.55989389517051]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0078",
+      "target_name": "fossil_Qingdao_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.3719400000001, 36.09861000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [119.9297627658416, 35.73729905824636],
+            [120.8141172341586, 35.73729905824636],
+            [120.818175081662, 36.4582525422405],
+            [119.9257049183382, 36.4582525422405],
+            [119.9297627658416, 35.73729905824636]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0079",
+      "target_name": "fossil_Nagoya_Japan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [136.906683388, 35.18142047000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [136.4694639788958, 34.82008160365573],
+            [137.3439027971043, 34.82008160365573],
+            [137.3477813824271, 35.54114558151836],
+            [136.465585393573, 35.54114558151836],
+            [136.4694639788958, 34.82008160365573]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0080",
+      "target_name": "fossil_Montreal_Canada",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-73.55468999999994, 45.51240000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.06334700460472, 45.15135527299766],
+            [-73.04603299539515, 45.15135527299766],
+            [-73.03950758745523, 45.87112789440741],
+            [-74.06987241254464, 45.87112789440741],
+            [-74.06334700460472, 45.15135527299766]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0081",
+      "target_name": "fossil_St_Louis_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-90.19955999999996, 38.62775000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.65663347863871, 38.26651555365709],
+            [-89.74248652136122, 38.26651555365709],
+            [-89.73788848204084, 38.98715868496308],
+            [-90.66123151795908, 38.98715868496308],
+            [-90.65663347863871, 38.26651555365709]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0082",
+      "target_name": "fossil_San_Diego_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-117.16171, 32.71568000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-117.5866643267233, 32.35426654593747],
+            [-116.7367556732767, 32.35426654593747],
+            [-116.7333213356668, 33.07562096391155],
+            [-117.5900986643332, 33.07562096391155],
+            [-117.5866643267233, 32.35426654593747]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0083",
+      "target_name": "fossil_Jinan_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [116.9972200000001, 36.66833000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.5518480608046, 36.30703638828586],
+            [117.4425919391955, 36.30703638828586],
+            [117.4467653669474, 37.02792064711629],
+            [116.5476746330528, 37.02792064711629],
+            [116.5518480608046, 36.30703638828586]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0084",
+      "target_name": "fossil_Santiago_Chile",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-70.65001999999998, -33.43721999999997]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.08196869692893, -33.79709874014473],
+            [-70.21807130307106, -33.79709874014473],
+            [-70.22163033107769, -33.07582823635627],
+            [-71.07840966892228, -33.07582823635627],
+            [-71.08196869692893, -33.79709874014473]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0085",
+      "target_name": "fossil_Rotterdam_Netherlands",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [4.478480000000047, 51.92282000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.901659813800762, 51.56189216870542],
+            [5.055300186199332, 51.56189216870542],
+            [5.06458936757781, 52.28085376211946],
+            [3.892370632422313, 52.28085376211946],
+            [3.901659813800762, 51.56189216870542]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0086",
+      "target_name": "fossil_Cape_Town_South_Africa",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [18.42198000000008, -33.91908999999998]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [17.98758198266324, -34.27892674795156],
+            [18.85637801733691, -34.27892674795156],
+            [18.85273334914248, -33.55771279810824],
+            [17.99122665085767, -33.55771279810824],
+            [17.98758198266324, -34.27892674795156]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0087",
+      "target_name": "fossil_Hyderabad_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [78.47076000000004, 17.39487000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [78.09505693843812, 17.0330931936598],
+            [78.84646306156196, 17.0330931936598],
+            [78.84794180976229, 17.75592382386027],
+            [78.09357819023779, 17.75592382386027],
+            [78.09505693843812, 17.0330931936598]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0088",
+      "target_name": "fossil_Ho_Chi_Minh_City_Vietnam",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [106.70322, 10.77822000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.3379127896571, 10.41638663409381],
+            [107.0685272103431, 10.41638663409381],
+            [107.0694003949046, 11.13961325125899],
+            [106.3370396050955, 11.13961325125899],
+            [106.3379127896571, 10.41638663409381]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0089",
+      "target_name": "fossil_Barcelona_Spain",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [2.170010000000048, 41.38804000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [1.694388971000706, 41.02688627471441],
+            [2.645631028999389, 41.02688627471441],
+            [2.650909492173042, 41.74718341130998],
+            [1.689110507827053, 41.74718341130998],
+            [1.694388971000706, 41.02688627471441]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0090",
+      "target_name": "fossil_Baltimore_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-76.60925999999995, 39.29058000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.07055665053036, 38.92936529799321],
+            [-76.14796334946955, 38.92936529799321],
+            [-76.14321132649216, 39.64992592910962],
+            [-77.07530867350775, 39.64992592910962],
+            [-77.07055665053036, 38.92936529799321]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0091",
+      "target_name": "fossil_Changchun_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [125.3036800000001, 43.88415000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [124.8089085533287, 43.52306444182543],
+            [125.7984514466715, 43.52306444182543],
+            [125.8044464271169, 44.24304468412491],
+            [124.8029135728832, 44.24304468412491],
+            [124.8089085533287, 43.52306444182543]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0092",
+      "target_name": "fossil_Almaty_Kazakhstan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [76.88814000000008, 43.25066000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [76.39846239191127, 42.88955770989836],
+            [77.37781760808889, 42.88955770989836],
+            [77.38362039563873, 43.60961860252912],
+            [76.39265960436143, 43.60961860252912],
+            [76.39846239191127, 42.88955770989836]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0093",
+      "target_name": "fossil_Birmingham_UK",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-1.905919999999981, 52.47891000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-2.489890819644955, 52.11798787707743],
+            [-1.321949180355006, 52.11798787707743],
+            [-1.312353225817134, 52.83688039182196],
+            [-2.499486774182827, 52.83688039182196],
+            [-2.489890819644955, 52.11798787707743]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0094",
+      "target_name": "fossil_Hefei_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [117.28083, 31.86389000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.8597756381411, 31.50245116540088],
+            [117.7018843618589, 31.50245116540088],
+            [117.7051766975276, 32.22390339571654],
+            [116.8564833024725, 32.22390339571654],
+            [116.8597756381411, 31.50245116540088]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0095",
+      "target_name": "fossil_Shijiazhuang_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [114.4786100000001, 38.04139000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [114.025158182462, 37.68013795188612],
+            [114.9320618175383, 37.68013795188612],
+            [114.9365281580433, 38.40085369736966],
+            [114.020691841957, 38.40085369736966],
+            [114.025158182462, 37.68013795188612]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0096",
+      "target_name": "fossil_Harbin_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [126.6395100000001, 45.75553000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.128676378208, 45.39449106960001],
+            [127.1503436217922, 45.39449106960001],
+            [127.1569530841141, 46.11423267698813],
+            [126.1220669158861, 46.11423267698813],
+            [126.128676378208, 45.39449106960001]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0097",
+      "target_name": "fossil_Cleveland_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-81.69073999999995, 41.50473000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-82.16720317383893, 41.14357958290093],
+            [-81.21427682616095, 41.14357958290093],
+            [-81.20896718278155, 41.8638619701883],
+            [-82.17251281721833, 41.8638619701883],
+            [-82.16720317383893, 41.14357958290093]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0098",
+      "target_name": "fossil_Fremantle_Australia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [115.75351, -32.04731999999996]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.3283072685109, -32.40731789241255],
+            [116.1787127314891, -32.40731789241255],
+            [116.1753902753291, -31.68588660738179],
+            [115.331629724671, -31.68588660738179],
+            [115.3283072685109, -32.40731789241255]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0099",
+      "target_name": "fossil_Durban_South_Africa",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [31.02590000000004, -29.84704999999997]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [30.61046651117221, -30.20723036039065],
+            [31.44133348882789, -30.20723036039065],
+            [31.43835684462118, -29.48555240384543],
+            [30.61344315537889, -29.48555240384543],
+            [30.61046651117221, -30.20723036039065]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0100",
+      "target_name": "fossil_Las_Vegas_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-115.14001, 36.17193000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-115.5825933486158, 35.81062128991481],
+            [-114.6974266513841, 35.81062128991481],
+            [-114.6933541157368, 36.53156588951541],
+            [-115.5866658842631, 36.53156588951541],
+            [-115.5825933486158, 35.81062128991481]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0101",
+      "target_name": "fossil_Lima_Peru",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-77.02823999999998, -12.04317999999995]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.39609824537703, -12.40451559814658],
+            [-76.66038175462293, -12.40451559814658],
+            [-76.66136465073808, -11.68135130345411],
+            [-77.39511534926189, -11.68135130345411],
+            [-77.39609824537703, -12.40451559814658]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0102",
+      "target_name": "fossil_Mashhad_Iran",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [59.56796000000003, 36.31559000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [59.124576648231, 35.95428566158483],
+            [60.01134335176909, 35.95428566158483],
+            [60.01544482492488, 36.67521283222335],
+            [59.12047517507517, 36.67521283222335],
+            [59.124576648231, 35.95428566158483]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0103",
+      "target_name": "fossil_Kansas_City_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-94.58310999999998, 39.10344000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95.04320014580638, 38.74221974199199],
+            [-94.12301985419357, 38.74221974199199],
+            [-94.11831187138283, 39.46280370818921],
+            [-95.04790812861712, 39.46280370818921],
+            [-95.04320014580638, 38.74221974199199]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0104",
+      "target_name": "fossil_Guiyang_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [106.69473, 26.57242000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [106.2944825240822, 26.21083273809241],
+            [107.0949774759179, 26.21083273809241],
+            [107.0974945623587, 26.93285724877595],
+            [106.2919654376415, 26.93285724877595],
+            [106.2944825240822, 26.21083273809241]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0105",
+      "target_name": "fossil_Chennai_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [80.28252000000003, 13.08362000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.91421040572936, 12.72179740459086],
+            [80.6508295942707, 12.72179740459086],
+            [80.6519045951469, 13.44490557786094],
+            [79.91313540485316, 13.44490557786094],
+            [79.91421040572936, 12.72179740459086]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0106",
+      "target_name": "fossil_Caracas_Venezuela",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-66.87918999999994, 10.48801000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-67.24416422689075, 10.12617599670484],
+            [-66.51421577310913, 10.12617599670484],
+            [-66.51336743719598, 10.84941598556997],
+            [-67.2450125628039, 10.84941598556997],
+            [-67.24416422689075, 10.12617599670484]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0107",
+      "target_name": "fossil_Bangalore_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [77.58742000000007, 12.96685000000002]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [77.21927795250326, 12.60502661999094],
+            [77.95556204749687, 12.60502661999094],
+            [77.9566266213235, 13.32814130789641],
+            [77.21821337867664, 13.32814130789641],
+            [77.21927795250326, 12.60502661999094]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0108",
+      "target_name": "fossil_Orlando_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-81.37738999999993, 28.53823000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-81.784718779048, 28.17669557748333],
+            [-80.97006122095186, 28.17669557748333],
+            [-80.96727549917266, 28.89851519407821],
+            [-81.78750450082721, 28.89851519407821],
+            [-81.784718779048, 28.17669557748333]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0109",
+      "target_name": "fossil_Baghdad_Iraq",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [44.39309000000003, 33.34213000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [43.96516013579969, 32.98073536938481],
+            [44.82101986420037, 32.98073536938481],
+            [44.82456221989017, 33.7020169855284],
+            [43.96161778010989, 33.7020169855284],
+            [43.96516013579969, 32.98073536938481]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0110",
+      "target_name": "fossil_Sacramento_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-121.49085, 38.57944000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-121.9476210870275, 38.218204107853],
+            [-121.0340789129725, 38.218204107853],
+            [-121.0294918816013, 38.93885323533197],
+            [-121.9522081183987, 38.93885323533197],
+            [-121.9476210870275, 38.218204107853]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0111",
+      "target_name": "fossil_Bogota_Colombia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-74.06940999999995, 4.614960000000053]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-74.42972177036602, 4.253149579496219],
+            [-73.70909822963392, 4.253149579496219],
+            [-73.70873325297279, 4.976583622398371],
+            [-74.43008674702715, 4.976583622398371],
+            [-74.42972177036602, 4.253149579496219]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0112",
+      "target_name": "fossil_Taegu_South_Korea",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [128.5911100000001, 35.87028000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [128.1501880825395, 35.50896210690301],
+            [129.0320319174607, 35.50896210690301],
+            [129.0360443693155, 36.22994321061527],
+            [128.1461756306846, 36.22994321061527],
+            [128.1501880825395, 35.50896210690301]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0113",
+      "target_name": "fossil_Urumqi_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [87.58627000000007, 43.78787000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [87.09228347514562, 43.42678192697451],
+            [88.08025652485452, 43.42678192697451],
+            [88.08622180930661, 44.14677443358769],
+            [87.08631819069353, 44.14677443358769],
+            [87.09228347514562, 43.42678192697451]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0114",
+      "target_name": "fossil_Vienna_Austria",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [16.36842000000007, 48.20263000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [15.83403818281636, 47.84164423095834],
+            [16.90280181718379, 47.84164423095834],
+            [16.91033749533167, 48.5610742059281],
+            [15.82650250466847, 48.5610742059281],
+            [15.83403818281636, 47.84164423095834]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0115",
+      "target_name": "fossil_Manila_Philippines",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.98454, 14.58864000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.6139195967158, 14.22682972712524],
+            [121.3551604032842, 14.22682972712524],
+            [121.356371999823, 14.94984911650832],
+            [120.6127080001771, 14.94984911650832],
+            [120.6139195967158, 14.22682972712524]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0116",
+      "target_name": "fossil_Columbus_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-83.00274999999993, 39.96199000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.46846919615577, 39.60079509450302],
+            [-82.5370308038441, 39.60079509450302],
+            [-82.53211698071155, 40.32127174978103],
+            [-83.47338301928832, 40.32127174978103],
+            [-83.46846919615577, 39.60079509450302]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0117",
+      "target_name": "fossil_Esfahan_Iran",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [51.67761000000007, 32.65722000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [51.25292865366595, 32.29580479558014],
+            [52.1022913463342, 32.29580479558014],
+            [52.10571576172572, 33.01716597069171],
+            [51.24950423827443, 33.01716597069171],
+            [51.25292865366595, 32.29580479558014]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0118",
+      "target_name": "fossil_Portland_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-122.67563, 45.51179000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-123.1842815784977, 45.150745258349],
+            [-122.1669784215022, 45.150745258349],
+            [-122.160453222786, 45.87051795757355],
+            [-123.1908067772139, 45.87051795757355],
+            [-123.1842815784977, 45.150745258349]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0119",
+      "target_name": "fossil_Indianapolis_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-86.14995999999996, 39.76691000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-86.61437888907571, 39.40570936604208],
+            [-85.68554111092422, 39.40570936604208],
+            [-85.68067492225103, 40.12621046040641],
+            [-86.6192450777489, 40.12621046040641],
+            [-86.61437888907571, 39.40570936604208]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0120",
+      "target_name": "fossil_Zibo_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.0633300000001, 36.79056000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [117.6172608507422, 36.42927010207518],
+            [118.5093991492579, 36.42927010207518],
+            [118.513597814352, 37.15013945333836],
+            [117.6130621856482, 37.15013945333836],
+            [117.6172608507422, 36.42927010207518]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0121",
+      "target_name": "fossil_San_Antonio_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-98.49460999999997, 29.42458000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-98.90537406212593, 29.06307038953209],
+            [-98.08384593787399, 29.06307038953209],
+            [-98.08093204980563, 29.78479450725505],
+            [-98.90828795019429, 29.78479450725505],
+            [-98.90537406212593, 29.06307038953209]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0122",
+      "target_name": "fossil_Taejon_South_Korea",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [127.1897200000001, 36.08139000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.7476379329937, 35.72007853407383],
+            [127.6318020670066, 35.72007853407383],
+            [127.6358564727042, 36.44103410359179],
+            [126.743583527296, 36.44103410359179],
+            [126.7476379329937, 35.72007853407383]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0123",
+      "target_name": "fossil_Chifeng_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.9549300000001, 42.27207000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [118.4728033328494, 41.91094106778155],
+            [119.4370566671508, 41.91094106778155],
+            [119.4425767453957, 42.63112627907557],
+            [118.4672832546045, 42.63112627907557],
+            [118.4728033328494, 41.91094106778155]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0124",
+      "target_name": "fossil_Hamburg_Germany",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [9.99183000000005, 53.55375000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [9.39335852172988, 53.19283634868796],
+            [10.59030147827022, 53.19283634868796],
+            [10.60052991669522, 53.91159624721446],
+            [9.383130083304877, 53.91159624721446],
+            [9.39335852172988, 53.19283634868796]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0125",
+      "target_name": "fossil_Pune_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [73.85302000000007, 18.50422000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [73.47501798736337, 18.14245997033188],
+            [74.23102201263677, 18.14245997033188],
+            [74.23261156575245, 18.86520796481015],
+            [73.47342843424767, 18.86520796481015],
+            [73.47501798736337, 18.14245997033188]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0126",
+      "target_name": "fossil_Al_Ain_UAE",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [55.68635000000006, 24.20739000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [55.29370256672934, 23.84574396133976],
+            [56.07899743327079, 23.84574396133976],
+            [56.0812165076203, 24.56800124226665],
+            [55.29148349237983, 24.56800124226665],
+            [55.29370256672934, 23.84574396133976]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0127",
+      "target_name": "fossil_Mecca_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [39.82222000000007, 21.42111000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [39.43734226208807, 21.05940284350697],
+            [40.20709773791211, 21.05940284350697],
+            [40.20899544031363, 21.78191309549775],
+            [39.43544455968652, 21.78191309549775],
+            [39.43734226208807, 21.05940284350697]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0128",
+      "target_name": "fossil_Vancouver_Canada",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-123.1133599999999, 49.26038000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-123.6589256695129, 48.8994138536163],
+            [-122.567794330487, 48.8994138536163],
+            [-122.5598074156112, 49.61870975947681],
+            [-123.6669125843887, 49.61870975947681],
+            [-123.6589256695129, 48.8994138536163]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0129",
+      "target_name": "fossil_Datong_Shanxi_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [113.2913900000001, 40.09361000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [112.8247862928055, 39.73241894783774],
+            [113.7579937071947, 39.73241894783774],
+            [113.7629399638745, 40.4528790966168],
+            [112.8198400361256, 40.4528790966168],
+            [112.8247862928055, 39.73241894783774]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0130",
+      "target_name": "fossil_Xiamen_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [118.12774, 24.54404000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [117.7340690907122, 24.1824019696191],
+            [118.5214109092879, 24.1824019696191],
+            [118.5236708821606, 24.9046270874714],
+            [117.7318091178395, 24.9046270874714],
+            [117.7340690907122, 24.1824019696191]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0131",
+      "target_name": "fossil_Ningbo_China",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [121.53916, 29.86569000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.1266276285803, 29.50419293655447],
+            [121.9516923714198, 29.50419293655447],
+            [121.9546718101194, 30.2258688470836],
+            [121.1236481898807, 30.2258688470836],
+            [121.1266276285803, 29.50419293655447]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0132",
+      "target_name": "fossil_Taichung_Taiwan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.6482100000001, 24.16324000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.2556953942308, 23.80159292046761],
+            [121.0407246057694, 23.80159292046761],
+            [121.042938351802, 24.52385439473593],
+            [120.2534816481981, 24.52385439473593],
+            [120.2556953942308, 23.80159292046761]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0133",
+      "target_name": "fossil_Rio_de_Janeiro_Brazil",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-43.17500999999993, -22.91215999999997]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-43.5659588268291, -23.27286223496147],
+            [-42.78406117317076, -23.27286223496147],
+            [-42.7861272036435, -22.55048436371026],
+            [-43.56389279635636, -22.55048436371026],
+            [-43.5659588268291, -23.27286223496147]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0134",
+      "target_name": "fossil_St_Petersburg_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-82.63875999999993, 27.77119000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.04323944731992, 27.40963457760994],
+            [-82.23428055267993, 27.40963457760994],
+            [-82.23160210964575, 28.13153530741095],
+            [-83.0459178903541, 28.13153530741095],
+            [-83.04323944731992, 27.40963457760994]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0135",
+      "target_name": "fossil_Monterrey_Mexico",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-100.30999, 25.67093000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-100.707226268261, 25.30931966218098],
+            [-99.91275373173895, 25.30931966218098],
+            [-99.91035326166369, 26.03143474495184],
+            [-100.7096267383362, 26.03143474495184],
+            [-100.707226268261, 25.30931966218098]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0136",
+      "target_name": "fossil_Hanoi_Vietnam",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [105.8546400000001, 21.02888000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [105.4707593157808, 20.66716503492036],
+            [106.2385206842193, 20.66716503492036],
+            [106.2403753980414, 21.38970892281822],
+            [105.4689046019588, 21.38970892281822],
+            [105.4707593157808, 20.66716503492036]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0137",
+      "target_name": "fossil_Rome_Italy",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [12.49565000000007, 41.90322000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [12.01627319547353, 41.54208080051245],
+            [12.97502680452661, 41.54208080051245],
+            [12.98044454291315, 42.26231276146891],
+            [12.01085545708699, 42.26231276146891],
+            [12.01627319547353, 41.54208080051245]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0138",
+      "target_name": "fossil_New_Orleans_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-90.07774999999998, 29.95370000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.49063994074224, 29.59220545468573],
+            [-89.66486005925772, 29.59220545468573],
+            [-89.66186739657115, 30.31387169428743],
+            [-90.49363260342881, 30.31387169428743],
+            [-90.49063994074224, 29.59220545468573]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0139",
+      "target_name": "fossil_Al_Hofuf_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [49.58751000000007, 25.36824000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [49.19125278843566, 25.00662209373048],
+            [49.98376721156447, 25.00662209373048],
+            [49.98612938394075, 25.72876708600977],
+            [49.18889061605938, 25.72876708600977],
+            [49.19125278843566, 25.00662209373048]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0140",
+      "target_name": "fossil_Chios_Turkey",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [29.04675000000003, 40.19208000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.57948073383727, 39.83089182431041],
+            [29.51401926616279, 39.83089182431041],
+            [29.51898994473268, 40.5513396149548],
+            [28.57451005526738, 40.5513396149548],
+            [28.57948073383727, 39.83089182431041]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0141",
+      "target_name": "fossil_Naples_Italy",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [14.25226000000004, 40.84014000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.78052752756346, 40.4789706096864],
+            [14.72399247243661, 40.4789706096864],
+            [14.72912731600502, 41.19933688646658],
+            [13.77539268399505, 41.19933688646658],
+            [13.78052752756346, 40.4789706096864]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0142",
+      "target_name": "fossil_Guadalajara_Mexico",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-103.35104, 20.68758000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.7340718120712, 20.32585841064977],
+            [-102.9680081879287, 20.32585841064977],
+            [-102.9661904667078, 21.04843115464374],
+            [-103.7358895332921, 21.04843115464374],
+            [-103.7340718120712, 20.32585841064977]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0143",
+      "target_name": "fossil_Kaoshsiung_Taiwan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.31226, 22.62014000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [119.9241888198332, 22.25845796840402],
+            [120.7003311801668, 22.25845796840402],
+            [120.7023636074748, 22.98086231927072],
+            [119.9221563925252, 22.98086231927072],
+            [119.9241888198332, 22.25845796840402]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0144",
+      "target_name": "fossil_Dhaka_Bangladesh",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [90.39957000000004, 23.71323000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [90.00839097654466, 23.35157243757066],
+            [90.79074902345542, 23.35157243757066],
+            [90.79290891719256, 24.07387632343744],
+            [90.00623108280752, 24.07387632343744],
+            [90.00839097654466, 23.35157243757066]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0145",
+      "target_name": "fossil_Calgary_Canada",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-114.06301, 51.04532000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-114.6290037139977, 50.68438145855307],
+            [-113.4970162860022, 50.68438145855307],
+            [-113.4881852417383, 51.40345263381045],
+            [-114.6378347582616, 51.40345263381045],
+            [-114.6290037139977, 50.68438145855307]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0146",
+      "target_name": "fossil_Pittsburgh_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-79.99733999999995, 40.43851000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.46628935310258, 40.07732899816616],
+            [-79.52839064689732, 40.07732899816616],
+            [-79.52335825320817, 40.79774582876508],
+            [-80.47132174679173, 40.79774582876508],
+            [-80.46628935310258, 40.07732899816616]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0147",
+      "target_name": "fossil_Austin_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.74298999999996, 30.26759000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-98.1571682609012, 29.9061044739201],
+            [-97.32881173909873, 29.9061044739201],
+            [-97.32577151071882, 30.62773608159921],
+            [-98.1602084892811, 30.62773608159921],
+            [-98.1571682609012, 29.9061044739201]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0148",
+      "target_name": "fossil_Amman_Jordan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [35.94042000000007, 31.95180000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [35.51897075713185, 31.59036377177461],
+            [36.36186924286829, 31.59036377177461],
+            [36.36517598312224, 32.31180597217597],
+            [35.51566401687791, 32.31180597217597],
+            [35.51897075713185, 31.59036377177461]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0149",
+      "target_name": "fossil_Salt_Lake_City_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-111.88822, 40.76031000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-112.3593948040455, 40.39913830999709],
+            [-111.4170451959545, 40.39913830999709],
+            [-111.4119309030335, 41.11951464415647],
+            [-112.3645090969665, 41.11951464415647],
+            [-112.3593948040455, 40.39913830999709]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0150",
+      "target_name": "fossil_Medina_Saudi_Arabia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [39.60641000000004, 24.46728000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [39.21297411750311, 24.1056401325987],
+            [39.99984588249697, 24.1056401325987],
+            [40.00209648781984, 24.82787261317303],
+            [39.21072351218024, 24.82787261317303],
+            [39.21297411750311, 24.1056401325987]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0151",
+      "target_name": "fossil_Adelaide_Australia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [138.5998000000001, -34.92584999999997]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.1600924295792, -35.28559790214575],
+            [139.0395075704209, -35.28559790214575],
+            [139.0356775051696, -34.56450335739547],
+            [138.1639224948306, -34.56450335739547],
+            [138.1600924295792, -35.28559790214575]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0152",
+      "target_name": "fossil_Warsaw_Poland",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [21.01037000000002, 52.23560000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [20.42955634677949, 51.87467548625531],
+            [21.59118365322055, 51.87467548625531],
+            [21.60064374690145, 52.59359818852742],
+            [20.42009625309859, 52.59359818852742],
+            [20.42955634677949, 51.87467548625531]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0153",
+      "target_name": "fossil_Omsk_Russia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [73.36476000000005, 54.99471000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [72.74532332621322, 54.63380189182949],
+            [73.98419667378687, 54.63380189182949],
+            [73.99536458773895, 55.35238611138777],
+            [72.73415541226115, 55.35238611138777],
+            [72.74532332621322, 54.63380189182949]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0154",
+      "target_name": "fossil_Astana_Kazakhstan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [71.42830000000004, 51.12771000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [70.8613127695489, 50.76677254914924],
+            [71.99528723045117, 50.76677254914924],
+            [72.00416000169795, 51.48583340754745],
+            [70.85243999830209, 51.48583340754745],
+            [70.8613127695489, 50.76677254914924]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0155",
+      "target_name": "fossil_Maebashi_Japan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [139.0634184300001, 36.38949739100008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.6196212894588, 36.02819530104563],
+            [139.5072155705413, 36.02819530104563],
+            [139.5113320131309, 36.74911349431289],
+            [138.6155048468693, 36.74911349431289],
+            [138.6196212894588, 36.02819530104563]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0156",
+      "target_name": "fossil_Tabriz_Iran",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [46.29190000000006, 38.08000000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [45.83821293639852, 37.71874911426097],
+            [46.74558706360159, 37.71874911426097],
+            [46.75006194976481, 38.43946008958064],
+            [45.8337380502353, 38.43946008958064],
+            [45.83821293639852, 37.71874911426097]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0157",
+      "target_name": "fossil_Ahmadabad_India",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [72.60025000000007, 23.02777000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [72.21104215840745, 22.66609692454589],
+            [72.9894578415927, 22.66609692454589],
+            [72.9915372645388, 23.38846423952132],
+            [72.20896273546134, 23.38846423952132],
+            [72.21104215840745, 22.66609692454589]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0158",
+      "target_name": "fossil_Sohag_Egypt",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [31.69545000000005, 26.55513000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [31.29526163914551, 26.19354228823396],
+            [32.09563836085459, 26.19354228823396],
+            [32.09815317362964, 26.91556855670188],
+            [31.29274682637046, 26.91556855670188],
+            [31.29526163914551, 26.19354228823396]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0159",
+      "target_name": "fossil_Munich_Germany",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [11.57754000000006, 48.13641000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [11.043837058457, 47.77542292932183],
+            [12.11124294154311, 47.77542292932183],
+            [12.11875147036588, 48.49486131462268],
+            [11.03632852963423, 48.49486131462268],
+            [11.043837058457, 47.77542292932183]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0160",
+      "target_name": "fossil_Ahvaz_Iran",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [48.66930000000008, 31.32030000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [48.25064922699363, 30.9588451239836],
+            [49.08795077300653, 30.9588451239836],
+            [49.09115527694541, 31.68035903125548],
+            [48.24744472305474, 31.68035903125548],
+            [48.25064922699363, 30.9588451239836]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0161",
+      "target_name": "fossil_Baabda_Lebanon",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [35.96785000000006, 34.51451000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [35.534096992207, 34.15315085428782],
+            [36.40160300779311, 34.15315085428782],
+            [36.40535623717096, 34.87429438308867],
+            [35.53034376282915, 34.87429438308867],
+            [35.534096992207, 34.15315085428782]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0162",
+      "target_name": "fossil_Rostov-on-Don_Russia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [39.71676000000008, 47.22691000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [39.19213893391324, 46.86590423970592],
+            [40.24138106608692, 46.86590423970592],
+            [40.24852899456761, 47.58545829598945],
+            [39.18499100543255, 47.58545829598945],
+            [39.19213893391324, 46.86590423970592]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0163",
+      "target_name": "fossil_Prague_Czech_Republic",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [14.43302000000006, 50.07913000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.87833752012821, 49.71817742854763],
+            [14.9877024798719, 49.71817742854763],
+            [14.99606288817577, 50.4373699803516],
+            [13.86997711182434, 50.4373699803516],
+            [13.87833752012821, 49.71817742854763]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0164",
+      "target_name": "fossil_San_Cristobal_Dominican_Republic",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-70.09999999999997, 18.41667000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-70.47781442165007, 18.0549085766818],
+            [-69.72218557834987, 18.0549085766818],
+            [-69.72060488822633, 18.77766325288781],
+            [-70.4793951117736, 18.77766325288781],
+            [-70.47781442165007, 18.0549085766818]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0165",
+      "target_name": "fossil_Amsterdam_Netherlands",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [4.907880000000034, 52.36993000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.325328839494603, 52.00900682704061],
+            [5.490431160505466, 52.00900682704061],
+            [5.499965942380811, 52.72791285570358],
+            [4.315794057619257, 52.72791285570358],
+            [4.325328839494603, 52.00900682704061]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0166",
+      "target_name": "fossil_Bucharest_Romania",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [26.10298000000006, 44.43429000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [25.60364786538, 44.07321860693519],
+            [26.60231213462012, 44.07321860693519],
+            [26.60848025588447, 44.79312873515497],
+            [25.59747974411565, 44.79312873515497],
+            [25.60364786538, 44.07321860693519]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0167",
+      "target_name": "fossil_Maracaibo_Venezuela",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-71.59756999999996, 10.68769000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.96277227234074, 10.32585641771357],
+            [-71.23236772765918, 10.32585641771357],
+            [-71.23150230682644, 11.04908724347818],
+            [-71.96363769317348, 11.04908724347818],
+            [-71.96277227234074, 10.32585641771357]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0168",
+      "target_name": "fossil_Lahore_Pakistan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [74.34361000000007, 31.54972000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [73.92395276506886, 31.18827187794354],
+            [74.76326723493128, 31.18827187794354],
+            [74.76650855038372, 31.90975982734824],
+            [73.92071144961642, 31.90975982734824],
+            [73.92395276506886, 31.18827187794354]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0169",
+      "target_name": "fossil_Budapest_Hungary",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [19.05508000000003, 47.49972000000008]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [18.52778141472987, 47.13872000078531],
+            [19.58237858527019, 47.13872000078531],
+            [19.58963232745569, 47.85823933267335],
+            [18.52052767254438, 47.85823933267335],
+            [18.52778141472987, 47.13872000078531]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0170",
+      "target_name": "fossil_Ashgabat_Turkmenistan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [58.38333000000006, 37.95000000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [57.93043321826156, 37.58874519882993],
+            [58.83622678173856, 37.58874519882994],
+            [58.8406729643163, 38.30947222878655],
+            [57.92598703568382, 38.30947222878655],
+            [57.93043321826156, 37.58874519882993]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0171",
+      "target_name": "fossil_Brussels_Belgium",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [4.356090000000052, 50.84439000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.792499788219885, 50.483448727441],
+            [4.919680211780218, 50.483448727441],
+            [4.928410571904351, 51.2025450860602],
+            [3.783769428095752, 51.2025450860602],
+            [3.792499788219885, 50.483448727441]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0172",
+      "target_name": "fossil_Katowice_Poland",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [19.03105000000005, 50.25641000000007]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [18.47433800095305, 49.89546016937752],
+            [19.58776199904705, 49.89546016937752],
+            [19.59620625604754, 50.61463039951276],
+            [18.46589374395256, 50.61463039951276],
+            [18.47433800095305, 49.89546016937752]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0173",
+      "target_name": "fossil_Kuybyskev_Russia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [50.15000000000003, 53.20006000000006]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [49.55640236329623, 52.83914394833862],
+            [50.74359763670384, 52.83914394833862],
+            [50.7536119265327, 53.55794734739364],
+            [49.54638807346737, 53.55794734739364],
+            [49.55640236329623, 52.83914394833862]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0174",
+      "target_name": "fossil_Karachi_Pakistan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [67.08220000000006, 24.90560000000005]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [66.68740873598495, 24.54397070870306],
+            [67.47699126401517, 24.54397070870306],
+            [67.47929570170373, 25.26616091652592],
+            [66.68510429829641, 25.26616091652592],
+            [66.68740873598495, 24.54397070870306]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0175",
+      "target_name": "fossil_Lagos_Nigeria",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [3.388760000000048, 6.454710000000034]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.027406169901752, 6.092884533747503],
+            [3.750113830098343, 6.092884533747503],
+            [3.750626938985988, 6.816273711517654],
+            [3.026893061014107, 6.816273711517654],
+            [3.027406169901752, 6.092884533747503]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0176",
+      "target_name": "fossil_Luanda_Angola",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [13.23288000000002, -8.81565999999998]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [12.86892580103418, -9.177135759114783],
+            [13.59683419896587, -9.177135759114783],
+            [13.59612697193003, -8.453825550507268],
+            [12.86963302807001, -8.453825550507268],
+            [12.86892580103418, -9.177135759114783]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0177",
+      "target_name": "fossil_Peshawar_Pakistan",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [71.57849000000004, 34.00800000000004]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [71.14729432784742, 33.64662549036558],
+            [72.00968567215267, 33.64662549036558],
+            [72.01334635587389, 34.36782896205548],
+            [71.14363364412623, 34.36782896205548],
+            [71.14729432784742, 33.64662549036558]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0178",
+      "target_name": "fossil_Khartoum_Sudan",
+      "target_location": { "type": "Point", "coordinates": [32.5599, 15.5007] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [32.18774015129756, 15.13889914365469],
+            [32.93205984870244, 15.13889914365469],
+            [32.9333563706769, 15.86186044471589],
+            [32.18644362932309, 15.86186044471589],
+            [32.18774015129756, 15.13889914365469]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0179",
+      "target_name": "fossil_Nairobi_Kenya",
+      "target_location": { "type": "Point", "coordinates": [36.8219, -1.2921] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [36.46242514690999, -1.653812627211711],
+            [37.18137485309001, -1.653812627211711],
+            [37.18127317115574, -0.9303351668843962],
+            [36.46252682884426, -0.9303351668843962],
+            [36.46242514690999, -1.653812627211711]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0180",
+      "target_name": "fossil_Miller_Power_Plant_USA",
+      "target_location": { "type": "Point", "coordinates": [-87.12, 33.64] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-87.54937747621666, 33.27861435774051],
+            [-86.69062252378335, 33.27861435774051],
+            [-86.68702769323404, 33.99986111141043],
+            [-87.55297230676595, 33.99986111141043],
+            [-87.54937747621666, 33.27861435774051]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0181",
+      "target_name": "fossil_Tutuka_and_Majuba_Powerplant",
+      "target_location": { "type": "Point", "coordinates": [29.56, -26.95] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [29.25715489208176, -27.2204189393692],
+            [29.86284510791825, -27.2204189393692],
+            [29.86140111181436, -26.67892361530905],
+            [29.25859888818565, -26.67892361530905],
+            [29.25715489208176, -27.2204189393692]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0182",
+      "target_name": "fossil_Janschwalde_Germany",
+      "target_location": { "type": "Point", "coordinates": [14.5, 51.62] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.92697782390601, 51.25906870198528],
+            [15.07302217609399, 51.25906870198528],
+            [15.08214977562977, 51.97806803501818],
+            [13.91785022437023, 51.97806803501818],
+            [13.92697782390601, 51.25906870198528]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0183",
+      "target_name": "fossil_Colstrip_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-106.611, 45.8816]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-106.9955957134043, 45.61103826612251],
+            [-106.2264042865957, 45.61103826612251],
+            [-106.2226616618759, 46.1508419277396],
+            [-106.9993383381241, 46.1508419277396],
+            [-106.9955957134043, 45.61103826612251]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0184",
+      "target_name": "fossil_Monroe_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-83.342, 41.895] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.70198834651617, 41.62433307059568],
+            [-82.98201165348382, 41.62433307059568],
+            [-82.97896545289947, 42.1645161638929],
+            [-83.70503454710054, 42.1645161638929],
+            [-83.70198834651617, 41.62433307059568]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0185",
+      "target_name": "fossil_Comanche_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-104.579787, 38.2]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.9210194669343, 37.92922940483805],
+            [-104.2385545330657, 37.92922940483805],
+            [-104.2360224135742, 38.46975901129181],
+            [-104.9235515864258, 38.46975901129181],
+            [-104.9210194669343, 37.92922940483805]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0186",
+      "target_name": "fossil_Sammis_Cardinal_Mansfield_powerplants",
+      "target_location": { "type": "Point", "coordinates": [-80.56, 40.415] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.91205638843371, 40.14429197032326],
+            [-80.20794361156628, 40.14429197032326],
+            [-80.20511623086249, 40.68461479074027],
+            [-80.91488376913752, 40.68461479074027],
+            [-80.91205638843371, 40.14429197032326]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0187",
+      "target_name": "fossil_Keystone_HomerCity_Conemaugh_Powerplants",
+      "target_location": { "type": "Point", "coordinates": [-79.194, 40.513] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.54656352960527, 40.24229471410003],
+            [-78.84143647039474, 40.24229471410003],
+            [-78.83859516793287, 40.78260831503266],
+            [-79.54940483206714, 40.78260831503266],
+            [-79.54656352960527, 40.24229471410003]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0188",
+      "target_name": "fossil_Bowen_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-84.922, 34.124] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-85.24617242264931, 33.85311389248429],
+            [-84.59782757735067, 33.85311389248429],
+            [-84.5957566376153, 34.39401300834266],
+            [-85.2482433623847, 34.39401300834266],
+            [-85.24617242264931, 33.85311389248429]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0189",
+      "target_name": "fossil_Scherer_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-83.81, 33.061] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.1302605038282, 32.79008423628199],
+            [-83.48973949617181, 32.79008423628199],
+            [-83.48777441142404, 33.33107663794469],
+            [-84.13222558857596, 33.33107663794469],
+            [-84.1302605038282, 32.79008423628199]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0190",
+      "target_name": "fossil_Boundary_Dam_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-103.0305, 49.09606]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.4390712198068, 48.82557362507836],
+            [-102.6219287801932, 48.82557362507836],
+            [-102.6174768432259, 49.36507188782073],
+            [-103.4435231567741, 49.36507188782073],
+            [-103.4390712198068, 48.82557362507836]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0191",
+      "target_name": "fossil_Sheerness_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-111.7861, 51.5317]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-112.215885181463, 51.26126241392286],
+            [-111.3563148185371, 51.26126241392286],
+            [-111.3512066657587, 51.80053206717378],
+            [-112.2209933342413, 51.80053206717378],
+            [-112.215885181463, 51.26126241392286]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0192",
+      "target_name": "fossil_Dofasco_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-79.8111, 43.2597]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.17894920074745, 42.98907015881238],
+            [-79.44325079925254, 42.98907015881238],
+            [-79.43998522712147, 43.52912367381371],
+            [-80.18221477287852, 43.52912367381371],
+            [-80.17894920074745, 42.98907015881238]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0193",
+      "target_name": "fossil_Belchatow_powerplant",
+      "target_location": { "type": "Point", "coordinates": [19.331, 51.268] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [18.90365547784629, 50.9975575476463],
+            [19.75834452215369, 50.9975575476463],
+            [19.76337574559429, 51.5368517790034],
+            [18.89862425440569, 51.5368517790034],
+            [18.90365547784629, 50.9975575476463]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0194",
+      "target_name": "fossil_Dangjin_Yonghungdo_Taean_powerplants",
+      "target_location": { "type": "Point", "coordinates": [126.511, 37.057] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.1749035431368, 36.78619690359454],
+            [126.8470964568633, 36.78619690359454],
+            [126.8494894549697, 37.32683177618858],
+            [126.1725105450304, 37.32683177618858],
+            [126.1749035431368, 36.78619690359454]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0195",
+      "target_name": "fossil_Shaiba_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [39.5551, 20.66267]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [39.26770489762268, 20.39145727044034],
+            [39.84249510237734, 20.39145727044034],
+            [39.84351605730922, 20.93339375747966],
+            [39.2666839426908, 20.93339375747966],
+            [39.26770489762268, 20.39145727044034]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0196",
+      "target_name": "fossil_AlQurayyah_powerplant",
+      "target_location": { "type": "Point", "coordinates": [50.126, 25.844] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [49.82742384848487, 25.57289708678455],
+            [50.42457615151514, 25.57289708678455],
+            [50.42593883661894, 26.11447625941348],
+            [49.82606116338107, 26.11447625941348],
+            [49.82742384848487, 25.57289708678455]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0197",
+      "target_name": "fossil_Arnot_Duvha_Hendrina_powerplants",
+      "target_location": { "type": "Point", "coordinates": [29.611, -26.0331] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [29.31057612441444, -26.30356656616352],
+            [29.91142387558554, -26.30356656616352],
+            [29.91004752467452, -25.76200155444274],
+            [29.31195247532543, -25.76200155444274],
+            [29.31057612441444, -26.30356656616352]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0198",
+      "target_name": "fossil_Duvha_Kendal_Kriel_Matla_powerplants",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [29.175447, -25.878083]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.87542109764104, -26.14855751561621],
+            [29.47547290235894, -26.14855751561621],
+            [29.47410776117798, -25.60698088989468],
+            [28.87678623882201, -25.60698088989468],
+            [28.87542109764104, -26.14855751561621]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0199",
+      "target_name": "fossil_Vindhyachal_Sasan_Singrauli_Rihand_powerplants",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [82.67361, 24.09722]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [82.37916899460555, 23.82607724038503],
+            [82.96805100539444, 23.82607724038503],
+            [82.9692917606983, 24.36778365919817],
+            [82.3779282393017, 24.36778365919817],
+            [82.37916899460555, 23.82607724038503]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0200",
+      "target_name": "fossil_Pingwei_Tianji_Bengbu_Fengtai_Luohe_powerplants",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [116.9005, 32.68613]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [116.5815705838858, 32.41520386255783],
+            [117.2194294161141, 32.41520386255783],
+            [117.2213584025427, 32.95622880461595],
+            [116.5796415974572, 32.95622880461595],
+            [116.5815705838858, 32.41520386255783]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0201",
+      "target_name": "fossil_Hazelwood_Yallourn_Loy_Yang_powerplants",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [146.395, -38.2636]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [146.0509329977468, -38.53335492863952],
+            [146.7390670022531, -38.53335492863952],
+            [146.7365268920952, -37.99283121139653],
+            [146.0534731079047, -37.99283121139653],
+            [146.0509329977468, -38.53335492863952]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0202",
+      "target_name": "fossil_Stanwell_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [150.3185, -23.5106]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [150.0241601592905, -23.78119212649268],
+            [150.6128398407094, -23.78119212649268],
+            [150.6116383930631, -23.23944446768549],
+            [150.0253616069369, -23.23944446768549],
+            [150.0241601592905, -23.78119212649268]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0203",
+      "target_name": "fossil_San_Francisco_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-122.18542, 37.73865000000003]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.6346678727425, 37.37737672723046],
+            [-121.7361721272574, 37.37737672723046],
+            [-121.7318583199345, 38.09817900065048],
+            [-122.6389816800654, 38.09817900065048],
+            [-122.6346678727425, 37.37737672723046]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0204",
+      "target_name": "fossil_Wagner_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-76.5268, 39.1781]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-76.87266499199859, 38.90735713816164],
+            [-76.18093500800143, 38.90735713816164],
+            [-76.17827692252092, 39.44779583844277],
+            [-76.8753230774791, 39.44779583844277],
+            [-76.87266499199859, 38.90735713816164]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0205",
+      "target_name": "fossil_Dickerson_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-77.4644, 39.2097]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.81041845190953, 38.93895803194449],
+            [-77.1183815480905, 38.93895803194449],
+            [-77.11571928032191, 39.47939378383367],
+            [-77.81308071967811, 39.47939378383367],
+            [-77.81041845190953, 38.93895803194449]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0206",
+      "target_name": "fossil_Joliet_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-88.1238, 41.4946]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-88.48158362241224, 41.22392202911968],
+            [-87.76601637758785, 41.22392202911968],
+            [-87.76303123890972, 41.76414302069523],
+            [-88.48456876109032, 41.76414302069523],
+            [-88.48158362241224, 41.22392202911968]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0207",
+      "target_name": "fossil_Somerset_Operating_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-78.6047, 43.3589]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.97314227531979, 43.08827281738955],
+            [-78.23625772468012, 43.08827281738955],
+            [-78.2329754908543, 43.628316893867],
+            [-78.9764245091456, 43.628316893867],
+            [-78.97314227531979, 43.08827281738955]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0208",
+      "target_name": "fossil_Will_County_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-88.0629, 41.6334]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-88.42144284108923, 41.36272586392873],
+            [-87.70435715891074, 41.36272586392873],
+            [-87.70135101475432, 41.90293372520482],
+            [-88.42444898524565, 41.90293372520482],
+            [-88.42144284108923, 41.36272586392873]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0209",
+      "target_name": "fossil_Hammond_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-85.3456, 34.2528]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-85.67026055800238, 33.98191750690878],
+            [-85.0209394419976, 33.98191750690878],
+            [-85.0188553112825, 34.52280522220045],
+            [-85.67234468871749, 34.52280522220045],
+            [-85.67026055800238, 33.98191750690878]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0210",
+      "target_name": "fossil_Avon Lake_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-82.0546, 41.5045]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-82.41243759781668, 41.23382230288648],
+            [-81.69676240218337, 41.23382230288648],
+            [-81.69377577090097, 41.77404235819966],
+            [-82.41542422909907, 41.77404235819966],
+            [-82.41243759781668, 41.23382230288648]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0211",
+      "target_name": "fossil_North_Valmy_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-117.1516, 40.8813]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-117.506091936688, 40.6106050001647],
+            [-116.797108063312, 40.6106050001647],
+            [-116.7942137411588, 41.15088390800514],
+            [-117.5089862588412, 41.15088390800514],
+            [-117.506091936688, 40.6106050001647]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0212",
+      "target_name": "fossil_Meramec_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-90.3358, 38.4017]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.67796941374456, 38.1309351328982],
+            [-89.99363058625545, 38.1309351328982],
+            [-89.99107303143614, 38.67144605152679],
+            [-90.68052696856387, 38.67144605152679],
+            [-90.67796941374456, 38.1309351328982]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0213",
+      "target_name": "fossil_GG_Allen_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-81.0122, 35.1897]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-81.3405064284567, 34.91884390855673],
+            [-80.68389357154331, 34.91884390855673],
+            [-80.68171098354622, 35.45964809925279],
+            [-81.34268901645373, 35.45964809925279],
+            [-81.3405064284567, 34.91884390855673]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0214",
+      "target_name": "fossil_Datang_Tuoketuo_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [111.3589, 40.1947]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [111.0079745804157, 39.92398579276321],
+            [111.7098254195843, 39.92398579276321],
+            [111.7126217849366, 40.46432931902191],
+            [111.0051782150634, 40.46432931902191],
+            [111.0079745804157, 39.92398579276321]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0215",
+      "target_name": "fossil_Waigaoqiao_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [121.6003, 31.3536]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [121.2859060299995, 31.08263742210895],
+            [121.9146939700005, 31.08263742210895],
+            [121.9164994909348, 31.62377641619814],
+            [121.2841005090652, 31.62377641619814],
+            [121.2859060299995, 31.08263742210895]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0217",
+      "target_name": "fossil_Niederaussem_powerplant",
+      "target_location": { "type": "Point", "coordinates": [6.6685, 50.993] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [6.243661750016617, 50.72255235841523],
+            [7.093338249983383, 50.72255235841523],
+            [7.098290868837642, 51.26187227086061],
+            [6.238709131162357, 51.26187227086061],
+            [6.243661750016617, 50.72255235841523]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0218",
+      "target_name": "fossil_Mundra_Umpp_powerplant",
+      "target_location": { "type": "Point", "coordinates": [69.5281, 22.8158] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [69.23645034959148, 22.54462976058219],
+            [69.81974965040851, 22.54462976058219],
+            [69.82090553219759, 23.08642525472155],
+            [69.2352944678024, 23.08642525472155],
+            [69.23645034959148, 22.54462976058219]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0219",
+      "target_name": "fossil_Rihand_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [82.7915, 24.026999999999997]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [82.4972171537888, 23.75585569471066],
+            [83.08578284621122, 23.75585569471066],
+            [83.08701885473556, 24.29756709056922],
+            [82.49598114526445, 24.29756709056922],
+            [82.4972171537888, 23.75585569471066]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0220",
+      "target_name": "fossil_Sasan_powerplant",
+      "target_location": { "type": "Point", "coordinates": [82.6275, 23.9784] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [82.33332625993332, 23.70725462757536],
+            [82.92167374006668, 23.70725462757536],
+            [82.92290646998663, 24.2489694616873],
+            [82.33209353001337, 24.2489694616873],
+            [82.33332625993332, 23.70725462757536]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0221",
+      "target_name": "fossil_PLTU_Paiton_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [113.5827, -7.7184]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.3105814729709, -7.989570433524237],
+            [113.8548185270292, -7.989570433524237],
+            [113.8544718284456, -7.447053215103953],
+            [113.3109281715544, -7.447053215103953],
+            [113.3105814729709, -7.989570433524237]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0222",
+      "target_name": "fossil_Hekinan_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [136.9609, 34.8352]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [136.6339929782561, 34.56433389793535],
+            [137.2878070217439, 34.56433389793535],
+            [137.2899518284352, 35.1051698129107],
+            [136.6318481715649, 35.1051698129107],
+            [136.6339929782561, 34.56433389793535]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0223",
+      "target_name": "fossil_Kendal_powerplant",
+      "target_location": { "type": "Point", "coordinates": [28.9689, -26.088] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.66833439990583, -26.35846374365634],
+            [29.26946560009417, -26.35846374365634],
+            [29.26808526380126, -25.81690285688117],
+            [28.66971473619874, -25.81690285688117],
+            [28.66833439990583, -26.35846374365634]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0224",
+      "target_name": "fossil_Korba_powerplant",
+      "target_location": { "type": "Point", "coordinates": [82.692, 22.397] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [83.081464, 22.757742],
+            [83.079457, 22.035308],
+            [82.304543, 22.035308],
+            [82.302536, 22.757742],
+            [83.081464, 22.757742]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0225",
+      "target_name": "fossil_Tropomi_2_powerplant",
+      "target_location": { "type": "Point", "coordinates": [129.303, 35.502] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [129.745857, 35.861707],
+            [129.741932, 35.140672],
+            [128.864084, 35.14066],
+            [128.860128, 35.861695],
+            [129.745857, 35.861707]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0226",
+      "target_name": "fossil_Az_Zour_powerplant",
+      "target_location": { "type": "Point", "coordinates": [48.334, 28.696] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [48.744742, 29.056271],
+            [48.741919, 28.334459],
+            [47.926067, 28.334471],
+            [47.923273, 29.056284],
+            [48.744742, 29.056271]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0227",
+      "target_name": "fossil_Gwangyang_powerplant",
+      "target_location": { "type": "Point", "coordinates": [127.723, 34.93] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [128.16272, 35.289759],
+            [128.158904, 34.568655],
+            [127.287111, 34.568642],
+            [127.283265, 35.289746],
+            [128.16272, 35.289759]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0228",
+      "target_name": "fossil_Labadie_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-90.83605, 38.561779]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.374817, 38.921205],
+            [-90.379385, 38.200544],
+            [-91.2927, 38.200532],
+            [-91.297298, 38.921193],
+            [-90.374817, 38.921205]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0229",
+      "target_name": "fossil_Cumberland_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-87.654117, 36.391131]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-87.206195, 36.75075],
+            [-87.210315, 36.029823],
+            [-88.097922, 36.029826],
+            [-88.102036, 36.750753],
+            [-87.206195, 36.75075]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0230",
+      "target_name": "fossil_Spurlock_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-83.816281, 38.699024]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.354148, 39.05843],
+            [-83.358763, 38.337787],
+            [-84.273799, 38.337787],
+            [-84.278413, 39.058431],
+            [-83.354148, 39.05843]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0231",
+      "target_name": "fossil_Dry_Fork_Station_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-105.462214, 44.388606]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.95711, 44.74745],
+            [-104.963274, 44.027525],
+            [-105.961164, 44.027532],
+            [-105.967308, 44.747458],
+            [-104.95711, 44.74745]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0232",
+      "target_name": "fossil_Poplar_River_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-105.4825, 49.0569]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.931241, 49.415256],
+            [-104.939142, 48.695925],
+            [-106.025861, 48.695927],
+            [-106.033756, 49.415258],
+            [-104.931241, 49.415256]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0233",
+      "target_name": "fossil_Algoma_Steel",
+      "target_location": { "type": "Point", "coordinates": [-84.374, 46.523] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-83.848297, 46.881126],
+            [-83.855202, 46.162495],
+            [-84.892799, 46.162495],
+            [-84.899704, 46.881126],
+            [-83.848297, 46.881126]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0234",
+      "target_name": "fossil_Lepetsk_Russia",
+      "target_location": { "type": "Point", "coordinates": [39.65, 52.55] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [40.245804, 52.907841],
+            [40.236126, 52.189217],
+            [39.063877, 52.189217],
+            [39.054199, 52.907841],
+            [40.245804, 52.907841]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0235",
+      "target_name": "fossil_Intermountain_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-112.58, 39.511] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-112.111832, 39.869392],
+            [-112.116646, 39.150753],
+            [-113.043358, 39.150753],
+            [-113.048172, 39.869392],
+            [-112.111832, 39.869392]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0236",
+      "target_name": "fossil_Cairo_Egypt",
+      "target_location": { "type": "Point", "coordinates": [31.2804, 30.0788] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [31.697161, 30.437469],
+            [31.694145, 29.718826],
+            [30.866653, 29.718826],
+            [30.863638, 30.437469],
+            [31.697161, 30.437469]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0237",
+      "target_name": "fossil_Houston_GeoCarb_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.267275, 29.70956]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-94.852074, 30.068239],
+            [-94.855034, 29.349596],
+            [-95.679512, 29.349596],
+            [-95.682472, 30.068239],
+            [-94.852074, 30.068239]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "fossil0238",
+      "target_name": "fossil_Timmins_Canada",
+      "target_location": { "type": "Point", "coordinates": [-81.375, 48.57] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.828087, 48.928036],
+            [-80.8358, 48.209408],
+            [-81.9142, 48.209408],
+            [-81.921913, 48.928036],
+            [-80.828087, 48.928036]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "sif_atto",
+      "target_name": "sif_ATTO_Tower_Manaus_Brazil",
+      "target_location": { "type": "Point", "coordinates": [-59.0056, 2.1459] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-59.18536806303243, 1.965018713071685],
+            [-58.82583193696757, 1.965018713071685],
+            [-58.82578968799075, 2.32675960596137],
+            [-59.18541031200925, 2.32675960596137],
+            [-59.18536806303243, 1.965018713071685]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_atto_2",
+      "target_name": "sif_ATTO_Tower_Manaus_Brazil_correct",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-59.0048, -2.1457]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-59.2745329435, -2.416979589220356],
+            [-58.735162108, -2.416979589220356],
+            [-58.735162108, -1.874371632641471],
+            [-59.2745329435, -1.874371632641471],
+            [-59.2745329435, -2.416979589220356]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_barro_colorado",
+      "target_name": "sif_Barro_Colorado_Panama",
+      "target_location": { "type": "Point", "coordinates": [-79.8461, 9.1543] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-79.481766, 9.513441],
+            [-79.482498, 8.794794],
+            [-80.209702, 8.794794],
+            [-80.210434, 9.513441],
+            [-79.481766, 9.513441]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_guanika",
+      "target_name": "sif_Guanika_Peurto_Rico",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-66.870003, 17.97]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-66.491478, 18.328957],
+            [-66.493011, 17.610312],
+            [-67.246994, 17.610312],
+            [-67.248535, 18.328957],
+            [-66.491478, 18.328957]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_hrv",
+      "target_name": "sif_Harvard_Forest_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-72.1715, 42.5378]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-72.41426176219657, 42.35749581002345],
+            [-71.92873823780342, 42.35749581002345],
+            [-71.92733944236728, 42.71758128164716],
+            [-72.41566055763269, 42.71758128164716],
+            [-72.41426176219657, 42.35749581002345]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_jro",
+      "target_name": "sif_Jurong_Korea",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [119.2173, 31.8068]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [119.0064949170365, 31.62625385007733],
+            [119.4281050829635, 31.62625385007733],
+            [119.4289258318377, 31.98699058320004],
+            [119.0056741681624, 31.98699058320004],
+            [119.0064949170365, 31.62625385007733]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_k34",
+      "target_name": "sif_k34_Brazil",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-60.209099, -2.609]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-59.849499, -2.249625],
+            [-59.849297, -2.968272],
+            [-60.568909, -2.968272],
+            [-60.568703, -2.249625],
+            [-59.849499, -2.249625]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_k67",
+      "target_name": "sif_k67_Brazil",
+      "target_location": { "type": "Point", "coordinates": [-54.959, -2.857] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-54.599331, -2.49762],
+            [-54.599106, -3.216268],
+            [-55.31889, -3.216268],
+            [-55.318665, -2.49762],
+            [-54.599331, -2.49762]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_lambir",
+      "target_name": "sif_Lambir_Malaysia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [114.016998, 4.1865]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [114.377457, 4.545742],
+            [114.377121, 3.827094],
+            [113.656868, 3.827094],
+            [113.65654, 4.545742],
+            [114.377457, 4.545742]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_laselva",
+      "target_name": "sif_La_Selva_Costa_Rica",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-84.0211, 10.4333]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.20365890751329, 10.25243337709306],
+            [-83.83854109248672, 10.25243337709306],
+            [-83.83833017745732, 10.6140601907846],
+            [-84.20386982254269, 10.6140601907846],
+            [-84.20365890751329, 10.25243337709306]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_mead",
+      "target_name": "sif_Mead_Cluster_USA",
+      "target_location": { "type": "Point", "coordinates": [-96.455, 41.1649] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.69265753520976, 40.98456466360619],
+            [-96.21734246479025, 40.98456466360619],
+            [-96.21603761519877, 41.34473664739239],
+            [-96.69396238480124, 41.34473664739239],
+            [-96.69265753520976, 40.98456466360619]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_mpj",
+      "target_name": "sif_Pinyon_Juniper_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-106.2377, 35.4385]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-106.4574787829908, 35.25803411008143],
+            [-106.0179212170092, 35.25803411008143],
+            [-106.01693921922, 35.61855866742972],
+            [-106.45846078078, 35.61855866742972],
+            [-106.4574787829908, 35.25803411008143]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_mzo",
+      "target_name": "sif_Ozark_USA",
+      "target_location": { "type": "Point", "coordinates": [-92.2, 38.7441] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-92.42947415770729, 38.56370933169479],
+            [-91.97052584229272, 38.56370933169479],
+            [-91.96936968061499, 38.92403237277746],
+            [-92.43063031938502, 38.92403237277746],
+            [-92.42947415770729, 38.56370933169479]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_niwot",
+      "target_name": "sif_Niwot_Ridge_Colorado_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-105.5464, 40.0329]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-105.7801072089452, 39.85253882193856],
+            [-105.3126927910548, 39.85253882193856],
+            [-105.3114599802915, 40.21278172469827],
+            [-105.7813400197086, 40.21278172469827],
+            [-105.7801072089452, 39.85253882193856]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_obs",
+      "target_name": "sif_obs",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [105.1178, 53.9872]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [104.814209999146, 53.80712626683655],
+            [105.421390000854, 53.80712626683655],
+            [105.4240148355091, 54.16649485613863],
+            [104.8115851644909, 54.16649485613863],
+            [104.814209999146, 53.80712626683655]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_oko",
+      "target_name": "sif_KAEFS_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.5223, 34.9846]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.7408670452619, 34.80412389975537],
+            [-97.30373295473811, 34.80412389975537],
+            [-97.30277266803547, 35.16467556882923],
+            [-97.74182733196453, 35.16467556882923],
+            [-97.7408670452619, 34.80412389975537]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_pasoh",
+      "target_name": "sif_Pasoh_Malaysia",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [102.313004, 2.982]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [102.672943, 3.341265],
+            [102.672707, 2.622618],
+            [101.9533, 2.622618],
+            [101.953072, 3.341265],
+            [102.672943, 3.341265]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_santarita",
+      "target_name": "sif_Santa_Rita_Cluster_USA",
+      "target_location": { "type": "Point", "coordinates": [-110.84, 31.8214] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-111.0508380157811, 31.64085416491181],
+            [-110.6291619842189, 31.64085416491181],
+            [-110.6283406397706, 32.00159006875629],
+            [-111.0516593602294, 32.00159006875629],
+            [-111.0508380157811, 31.64085416491181]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_shq",
+      "target_name": "sif_shq",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [115.5894, 34.5203]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.372044645861, 34.33981349956451],
+            [115.8067553541391, 34.33981349956451],
+            [115.8076939247035, 34.70039273997335],
+            [115.3711060752965, 34.70039273997335],
+            [115.372044645861, 34.33981349956451]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_umb",
+      "target_name": "sif_University_of_Michigan_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-84.7138, 45.5598]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.96914830382548, 45.37956291807379],
+            [-84.45845169617455, 45.37956291807379],
+            [-84.45681628135246, 45.73945695870084],
+            [-84.97078371864757, 45.73945695870084],
+            [-84.96914830382548, 45.37956291807379]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "sif_uva",
+      "target_name": "sif_University_of_Virginia_USA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-78.2739, 37.9229]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.50081530170378, 37.74249055211182],
+            [-78.0469846982962, 37.74249055211182],
+            [-78.04587464769506, 38.10286424985315],
+            [-78.50192535230494, 38.10286424985315],
+            [-78.50081530170378, 37.74249055211182]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "SIF_High"
+    },
+    {
+      "target_id": "tccon100",
+      "target_name": "val_anmyeondoKo",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [126.37289, 36.62410999999999]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [126.37289, 36.5339953681968],
+            [126.37289, 36.5339953681968],
+            [126.37289, 36.71422326575664],
+            [126.37289, 36.71422326575664],
+            [126.37289, 36.5339953681968]
+          ]
+        ]
+      },
+      "target_altitude": "0.006",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon101",
+      "target_name": "val_ascensionIsland",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-14.3873, -7.9473]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-14.38730000000001, -8.037719391112407],
+            [-14.38730000000001, -8.037719391112407],
+            [-14.38730000000001, -7.856880216422124],
+            [-14.38730000000001, -7.856880216422124],
+            [-14.38730000000001, -8.037719391112407]
+          ]
+        ]
+      },
+      "target_altitude": "0.165",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon102",
+      "target_name": "val_drydenCA",
+      "target_location": { "type": "Point", "coordinates": [-117.882, 34.958] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-117.882, 34.86786035842257],
+            [-117.882, 34.86786035842257],
+            [-117.882, 35.04813830124461],
+            [-117.882, 35.04813830124461],
+            [-117.882, 34.86786035842257]
+          ]
+        ]
+      },
+      "target_altitude": "0.7",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon104",
+      "target_name": "val_bremenDe",
+      "target_location": { "type": "Point", "coordinates": [8.84951, 53.1037] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.84951000000001, 53.01384254835618],
+            [8.84951000000001, 53.01384254835618],
+            [8.84951000000001, 53.1935560869625],
+            [8.84951000000001, 53.1935560869625],
+            [8.84951000000001, 53.01384254835618]
+          ]
+        ]
+      },
+      "target_altitude": "0.004",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon105",
+      "target_name": "val_burgosPh",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [120.6494991, 18.53249979]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.6494991, 18.4421541386905],
+            [120.6494991, 18.4421541386905],
+            [120.6494991, 18.62284457853189],
+            [120.6494991, 18.62284457853189],
+            [120.6494991, 18.4421541386905]
+          ]
+        ]
+      },
+      "target_altitude": "0.031",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon106",
+      "target_name": "val_caltechCA",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-118.0729, 34.1231]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-118.0729, 34.03294801869774],
+            [-118.0729, 34.03294801869774],
+            [-118.0729, 34.21325065557691],
+            [-118.0729, 34.21325065557691],
+            [-118.0729, 34.03294801869774]
+          ]
+        ]
+      },
+      "target_altitude": "0.157",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon107",
+      "target_name": "val_darwinAu",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [130.9167, -12.375]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.9167, -12.46539494143526],
+            [130.9167, -12.46539494143526],
+            [130.9167, -12.28460445882268],
+            [130.9167, -12.28460445882268],
+            [130.9167, -12.46539494143526]
+          ]
+        ]
+      },
+      "target_altitude": "0.0049",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon112",
+      "target_name": "val_izanaTenerifeEs",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-16.518, 28.29701]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-16.518, 28.20677645059923],
+            [-16.518, 28.20677645059923],
+            [-16.518, 28.38724235640136],
+            [-16.518, 28.38724235640136],
+            [-16.518, 28.20677645059923]
+          ]
+        ]
+      },
+      "target_altitude": "2.2317",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon113",
+      "target_name": "val_karlsruheDe",
+      "target_location": { "type": "Point", "coordinates": [8.43801, 49.1] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.438009999999991, 49.01008067902922],
+            [8.438009999999991, 49.01008067902922],
+            [8.438009999999991, 49.18991791304734],
+            [8.438009999999991, 49.18991791304734],
+            [8.438009999999991, 49.01008067902922]
+          ]
+        ]
+      },
+      "target_altitude": "0.11",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon114",
+      "target_name": "val_lamontOK",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.4855, 36.6039]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.48550000000002, 36.51378506200605],
+            [-97.48550000000002, 36.51378506200605],
+            [-97.48550000000002, 36.69401357223163],
+            [-97.48550000000002, 36.69401357223163],
+            [-97.48550000000002, 36.51378506200605]
+          ]
+        ]
+      },
+      "target_altitude": "0.3179",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon115",
+      "target_name": "val_lauderNz",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [169.6853, -45.0022]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [169.6853, -45.09218251668664],
+            [169.6853, -45.09218251668664],
+            [169.6853, -44.91221605949071],
+            [169.6853, -44.91221605949071],
+            [169.6853, -45.09218251668664]
+          ]
+        ]
+      },
+      "target_altitude": "0.384",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon122",
+      "target_name": "val_orleansFr",
+      "target_location": { "type": "Point", "coordinates": [2.1125, 47.965] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2.112500000000011, 47.87506285717823],
+            [2.112500000000011, 47.87506285717823],
+            [2.112500000000011, 48.0549357275933],
+            [2.112500000000011, 48.0549357275933],
+            [2.112500000000011, 47.87506285717823]
+          ]
+        ]
+      },
+      "target_altitude": "0.1308",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon123",
+      "target_name": "val_parisFr",
+      "target_location": { "type": "Point", "coordinates": [2.356, 48.846] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2.355999999999995, 48.75607669853206],
+            [2.355999999999995, 48.75607669853206],
+            [2.355999999999995, 48.93592189171786],
+            [2.355999999999995, 48.93592189171786],
+            [2.355999999999995, 48.75607669853206]
+          ]
+        ]
+      },
+      "target_altitude": "0.034",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon124",
+      "target_name": "val_parkFallsWI",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-90.2725, 45.9448]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.2725, 45.85483097191469],
+            [-90.2725, 45.85483097191469],
+            [-90.2725, 46.03476760534448],
+            [-90.2725, 46.03476760534448],
+            [-90.2725, 45.85483097191469]
+          ]
+        ]
+      },
+      "target_altitude": "0.474",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon127",
+      "target_name": "val_reunionIsland",
+      "target_location": { "type": "Point", "coordinates": [55.485, -20.901] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [55.48500000000001, -20.99132091398733],
+            [55.48500000000001, -20.99132091398733],
+            [55.48500000000001, -20.81067813218854],
+            [55.48500000000001, -20.81067813218854],
+            [55.48500000000001, -20.99132091398733]
+          ]
+        ]
+      },
+      "target_altitude": "0.087",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon128",
+      "target_name": "val_rikubetsuJp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [143.6997, 43.45180999999999]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [143.6997, 43.36180153884452],
+            [143.6997, 43.36180153884452],
+            [143.6997, 43.54181703888803],
+            [143.6997, 43.54181703888803],
+            [143.6997, 43.36180153884452]
+          ]
+        ]
+      },
+      "target_altitude": "0.236",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon130",
+      "target_name": "val_sagaJp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [130.2882, 33.2411]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.2882, 33.15093513814393],
+            [130.2882, 33.15093513814393],
+            [130.2882, 33.33126355279409],
+            [130.2882, 33.33126355279409],
+            [130.2882, 33.15093513814393]
+          ]
+        ]
+      },
+      "target_altitude": "0.003",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon134",
+      "target_name": "val_tsukubaJp",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [140.1215, 36.0513]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [140.1215, 35.96117671564657],
+            [140.1215, 35.96117671564657],
+            [140.1215, 36.14142192662703],
+            [140.1215, 36.14142192662703],
+            [140.1215, 35.96117671564657]
+          ]
+        ]
+      },
+      "target_altitude": "0.0277",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon135",
+      "target_name": "val_wollongongAu",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [150.8545, -34.4506]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [150.8545, -34.54074582573998],
+            [150.8545, -34.54074582573998],
+            [150.8545, -34.36045284266881],
+            [150.8545, -34.36045284266881],
+            [150.8545, -34.54074582573998]
+          ]
+        ]
+      },
+      "target_altitude": "0.008",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "tccon136",
+      "target_name": "val_cyprus",
+      "target_location": { "type": "Point", "coordinates": [33.06, 35.04] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [33.06, 34.94986157767829],
+            [33.06, 34.94986157767829],
+            [33.06, 35.13013708061585],
+            [33.06, 35.13013708061585],
+            [33.06, 34.94986157767829]
+          ]
+        ]
+      },
+      "target_altitude": "0.535",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "texmex001",
+      "target_name": "campaign_texmex_corpus_christi",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.405904, 27.809016]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.81052133031741, 27.44746160224365],
+            [-97.0012866696826, 27.44746160224365],
+            [-96.99860301228577, 28.16935836625361],
+            [-97.81320498771426, 28.16935836625361],
+            [-97.81052133031741, 27.44746160224365]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex002",
+      "target_name": "campaign_texmex_freeport",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.409948, 29.004259]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-95.81906360024114, 28.64273755409098],
+            [-95.00083239975886, 28.64273755409098],
+            [-94.99797986859832, 29.36450719009968],
+            [-95.8219161314017, 29.36450719009968],
+            [-95.81906360024114, 28.64273755409098]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex003",
+      "target_name": "campaign_texmex_port_arthur",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-93.988229, 29.953892]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-94.40111972254765, 29.5923974601844],
+            [-93.57533827745235, 29.5923974601844],
+            [-93.57234558586318, 30.31406367866935],
+            [-94.40411241413682, 30.31406367866935],
+            [-94.40111972254765, 29.5923974601844]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex004",
+      "target_name": "campaign_texmex_lake_charles",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-93.316006, 30.125402]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.72959813626203, 29.76391238102722],
+            [-92.90241386373799, 29.76391238102722],
+            [-92.89939526027764, 30.48555970351942],
+            [-93.73261673972236, 30.48555970351942],
+            [-93.72959813626203, 29.76391238102722]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex005",
+      "target_name": "campaign_texmex_harrington_station",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-101.739486, 35.298973]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.1773283480742, 34.93763771181522],
+            [-101.3016436519258, 34.93763771181522],
+            [-101.2977425442351, 35.65868759681252],
+            [-102.1812294557649, 35.65868759681252],
+            [-102.1773283480742, 34.93763771181522]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex006",
+      "target_name": "campaign_texmex_fayette_station",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.752407, 29.908693]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.16511388607601, 29.54719716635278],
+            [-96.339700113924, 29.54719716635278],
+            [-96.33671421990026, 30.26886835369029],
+            [-97.16809978009974, 30.26886835369029],
+            [-97.16511388607601, 29.54719716635278]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex007",
+      "target_name": "campaign_texmex_WA_parish_station",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-95.683079, 29.492793]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.09411393044263, 29.13128532154702],
+            [-95.27204406955742, 29.13128532154702],
+            [-95.26912012328812, 29.85300201355711],
+            [-96.09703787671194, 29.85300201355711],
+            [-96.09411393044263, 29.13128532154702]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex008",
+      "target_name": "campaign_texmex_limestone_big_brown_stations",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-96.144985, 31.594193]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.56483867772045, 31.23274619000033],
+            [-95.72513132227957, 31.23274619000033],
+            [-95.72188282769652, 31.95422909512812],
+            [-96.56808717230349, 31.95422909512812],
+            [-96.56483867772045, 31.23274619000033]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex009",
+      "target_name": "campaign_texmex_martin_lake_pirkey_stations",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-94.532219, 32.34324]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-94.95544771515053, 31.98181541496874],
+            [-94.10899028484945, 31.98181541496874],
+            [-94.10561871026196, 32.70321277179492],
+            [-94.95881928973802, 32.70321277179492],
+            [-94.95544771515053, 31.98181541496874]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex010",
+      "target_name": "campaign_texmex_baton_rouge",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-91.172076, 30.30348]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-91.5864028723, 29.94199550889086],
+            [-90.7547034203, 29.94199550889086],
+            [-90.7547034203, 30.66362314293601],
+            [-91.5864028723, 30.66362314293601],
+            [-91.5864028723, 29.94199550889086]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex012",
+      "target_name": "campaign_texmex_fort_worth",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-97.410847, 32.740462]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-97.835917286567, 32.37904928828154],
+            [-96.98577671343301, 32.37904928828154],
+            [-96.98233816164117, 33.10040083989261],
+            [-97.83935583835884, 33.10040083989261],
+            [-97.835917286567, 32.37904928828154]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex013",
+      "target_name": "campaign_texmex_amarillo_south01",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.909702, 34.502617]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.3433942231234, 34.14125749308692],
+            [-102.4760097768766, 34.14125749308692],
+            [-102.4722587463751, 34.86240243416032],
+            [-103.3471452536249, 34.86240243416032],
+            [-103.3433942231234, 34.14125749308692]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex014",
+      "target_name": "campaign_texmex_amarillo_south02",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.435868, 34.673764]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.8704384033562, 34.31240969272257],
+            [-102.0012975966438, 34.31240969272257],
+            [-101.9975148011264, 35.03353428860159],
+            [-102.8742211988736, 35.03353428860159],
+            [-102.8704384033562, 34.31240969272257]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex015",
+      "target_name": "campaign_texmex_amarillo_north01",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.595969, 36.112778]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.0382245950521, 35.75146748950557],
+            [-102.1537134049479, 35.75146748950557],
+            [-102.14965272341, 36.47241925729869],
+            [-103.04228527659, 36.47241925729869],
+            [-103.0382245950521, 35.75146748950557]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex016",
+      "target_name": "campaign_texmex_amarillo_north02",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.131864, 36.10232]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.574061748259, 35.74100917117586],
+            [-101.689666251741, 35.74100917117586],
+            [-101.6856076623193, 36.46196220579625],
+            [-102.5781203376807, 36.46196220579625],
+            [-102.574061748259, 35.74100917117586]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex017",
+      "target_name": "campaign_texmex_permian01b",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-104.277874, 32.72488]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.7028713586559, 32.36346682149944],
+            [-103.8528766413441, 32.36346682149944],
+            [-103.8494407398312, 33.08482017550613],
+            [-104.7063072601688, 33.08482017550613],
+            [-104.7028713586559, 32.36346682149944]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex018",
+      "target_name": "campaign_texmex_permian01c",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-103.851187, 32.160132]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-104.273578989459, 31.79870196104174],
+            [-103.428795010541, 31.79870196104174],
+            [-103.4254539064318, 32.52012033176705],
+            [-104.2769200935682, 32.52012033176705],
+            [-104.273578989459, 31.79870196104174]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex019",
+      "target_name": "campaign_texmex_permian01d",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-103.36037, 31.564529]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.7800925996167, 31.20308131474414],
+            [-102.9406474003833, 31.20308131474414],
+            [-102.937403695931, 31.92456758490538],
+            [-103.783336304069, 31.92456758490538],
+            [-103.7800925996167, 31.20308131474414]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex020",
+      "target_name": "campaign_texmex_permian01e",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-103.149268, 31.218347]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.5674752042693, 30.85688913055317],
+            [-102.7310607957307, 30.85688913055317],
+            [-102.7278725318372, 31.57841453881304],
+            [-103.5706634681628, 31.57841453881304],
+            [-103.5674752042693, 30.85688913055317]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex021",
+      "target_name": "campaign_texmex_permian02b",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.197474, 33.001347]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.6237737235099, 32.63994211503879],
+            [-101.7711742764901, 32.63994211503879],
+            [-101.7676910690451, 33.36126342313891],
+            [-102.6272569309549, 33.36126342313891],
+            [-102.6237737235099, 32.63994211503879]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex022",
+      "target_name": "campaign_texmex_permian02c",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-102.010295, 32.314015]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.4333896568917, 31.9525895436414],
+            [-101.5872003431083, 31.9525895436414],
+            [-101.5838336486901, 32.67399025871498],
+            [-102.4367563513099, 32.67399025871498],
+            [-102.4333896568917, 31.9525895436414]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex023",
+      "target_name": "campaign_texmex_permian02d",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-101.799985, 31.605376]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-102.2198881432049, 31.24392952006502],
+            [-101.3800818567951, 31.24392952006502],
+            [-101.3768315547526, 31.9654111561523],
+            [-102.2231384452474, 31.9654111561523],
+            [-102.2198881432049, 31.24392952006502]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex024",
+      "target_name": "campaign_texmex_oakgrove_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-96.4853, 31.185] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-96.9033626121, 30.82354115255108],
+            [-96.0640544202, 30.82354115255108],
+            [-96.0640544202, 31.54507031792717],
+            [-96.9033626121, 31.54507031792717],
+            [-96.9033626121, 30.82354115255108]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex025",
+      "target_name": "campaign_texmex_hunters_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-111.0289, 39.1747]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-111.4894482379, 38.81348185944778],
+            [-110.5636270627, 38.81348185944778],
+            [-110.5636270627, 39.53405694383132],
+            [-111.4894482379, 39.53405694383132],
+            [-111.4894482379, 38.81348185944778]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex026",
+      "target_name": "campaign_texmex_brame_powerplant",
+      "target_location": { "type": "Point", "coordinates": [-92.716, 31.395] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-93.13497721257647, 31.03354732039836],
+            [-92.29702278742337, 31.03354732039836],
+            [-92.29702278742337, 31.75505278746493],
+            [-93.13497721257647, 31.75505278746493],
+            [-93.13497721257647, 31.03354732039836]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex027",
+      "target_name": "campaign_texmex_sanjuan_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-108.441736, 36.80089]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-108.8878642658, 36.43960041584935],
+            [-107.9914069289, 36.43960041584935],
+            [-107.9914069289, 37.16046850635333],
+            [-108.8878642658, 37.16046850635333],
+            [-108.8878642658, 36.43960041584935]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "texmex028",
+      "target_name": "campaign_texmex_craig_powerplant",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-107.5912, 40.4627]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-108.0603153953, 40.1015197004002],
+            [-107.1170461065, 40.1015197004002],
+            [-107.1170461065, 40.82193348944772],
+            [-108.0603153953, 40.82193348944772],
+            [-108.0603153953, 40.1015197004002]
+          ]
+        ]
+      },
+      "target_altitude": null,
+      "target_type": "fossil"
+    },
+    {
+      "target_id": "val001",
+      "target_name": "validation_eastern_colorado",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-104.2423, 39.9122]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-103.8348227343859, 39.59625517547415],
+            [-104.6497772656141, 39.59625517547415],
+            [-104.6535300597868, 40.22668262552232],
+            [-103.8310699402132, 40.22668262552232],
+            [-103.8348227343859, 39.59625517547415]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "val002",
+      "target_name": "val_Toulouse_France",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [1.497266, 43.562153]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [1.996119, 43.920399],
+            [1.990204, 43.201763],
+            [1.004328, 43.201763],
+            [0.998413, 43.920399],
+            [1.996119, 43.920399]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "val003_TAO",
+      "target_name": "val_Tokyo_Atacama_Observatory",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-67.74194, -22.98678]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-67.352654, -22.62698],
+            [-67.350578, -23.345625],
+            [-68.133308, -23.345625],
+            [-68.131233, -22.62698],
+            [-67.352654, -22.62698]
+          ]
+        ]
+      },
+      "target_altitude": "5.63",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "val004",
+      "target_name": "val_Kolkata_Vertex70_site",
+      "target_location": { "type": "Point", "coordinates": [88.5242, 22.963] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [88.915497, 23.321844],
+            [88.913422, 22.603199],
+            [88.134979, 22.603199],
+            [88.132904, 23.321844],
+            [88.915497, 23.321844]
+          ]
+        ]
+      },
+      "target_altitude": "0",
+      "target_type": "validation"
+    },
+    {
+      "target_id": "volcano0001",
+      "target_name": "v257040_Ambrym",
+      "target_location": { "type": "Point", "coordinates": [168.12, -16.25] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [167.7451274701081, -16.6111191553038],
+            [168.4948725298919, -16.6111191553038],
+            [168.4935049107564, -15.88820794549787],
+            [167.7464950892436, -15.88820794549787],
+            [167.7451274701081, -16.6111191553038]
+          ]
+        ]
+      },
+      "target_altitude": "1334",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0002",
+      "target_name": "v341090_Popocatepetl",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-98.62200000000001, 19.023]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-99.00113555179068, 18.66124846791533],
+            [-98.24286444820935, 18.66124846791533],
+            [-98.24122194347375, 19.38395631451523],
+            [-99.00277805652628, 19.38395631451523],
+            [-99.00113555179068, 18.66124846791533]
+          ]
+        ]
+      },
+      "target_altitude": "5200",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0003",
+      "target_name": "v211060_Etna",
+      "target_location": { "type": "Point", "coordinates": [15, 37.73] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14.54842906471774, 37.36873856213576],
+            [15.45157093528226, 37.36873856213576],
+            [15.4559689904016, 38.08949271862829],
+            [14.5440310095984, 38.08949271862829],
+            [14.54842906471774, 37.36873856213576]
+          ]
+        ]
+      },
+      "target_altitude": "3000",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0004",
+      "target_name": "v263250_Merapi",
+      "target_location": { "type": "Point", "coordinates": [110.44, -7.56] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.0772350957521, -7.921524080699717],
+            [110.8027649042479, -7.921524080699717],
+            [110.8021615689396, -7.198168903866994],
+            [110.0778384310604, -7.198168903866994],
+            [110.0772350957521, -7.921524080699717]
+          ]
+        ]
+      },
+      "target_altitude": "2900",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0005",
+      "target_name": "v332010_Kilauea_Hawaii",
+      "target_location": { "type": "Point", "coordinates": [-155.29, 19.42] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-155.6700286177191, 19.05825524361829],
+            [-154.9099713822809, 19.05825524361829],
+            [-154.9082878415424, 19.78093173089683],
+            [-155.6717121584575, 19.78093173089683],
+            [-155.6700286177191, 19.05825524361829]
+          ]
+        ]
+      },
+      "target_altitude": "1222",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0006",
+      "target_name": "v211040_Stromboli",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [15.214823, 38.78782]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14.75674237220204, 38.42659033798846],
+            [15.67290362779795, 38.42659033798846],
+            [15.67753834674897, 39.14721358488698],
+            [14.75210765325102, 39.14721358488698],
+            [14.75674237220204, 38.42659033798846]
+          ]
+        ]
+      },
+      "target_altitude": "900",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0007",
+      "target_name": "v257030_Aoba_Ambae",
+      "target_location": { "type": "Point", "coordinates": [167.83, -15.4] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [167.4567282993916, -15.76116590436045],
+            [168.2032717006086, -15.76116590436045],
+            [168.2019846402145, -15.03819803340205],
+            [167.4580153597856, -15.03819803340205],
+            [167.4567282993916, -15.76116590436045]
+          ]
+        ]
+      },
+      "target_altitude": "1496",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0008",
+      "target_name": "v357120_Villarrica",
+      "target_location": { "type": "Point", "coordinates": [-71.93, -39.42] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-72.39692038483446, -39.77933360571765],
+            [-71.46307961516555, -39.77933360571765],
+            [-71.46786236066923, -39.05878913110633],
+            [-72.39213763933078, -39.05878913110633],
+            [-72.39692038483446, -39.77933360571765]
+          ]
+        ]
+      },
+      "target_altitude": "2847",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0009",
+      "target_name": "v332020_Mauna_Loa_Hawaii",
+      "target_location": { "type": "Point", "coordinates": [-155.61, 19.48] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-155.9901655392765, 19.11825628794304],
+            [-155.2298344607235, 19.11825628794304],
+            [-155.2281446782964, 19.84092798824492],
+            [-155.9918553217036, 19.84092798824492],
+            [-155.9901655392765, 19.11825628794304]
+          ]
+        ]
+      },
+      "target_altitude": "4170",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0010",
+      "target_name": "v252120_Ulawun",
+      "target_location": { "type": "Point", "coordinates": [151.33, -5.05] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [150.9690758788434, -5.411610139412854],
+            [151.6909241211567, -5.411610139412854],
+            [151.6905243147706, -4.688185374591241],
+            [150.9694756852295, -4.688185374591241],
+            [150.9690758788434, -5.411610139412854]
+          ]
+        ]
+      },
+      "target_altitude": "2334",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0011",
+      "target_name": "v273030_Mayon",
+      "target_location": { "type": "Point", "coordinates": [13.26, 13.26] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [12.89143414974623, 12.89817863709934],
+            [13.62856585025375, 12.89817863709934],
+            [13.62965664590732, 13.62127686720144],
+            [12.89034335409266, 13.62127686720144],
+            [12.89143414974623, 12.89817863709934]
+          ]
+        ]
+      },
+      "target_altitude": "2462",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0012",
+      "target_name": "v345070_Turrialba",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-83.76700000000001, 10.025]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.1314634514297, 9.663165319915148],
+            [-83.40253654857034, 9.663165319915148],
+            [-83.401727625638, 10.38642591981521],
+            [-84.13227237436202, 10.38642591981521],
+            [-84.1314634514297, 9.663165319915148]
+          ]
+        ]
+      },
+      "target_altitude": "3340",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0013",
+      "target_name": "v233020_Piton_de_la_Fournaise_Reunion",
+      "target_location": { "type": "Point", "coordinates": [55.713, -21.231] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [55.32673161072881, -21.59181565075672],
+            [56.09926838927117, -21.59181565075672],
+            [56.09739158741542, -20.86928903285666],
+            [55.32860841258457, -20.86928903285666],
+            [55.32673161072881, -21.59181565075672]
+          ]
+        ]
+      },
+      "target_altitude": "2500",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0014",
+      "target_name": "v282110_Aso",
+      "target_location": { "type": "Point", "coordinates": [131.11, 32.88] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.6842741145479, 32.5185914718661],
+            [131.5357258854521, 32.5185914718661],
+            [131.5391882553004, 33.23992686286523],
+            [130.6808117446997, 33.23992686286523],
+            [130.6842741145479, 32.5185914718661]
+          ]
+        ]
+      },
+      "target_altitude": "1500",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0015",
+      "target_name": "v342090_Fuego",
+      "target_location": { "type": "Point", "coordinates": [-90.88, 14.47] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-91.25042794212284, 14.10818860887478],
+            [-90.50957205787715, 14.10818860887478],
+            [-90.50837138445958, 14.83121531879956],
+            [-91.25162861554041, 14.83121531879956],
+            [-91.25042794212284, 14.10818860887478]
+          ]
+        ]
+      },
+      "target_altitude": "3763",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0016",
+      "target_name": "v252140_Rabaul_Tarvurvur",
+      "target_location": { "type": "Point", "coordinates": [152.203, -4.271] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [151.8425039899198, -4.632633982483173],
+            [152.5634960100801, -4.632633982483173],
+            [152.5631584961636, -3.909193190235587],
+            [151.8428415038363, -3.909193190235587],
+            [151.8425039899198, -4.632633982483173]
+          ]
+        ]
+      },
+      "target_altitude": "688",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0017",
+      "target_name": "v354006_Sabancaya",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-71.85967790000001, -15.79516732]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-72.2336819375807, -16.15631167794517],
+            [-71.48567386241932, -16.15631167794517],
+            [-71.4869981772364, -15.4333698095087],
+            [-72.23235762276362, -15.4333698095087],
+            [-72.2336819375807, -16.15631167794517]
+          ]
+        ]
+      },
+      "target_altitude": "5960",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0018",
+      "target_name": "v282080_Sakurajima",
+      "target_location": { "type": "Point", "coordinates": [130.657, 31.585] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.2371869647367, 31.22355291871228],
+            [131.0768130352634, 31.22355291871228],
+            [131.080060044692, 31.94503686686791],
+            [130.2339399553081, 31.94503686686791],
+            [130.2371869647367, 31.22355291871228]
+          ]
+        ]
+      },
+      "target_altitude": "850",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0019",
+      "target_name": "v273070_Taal",
+      "target_location": { "type": "Point", "coordinates": [120.994, 14.008] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.6243046211532, 13.64618449170221],
+            [121.3636953788468, 13.64618449170221],
+            [121.3648537764732, 14.36923918704372],
+            [120.6231462235269, 14.36923918704372],
+            [120.6243046211532, 13.64618449170221]
+          ]
+        ]
+      },
+      "target_altitude": "311",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0020",
+      "target_name": "v223030_Nyiragongo",
+      "target_location": { "type": "Point", "coordinates": [29.25, -1.52] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.89048131029298, -1.881707311214544],
+            [29.60951868970702, -1.881707311214544],
+            [29.60939905385078, -1.158231271228296],
+            [28.89060094614922, -1.158231271228296],
+            [28.89048131029298, -1.881707311214544]
+          ]
+        ]
+      },
+      "target_altitude": "3200",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0021",
+      "target_name": "v262000_Krakatau_Anak_Krakatau",
+      "target_location": { "type": "Point", "coordinates": [105.42, -6.1] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [105.0583919915501, -6.461575851782998],
+            [105.7816080084499, -6.461575851782998],
+            [105.7811236428323, -5.738176879285792],
+            [105.0588763571678, -5.738176879285792],
+            [105.0583919915501, -6.461575851782998]
+          ]
+        ]
+      },
+      "target_altitude": "813",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0022",
+      "target_name": "v323150_Mammoth_Mountain_LVC",
+      "target_location": { "type": "Point", "coordinates": [-119.032, 37.631] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-119.4829790059025, 37.26973557158406],
+            [-118.5810209940976, 37.26973557158406],
+            [-118.5766444148395, 37.99050191709609],
+            [-119.4873555851605, 37.99050191709609],
+            [-119.4829790059025, 37.26973557158406]
+          ]
+        ]
+      },
+      "target_altitude": "3369",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0023",
+      "target_name": "v241040_White_Island",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [177.1806283, -37.52019052]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [176.7259557244302, -37.8797027166268],
+            [177.6353008755698, -37.8797027166268],
+            [177.6309482018863, -37.15892274153305],
+            [176.7303083981136, -37.15892274153305],
+            [176.7259557244302, -37.8797027166268]
+          ]
+        ]
+      },
+      "target_altitude": "321",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0024",
+      "target_name": "v257100_Yasur",
+      "target_location": { "type": "Point", "coordinates": [169.447, -19.532] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [169.0650201789199, -19.89292473884182],
+            [169.8289798210801, -19.89292473884182],
+            [169.8272846206316, -19.17025719730131],
+            [169.0667153793684, -19.17025719730131],
+            [169.0650201789199, -19.89292473884182]
+          ]
+        ]
+      },
+      "target_altitude": "280",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0025",
+      "target_name": "v2110010_Campi_Flegrei_and_Pisciarelli",
+      "target_location": { "type": "Point", "coordinates": [14.139, 40.827] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [13.6673594736541, 40.46583023144828],
+            [14.61064052634592, 40.46583023144828],
+            [14.61577198082759, 41.18619816397099],
+            [13.66222801917243, 41.18619816397099],
+            [13.6673594736541, 40.46583023144828]
+          ]
+        ]
+      },
+      "target_altitude": "458",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0026",
+      "target_name": "v354020_Ubinas",
+      "target_location": { "type": "Point", "coordinates": [-70.9, -16.34] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.27504765197013, -16.7011141174153],
+            [-70.52495234802988, -16.7011141174153],
+            [-70.52632859131752, -15.97820906615353],
+            [-71.27367140868249, -15.97820906615353],
+            [-71.27504765197013, -16.7011141174153]
+          ]
+        ]
+      },
+      "target_altitude": "5500",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0027",
+      "target_name": "v251020_Manam",
+      "target_location": { "type": "Point", "coordinates": [145.04, -4.08] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.6795987045151, -4.441639620956625],
+            [145.4004012954848, -4.441639620956625],
+            [145.4000790050034, -3.718195304785602],
+            [144.6799209949966, -3.718195304785602],
+            [144.6795987045151, -4.441639620956625]
+          ]
+        ]
+      },
+      "target_altitude": "1807",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0028",
+      "target_name": "v351020_Nevado_del_Ruiz",
+      "target_location": { "type": "Point", "coordinates": [-75.322, 4.895] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.6824461912184, 4.533186826502369],
+            [-74.9615538087816, 4.533186826502369],
+            [-74.96116642452905, 5.256614991863277],
+            [-75.68283357547095, 5.256614991863277],
+            [-75.6824461912184, 4.533186826502369]
+          ]
+        ]
+      },
+      "target_altitude": "5300",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0029",
+      "target_name": "v344100_Masaya",
+      "target_location": { "type": "Point", "coordinates": [-86.16, 11.98] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-86.52679248377746, 11.61817099805516],
+            [-85.79320751622254, 11.61817099805516],
+            [-85.79223015671711, 12.34133856026082],
+            [-86.52776984328288, 12.34133856026082],
+            [-86.52679248377746, 11.61817099805516]
+          ]
+        ]
+      },
+      "target_altitude": "635",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0030",
+      "target_name": "v263310_Bromo",
+      "target_location": { "type": "Point", "coordinates": [112.95, -7.94] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [112.5868942822934, -8.30150982676112],
+            [113.3131057177065, -8.30150982676112],
+            [113.3124711086467, -7.578167550224307],
+            [112.5875288913533, -7.578167550224307],
+            [112.5868942822934, -8.30150982676112]
+          ]
+        ]
+      },
+      "target_altitude": "2300",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0031",
+      "target_name": "v264020_Agung",
+      "target_location": { "type": "Point", "coordinates": [115.51, -8.34] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.1465176567611, -8.701494475818825],
+            [115.8734823432389, -8.701494475818825],
+            [115.8728146612018, -7.978166443861687],
+            [115.1471853387982, -7.978166443861687],
+            [115.1465176567611, -8.701494475818825]
+          ]
+        ]
+      },
+      "target_altitude": "2997",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0032",
+      "target_name": "v211050_Vulcano",
+      "target_location": { "type": "Point", "coordinates": [14.962, 38.404] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14.50632097603392, 38.04275885039675],
+            [15.41767902396606, 38.04275885039675],
+            [15.42222631936991, 38.76342973319375],
+            [14.50177368063007, 38.76342973319375],
+            [14.50632097603392, 38.04275885039675]
+          ]
+        ]
+      },
+      "target_altitude": "500",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0033",
+      "target_name": "v222120_Oldoinyo_Lengai",
+      "target_location": { "type": "Point", "coordinates": [35.914, -2.764] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [35.55414210738851, -3.125676249329467],
+            [36.27385789261146, -3.125676249329467],
+            [36.27364005194289, -2.402212013209265],
+            [35.55435994805708, -2.402212013209265],
+            [35.55414210738851, -3.125676249329467]
+          ]
+        ]
+      },
+      "target_altitude": "2962",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0034",
+      "target_name": "v345040_Poas",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-84.23299999999999, 10.2]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.59765355422832, 9.838165526365858],
+            [-83.86834644577166, 9.83816552636586],
+            [-83.86752265897664, 10.56141844078184],
+            [-84.59847734102335, 10.56141844078184],
+            [-84.59765355422832, 9.838165526365858]
+          ]
+        ]
+      },
+      "target_altitude": "2708",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0035",
+      "target_name": "v241100_Ruapehu",
+      "target_location": { "type": "Point", "coordinates": [175.57, -39.28] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [175.104022338958, -39.63934693552881],
+            [176.035977661042, -39.63934693552881],
+            [176.0312281399563, -38.91878498429887],
+            [175.1087718600436, -38.91878498429887],
+            [175.104022338958, -39.63934693552881]
+          ]
+        ]
+      },
+      "target_altitude": "2797",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0036",
+      "target_name": "v325010_Yellowstone",
+      "target_location": { "type": "Point", "coordinates": [-110.7, 44.4] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-110.2009559431999, 44.03892773450237],
+            [-111.1990440568001, 44.03892773450237],
+            [-111.2052012110659, 44.75884223444049],
+            [-110.1947987889341, 44.75884223444049],
+            [-110.2009559431999, 44.03892773450237]
+          ]
+        ]
+      },
+      "target_altitude": "2805",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0037",
+      "target_name": "v353010_Fernandina_Galapagos",
+      "target_location": { "type": "Point", "coordinates": [-91.55, -0.37] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-91.90935522329949, -0.7317329551933389],
+            [-91.19064477670055, -0.7317329551933388],
+            [-91.19067388263774, -0.008252097451687318],
+            [-91.9093261173623, -0.008252097451687406],
+            [-91.90935522329949, -0.7317329551933389]
+          ]
+        ]
+      },
+      "target_altitude": "1476",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0038",
+      "target_name": "v221080_Erta_Ale",
+      "target_location": { "type": "Point", "coordinates": [40.67, 13.6] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [40.30092934086258, 13.23818117292988],
+            [41.03907065913745, 13.23818117292988],
+            [41.04019205686157, 13.96125988799192],
+            [40.29980794313846, 13.96125988799192],
+            [40.30092934086258, 13.23818117292988]
+          ]
+        ]
+      },
+      "target_altitude": "613",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0039",
+      "target_name": "v268010_Dukono",
+      "target_location": { "type": "Point", "coordinates": [127.88, 1.68] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [127.5205793976704, 1.318228604427667],
+            [128.2394206023296, 1.318228604427667],
+            [128.2395528484878, 2.041703509829771],
+            [127.5204471515123, 2.041703509829771],
+            [127.5205793976704, 1.318228604427667]
+          ]
+        ]
+      },
+      "target_altitude": "1200",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0040",
+      "target_name": "v357090_Copahue",
+      "target_location": { "type": "Point", "coordinates": [-71.16, -37.86] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.61677906764535, -38.21948061912153],
+            [-70.70322093235464, -38.21948061912153],
+            [-70.70764735877673, -37.49874248537171],
+            [-71.61235264122328, -37.49874248537171],
+            [-71.61677906764535, -38.21948061912153]
+          ]
+        ]
+      },
+      "target_altitude": "2953",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0041",
+      "target_name": "v342110_Pacaya",
+      "target_location": { "type": "Point", "coordinates": [-90.601, 14.382] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-90.97128633504184, 14.02018779546127],
+            [-90.23071366495816, 14.02018779546127],
+            [-90.22952107581526, 14.74321990003867],
+            [-90.97247892418473, 14.74321990003867],
+            [-90.97128633504184, 14.02018779546127]
+          ]
+        ]
+      },
+      "target_altitude": "2569",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0042",
+      "target_name": "v332010_East_Rift_Zone_Hawaii",
+      "target_location": { "type": "Point", "coordinates": [-154.91, 19.275] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-155.2896998421261, 18.913252741746],
+            [-154.5303001578739, 18.913252741746],
+            [-154.5286316578223, 19.63594074614318],
+            [-155.2913683421777, 19.63594074614318],
+            [-155.2896998421261, 18.913252741746]
+          ]
+        ]
+      },
+      "target_altitude": "260",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0043",
+      "target_name": "v283110_Asama",
+      "target_location": { "type": "Point", "coordinates": [138.53, 36.4] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.0861439352134, 36.03869822952642],
+            [138.9738560647866, 36.03869822952642],
+            [138.9779746391679, 36.75961514647064],
+            [138.0820253608321, 36.75961514647064],
+            [138.0861439352134, 36.03869822952642]
+          ]
+        ]
+      },
+      "target_altitude": "2350",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0044",
+      "target_name": "v342030_Santiaguito_Santa_Maria",
+      "target_location": { "type": "Point", "coordinates": [-91.552, 14.757] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-91.92289658284963, 14.39519135647196],
+            [-91.1811034171504, 14.39519135647196],
+            [-91.17987627187806, 15.11820026386964],
+            [-91.92412372812197, 15.11820026386964],
+            [-91.92289658284963, 14.39519135647196]
+          ]
+        ]
+      },
+      "target_altitude": "3745",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0045",
+      "target_name": "v305060_Changbaishan_CN_Baekdusan_Paekdusan_NK",
+      "target_location": { "type": "Point", "coordinates": [128.08, 41.98] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [127.6000550169375, 41.61886294720346],
+            [128.5599449830626, 41.61886294720346],
+            [128.565383841066, 42.33908518233147],
+            [127.5946161589341, 42.33908518233147],
+            [127.6000550169375, 41.61886294720346]
+          ]
+        ]
+      },
+      "target_altitude": "2744",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0046",
+      "target_name": "v224010_Mt._Cameroon",
+      "target_location": { "type": "Point", "coordinates": [9.175, 4.211] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [8.814866906970963, 3.849193846055426],
+            [9.53513309302906, 3.849193846055426],
+            [9.535465822737535, 4.572635762535696],
+            [8.814534177262487, 4.572635762535696],
+            [8.814866906970963, 3.849193846055426]
+          ]
+        ]
+      },
+      "target_altitude": "4040",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0047",
+      "target_name": "v353050_Sierra_Negra",
+      "target_location": { "type": "Point", "coordinates": [-91.17, -0.83] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-91.52940333393828, -1.191723050868928],
+            [-90.81059666606173, -1.191723050868928],
+            [-90.81066196686314, -0.4682434168855279],
+            [-91.52933803313687, -0.468243416885528],
+            [-91.52940333393828, -1.191723050868928]
+          ]
+        ]
+      },
+      "target_altitude": "1124",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0048",
+      "target_name": "v223020_Nyamuragira",
+      "target_location": { "type": "Point", "coordinates": [29.2, -1.408] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [28.84050356084609, -1.769709938201444],
+            [29.55949643915389, -1.769709938201444],
+            [29.5593856277244, -1.046233171452108],
+            [28.84061437227558, -1.046233171452108],
+            [28.84050356084609, -1.769709938201444]
+          ]
+        ]
+      },
+      "target_altitude": "2950",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0049",
+      "target_name": "v224030_Oku_Volcanic_Field_Lake_Nyos",
+      "target_location": { "type": "Point", "coordinates": [10.298, 6.437] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [9.936657996106987, 6.075174644613453],
+            [10.65934200389302, 6.075174644613453],
+            [10.65985367538173, 6.798564324326778],
+            [9.936146324618278, 6.798564324326778],
+            [9.936657996106987, 6.075174644613453]
+          ]
+        ]
+      },
+      "target_altitude": "1091",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0050",
+      "target_name": "v263280_Kelut",
+      "target_location": { "type": "Point", "coordinates": [112.31, -7.93] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [111.9469034626781, -8.291510205979721],
+            [112.673096537322, -8.291510205979721],
+            [112.672462753039, -7.568167582060713],
+            [111.9475372469609, -7.568167582060713],
+            [111.9469034626781, -8.291510205979721]
+          ]
+        ]
+      },
+      "target_altitude": "1731",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0051",
+      "target_name": "v255020_Bagana",
+      "target_location": { "type": "Point", "coordinates": [155.23, -6.09] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [154.868399086435, -6.451576189965731],
+            [155.5916009135651, -6.451576189965731],
+            [155.5911173568993, -5.728176949231878],
+            [154.8688826431007, -5.728176949231878],
+            [154.868399086435, -6.451576189965731]
+          ]
+        ]
+      },
+      "target_altitude": "1855",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0052",
+      "target_name": "v344090_Momotombo",
+      "target_location": { "type": "Point", "coordinates": [-86.539, 12.423] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-86.90638367508966, 12.06117329734251],
+            [-86.17161632491035, 12.06117329734251],
+            [-86.17060001110534, 12.78431760862976],
+            [-86.90739998889467, 12.78431760862976],
+            [-86.90638367508966, 12.06117329734251]
+          ]
+        ]
+      },
+      "target_altitude": "1270",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0053",
+      "target_name": "v282030_Suwanosejima_Marianas",
+      "target_location": { "type": "Point", "coordinates": [129.716, 29.635] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [129.3043973492387, 29.27349635912926],
+            [130.1276026507613, 29.27349635912926],
+            [130.1305476576969, 29.9951975360995],
+            [129.3014523423032, 29.99519753609949],
+            [129.3043973492387, 29.27349635912926]
+          ]
+        ]
+      },
+      "target_altitude": "796",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0054",
+      "target_name": "v282060_Satsuma-Iwojima_Kikai",
+      "target_location": { "type": "Point", "coordinates": [130.308, 30.789] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [129.8916360720374, 30.42752958145142],
+            [130.7243639279625, 30.42752958145142],
+            [130.7274845885423, 31.14910318577392],
+            [129.8885154114577, 31.14910318577392],
+            [129.8916360720374, 30.42752958145142]
+          ]
+        ]
+      },
+      "target_altitude": "704",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0055",
+      "target_name": "v221101_Nabro",
+      "target_location": { "type": "Point", "coordinates": [41.7, 13.37] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [41.33127239353459, 13.00817943452055],
+            [42.06872760646539, 13.00817943452055],
+            [42.06982828023229, 13.73127140100172],
+            [41.33017171976769, 13.73127140100172],
+            [41.33127239353459, 13.00817943452055]
+          ]
+        ]
+      },
+      "target_altitude": "2218",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0056",
+      "target_name": "v261080_Sinabung",
+      "target_location": { "type": "Point", "coordinates": [98.391, 3.17] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [98.03124474845816, 2.808206458572493],
+            [98.75075525154188, 2.808206458572493],
+            [98.75100524228662, 3.53166536273342],
+            [98.03099475771342, 3.53166536273342],
+            [98.03124474845816, 2.808206458572493]
+          ]
+        ]
+      },
+      "target_altitude": "2460",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0057",
+      "target_name": "v263300_Semeru",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [112.922, -8.107999999999999]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [112.5587383376669, -8.469503422655457],
+            [113.2852616623331, -8.469503422655457],
+            [113.2846131822411, -7.746167045879623],
+            [112.559386817759, -7.746167045879623],
+            [112.5587383376669, -8.469503422655457]
+          ]
+        ]
+      },
+      "target_altitude": "3657",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0058",
+      "target_name": "v261170_Kerinci",
+      "target_location": { "type": "Point", "coordinates": [101.26, -1.7] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [100.9004426853721, -2.06170303063969],
+            [101.6195573146279, -2.06170303063969],
+            [101.619423491832, -1.338228275029338],
+            [100.9005765081679, -1.338228275029338],
+            [100.9004426853721, -2.06170303063969]
+          ]
+        ]
+      },
+      "target_altitude": "3805",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0059",
+      "target_name": "v266100_Lokon-Empung_Sulawesi",
+      "target_location": { "type": "Point", "coordinates": [124.79, 1.36] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [124.4306197084721, 0.9982339942760861],
+            [125.1493802915279, 0.9982339942760861],
+            [125.1494873217133, 1.721711055488873],
+            [124.4305126782866, 1.721711055488873],
+            [124.4306197084721, 0.9982339942760861]
+          ]
+        ]
+      },
+      "target_altitude": "1580",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0060",
+      "target_name": "v354010_Misti",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-71.40899999999999, -16.294]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-71.78395800964017, -16.65511669443342],
+            [-71.0340419903598, -16.65511669443342],
+            [-71.03541382343305, -15.93220849168903],
+            [-71.78258617656692, -15.93220849168903],
+            [-71.78395800964017, -16.65511669443342]
+          ]
+        ]
+      },
+      "target_altitude": "5822",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0061",
+      "target_name": "v351110_Chiles-Cerro_Negro",
+      "target_location": { "type": "Point", "coordinates": [-77.964, 0.826] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.32333783035881, 0.464243490354083],
+            [-77.60466216964119, 0.4642434903540831],
+            [-77.60459718365084, 1.18772313902177],
+            [-78.32340281634916, 1.18772313902177],
+            [-78.32333783035881, 0.464243490354083]
+          ]
+        ]
+      },
+      "target_altitude": "4584",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0062",
+      "target_name": "v266030_Soputan",
+      "target_location": { "type": "Point", "coordinates": [124.734, 1.113] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [124.3746432039871, 0.7512383085619115],
+            [125.0933567960128, 0.7512383085619116],
+            [125.0934443741538, 1.474716723647673],
+            [124.3745556258461, 1.474716723647673],
+            [124.3746432039871, 0.7512383085619115]
+          ]
+        ]
+      },
+      "target_altitude": "1784",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0063",
+      "target_name": "v284040_Miyake-jima_Marianas",
+      "target_location": { "type": "Point", "coordinates": [139.526, 34.094] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [139.0943746253377, 33.73262809594283],
+            [139.9576253746624, 33.73262809594283],
+            [139.961301614227, 34.45382141980484],
+            [139.0906983857731, 34.45382141980484],
+            [139.0943746253377, 33.73262809594283]
+          ]
+        ]
+      },
+      "target_altitude": "775",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0064",
+      "target_name": "v360050_Soufriere_Hills_Montserrat",
+      "target_location": { "type": "Point", "coordinates": [-62.18, 16.72] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-62.55438619120835, 16.3582139457639],
+            [-61.80561380879168, 16.3582139457639],
+            [-61.80420094579856, 17.08109266159155],
+            [-62.55579905420149, 17.08109266159155],
+            [-62.55438619120835, 16.3582139457639]
+          ]
+        ]
+      },
+      "target_altitude": "915",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0065",
+      "target_name": "v267020_Karangetan",
+      "target_location": { "type": "Point", "coordinates": [125.41, 2.78] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [125.0503557490709, 2.418211787526193],
+            [125.7696442509292, 2.418211787526193],
+            [125.7698633575131, 3.141675827283797],
+            [125.050136642487, 3.141675827283797],
+            [125.0503557490709, 2.418211787526193]
+          ]
+        ]
+      },
+      "target_altitude": "1827",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0066",
+      "target_name": "v351050_Nevado_del_Huila",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-76.03399999999999, 2.917]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-76.39368134949966, 2.555209877910447],
+            [-75.67431865050033, 2.555209877910447],
+            [-75.6740887009858, 3.278672190064754],
+            [-76.39391129901419, 3.278672190064754],
+            [-76.39368134949966, 2.555209877910447]
+          ]
+        ]
+      },
+      "target_altitude": "5364",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0067",
+      "target_name": "v263350_Kawah_Ijen_Ijen",
+      "target_location": { "type": "Point", "coordinates": [114.24, -8.06] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [113.8767832236321, -8.421505258800044],
+            [114.603216776368, -8.421505258800044],
+            [114.6025722622912, -7.698167184106135],
+            [113.8774277377088, -7.698167184106135],
+            [113.8767832236321, -8.421505258800044]
+          ]
+        ]
+      },
+      "target_altitude": "2769",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0068",
+      "target_name": "v311290_Okmok",
+      "target_location": { "type": "Point", "coordinates": [-168.13, 53.43] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-168.7267545140091, 53.06908555330611],
+            [-167.5332454859909, 53.06908555330611],
+            [-167.523092669716, 53.7878606558634],
+            [-168.736907330284, 53.7878606558634],
+            [-168.7267545140091, 53.06908555330611]
+          ]
+        ]
+      },
+      "target_altitude": "1073",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0069",
+      "target_name": "v252010_Langila",
+      "target_location": { "type": "Point", "coordinates": [148.42, -5.53] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [148.0587785208386, -5.891594771222341],
+            [148.7812214791613, -5.891594771222341],
+            [148.7807831093069, -5.168181201963734],
+            [148.0592168906931, -5.168181201963734],
+            [148.0587785208386, -5.891594771222341]
+          ]
+        ]
+      },
+      "target_altitude": "1330",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0070",
+      "target_name": "v351080_Galeras",
+      "target_location": { "type": "Point", "coordinates": [-77.39, 1.2] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-77.74936431462326, 0.8382367736324697],
+            [-77.03063568537678, 0.8382367736324698],
+            [-77.0305412567196, 1.561714742682361],
+            [-77.74945874328044, 1.561714742682361],
+            [-77.74936431462326, 0.8382367736324697]
+          ]
+        ]
+      },
+      "target_altitude": "4276",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0071",
+      "target_name": "v360101_Morne_Watt_Dominica_Island",
+      "target_location": { "type": "Point", "coordinates": [-61.31, 15.31] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-61.68182915512958, 14.9481970558354],
+            [-60.93817084487043, 14.9481970558354],
+            [-60.93689222248081, 15.67117076590586],
+            [-61.6831077775192, 15.67117076590586],
+            [-61.68182915512958, 14.9481970558354]
+          ]
+        ]
+      },
+      "target_altitude": "1224",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0072",
+      "target_name": "v343020_Santa_Ana",
+      "target_location": { "type": "Point", "coordinates": [-89.63, 13.853] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-89.99945560213416, 13.49118319565023],
+            [-89.26054439786583, 13.49118319565023],
+            [-89.25940009286165, 14.21424709316826],
+            [-90.00059990713834, 14.21424709316826],
+            [-89.99945560213416, 13.49118319565023]
+          ]
+        ]
+      },
+      "target_altitude": "2381",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0073",
+      "target_name": "v264270_Sirung_Pantar",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [124.1274858, -8.509004591]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [123.7638387965585, -8.870492474123765],
+            [124.4911328034415, -8.870492474123765],
+            [124.4904510984245, -8.147170665074732],
+            [123.7645205015755, -8.147170665074732],
+            [123.7638387965585, -8.870492474123765]
+          ]
+        ]
+      },
+      "target_altitude": "862",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0074",
+      "target_name": "v321050_Mount_St._Helens",
+      "target_location": { "type": "Point", "coordinates": [-122.18, 46.2] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-122.6948855606264, 45.83897144449167],
+            [-121.6651144393736, 45.83897144449167],
+            [-121.6583478221459, 46.55865636390239],
+            [-122.7016521778541, 46.55865636390239],
+            [-122.6948855606264, 45.83897144449167]
+          ]
+        ]
+      },
+      "target_altitude": "2549",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0075",
+      "target_name": "v283030_Fuji-san",
+      "target_location": { "type": "Point", "coordinates": [138.73, 35.36] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.2918328251919, 34.9986665696564],
+            [139.1681671748082, 34.9986665696564],
+            [139.172080026428, 35.71970913023435],
+            [138.2879199735721, 35.71970913023435],
+            [138.2918328251919, 34.9986665696564]
+          ]
+        ]
+      },
+      "target_altitude": "3776",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0076",
+      "target_name": "v355838_Uturuncu",
+      "target_location": { "type": "Point", "coordinates": [-67.18, -22.27] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-67.56910822747378, -22.6307461894791],
+            [-66.79089177252624, -22.6307461894791],
+            [-66.79288432585896, -21.90831044052499],
+            [-67.56711567414105, -21.90831044052499],
+            [-67.56910822747378, -22.6307461894791]
+          ]
+        ]
+      },
+      "target_altitude": "6008",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0077",
+      "target_name": "v344020_San_Cristobal",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-87.00399999999999, 12.702]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-87.37176821961715, 12.34017493347303],
+            [-86.63623178038284, 12.34017493347303],
+            [-86.63519077040269, 13.06330419571871],
+            [-87.37280922959731, 13.06330419571871],
+            [-87.37176821961715, 12.34017493347303]
+          ]
+        ]
+      },
+      "target_altitude": "1745",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0078",
+      "target_name": "v355100_Lascar",
+      "target_location": { "type": "Point", "coordinates": [-67.73, -23.37] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-68.12230191119583, -23.73067042533769],
+            [-67.33769808880419, -23.73067042533769],
+            [-67.33981745788955, -23.00833459991636],
+            [-68.12018254211047, -23.00833459991636],
+            [-68.12230191119583, -23.73067042533769]
+          ]
+        ]
+      },
+      "target_altitude": "5592",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0079",
+      "target_name": "v355120_Lastarria",
+      "target_location": { "type": "Point", "coordinates": [-68.5, -25.17] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-68.89796188931524, -25.53054162925787],
+            [-68.10203811068476, -25.53054162925787],
+            [-68.1043754268178, -24.80837718785119],
+            [-68.89562457318222, -24.80837718785119],
+            [-68.89796188931524, -25.53054162925787]
+          ]
+        ]
+      },
+      "target_altitude": "5706",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0080",
+      "target_name": "v357061_Laguna_del_Maule",
+      "target_location": { "type": "Point", "coordinates": [-70.49, -36.06] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-70.9360141014758, -36.41964604245002],
+            [-70.04398589852418, -36.41964604245002],
+            [-70.04803603310127, -35.69868788294763],
+            [-70.93196396689872, -35.69868788294763],
+            [-70.9360141014758, -36.41964604245002]
+          ]
+        ]
+      },
+      "target_altitude": "2162",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0081",
+      "target_name": "v300070_Gorely",
+      "target_location": { "type": "Point", "coordinates": [158.03, 52.56] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [157.4449669506201, 52.19907863624547],
+            [158.6150330493798, 52.19907863624547],
+            [158.6246748619547, 52.9179611032839],
+            [157.4353251380452, 52.9179611032839],
+            [157.4449669506201, 52.19907863624547]
+          ]
+        ]
+      },
+      "target_altitude": "2322",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0082",
+      "target_name": "v300060_Mutnovsky",
+      "target_location": { "type": "Point", "coordinates": [158.196, 52.449] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [157.612419712348, 52.08807759227701],
+            [158.779580287652, 52.08807759227701],
+            [158.7891594010522, 52.80697381478755],
+            [157.6028405989478, 52.80697381478755],
+            [157.612419712348, 52.08807759227701]
+          ]
+        ]
+      },
+      "target_altitude": "2322",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0083",
+      "target_name": "v282090_Shinmoedake_Kirishimayama",
+      "target_location": { "type": "Point", "coordinates": [130.882, 31.911] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.4607342412435, 31.54956256172714],
+            [131.3032657587565, 31.54956256172714],
+            [131.3065658066454, 32.27100941901608],
+            [130.4574341933546, 32.27100941901608],
+            [130.4607342412435, 31.54956256172714]
+          ]
+        ]
+      },
+      "target_altitude": "1700",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0084",
+      "target_name": "v283040_Ontake-san_Nagoya",
+      "target_location": { "type": "Point", "coordinates": [137.48, 35.893] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [137.0389538058753, 35.53168279866873],
+            [137.9210461941248, 35.53168279866873],
+            [137.9250631398115, 36.25266115735281],
+            [137.0349368601885, 36.25266115735281],
+            [137.0389538058753, 35.53168279866873]
+          ]
+        ]
+      },
+      "target_altitude": "3067",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0085",
+      "target_name": "v284010_Izu-Oshima",
+      "target_location": { "type": "Point", "coordinates": [139.39, 34.72] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.9551910749144, 34.35864709803002],
+            [139.8248089250856, 34.35864709803002],
+            [139.828600347244, 35.07976618959143],
+            [138.951399652756, 35.07976618959143],
+            [138.9551910749144, 34.35864709803002]
+          ]
+        ]
+      },
+      "target_altitude": "758",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0086",
+      "target_name": "v271011_Parker",
+      "target_location": { "type": "Point", "coordinates": [124.892, 6.113] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [124.5308681687869, 5.751176788669582],
+            [125.2531318312131, 5.751176788669582],
+            [125.2536172485791, 6.474575411811186],
+            [124.5303827514209, 6.474575411811186],
+            [124.5308681687869, 5.751176788669582]
+          ]
+        ]
+      },
+      "target_altitude": "1824",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0087",
+      "target_name": "v352010_Reventador",
+      "target_location": { "type": "Point", "coordinates": [-77.656, -0.077] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.0153365783125, -0.4387390187449282],
+            [-77.29666342168751, -0.4387390187449282],
+            [-77.29666947867187, 0.2847421293734423],
+            [-78.01533052132812, 0.2847421293734423],
+            [-78.0153365783125, -0.4387390187449282]
+          ]
+        ]
+      },
+      "target_altitude": "3562",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0088",
+      "target_name": "v352006_Cayambe",
+      "target_location": { "type": "Point", "coordinates": [-77.986, 0.029] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.34533213260617, -0.332741165467018],
+            [-77.62666786739383, -0.3327411654670179],
+            [-77.62666558619485, 0.3907399939321485],
+            [-78.34533441380516, 0.3907399939321485],
+            [-78.34533213260617, -0.332741165467018]
+          ]
+        ]
+      },
+      "target_altitude": "5790",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0089",
+      "target_name": "v284120_Ioto_Iwo-Jima",
+      "target_location": { "type": "Point", "coordinates": [141.29, 24.75] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [140.8956935904959, 24.38836693045966],
+            [141.684306409504, 24.38836693045966],
+            [141.6865916419691, 25.1105722083337],
+            [140.8934083580308, 25.1105722083337],
+            [140.8956935904959, 24.38836693045966]
+          ]
+        ]
+      },
+      "target_altitude": "169",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0090",
+      "target_name": "v351110_Cerro_Negro_de_Mayasquer",
+      "target_location": {
+        "type": "Point",
+        "coordinates": [-77.936, 0.8170000000000001]
+      },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-78.29533738046945, 0.4552436557874468],
+            [-77.57666261953057, 0.4552436557874469],
+            [-77.57659834185937, 1.17872333723548],
+            [-78.29540165814065, 1.17872333723548],
+            [-78.29533738046945, 0.4552436557874468]
+          ]
+        ]
+      },
+      "target_altitude": "4584",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0091",
+      "target_name": "v358020_Calbuco",
+      "target_location": { "type": "Point", "coordinates": [-72.61, -41.33] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-73.09046703522361, -41.68914909515043],
+            [-72.12953296477639, -41.68914909515043],
+            [-72.13479599790291, -40.96884462547374],
+            [-73.08520400209709, -40.96884462547374],
+            [-73.09046703522361, -41.68914909515043]
+          ]
+        ]
+      },
+      "target_altitude": "2003",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0092",
+      "target_name": "v351040_Cerro_Machin",
+      "target_location": { "type": "Point", "coordinates": [-75.389, 4.487] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.74925322738164, 4.125190893182065],
+            [-75.02874677261835, 4.125190893182065],
+            [-75.02839202005971, 4.848627507516106],
+            [-75.74960797994028, 4.848627507516106],
+            [-75.74925322738164, 4.125190893182065]
+          ]
+        ]
+      },
+      "target_altitude": "2749",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0093",
+      "target_name": "v358041_Chaiten",
+      "target_location": { "type": "Point", "coordinates": [-72.646, -42.833] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-73.1380887637188, -43.19200044812615],
+            [-72.15391123628122, -43.19200044812615],
+            [-72.15959132180984, -42.47188645083764],
+            [-73.13240867819017, -42.47188645083764],
+            [-73.1380887637188, -43.19200044812615]
+          ]
+        ]
+      },
+      "target_altitude": "1122",
+      "target_type": "volcano"
+    },
+    {
+      "target_id": "volcano0094",
+      "target_name": "v345020_Rincon_de_la_Vieja",
+      "target_location": { "type": "Point", "coordinates": [-85.324, 10.83] },
+      "spatial_region": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-84.957763, 11.191402],
+            [-84.958628, 10.468168],
+            [-85.689359, 10.468156],
+            [-85.690249, 11.191389],
+            [-84.957763, 11.191402]
+          ]
+        ]
+      },
+      "target_altitude": "1.916",
+      "target_type": "volcano"
     }
-    plumeRegionMetaMap[plumeMeta.plumeSourceId].plumes.push(plumeMeta);
-  });
-  return plumeRegionMetaMap;
-}
+  ];
 
-// using the dataset, update the metadata
-export function metaDatetimeFix(
-  plumeMetaMap: PlumeMetaMap,
-  plumeMap: PlumeMap
-) {
-  Object.keys(plumeMap).forEach((plumeId) => {
-    if (!(plumeId in plumeMetaMap)) return;
-    plumeMetaMap[plumeId].startDatetime = plumeMap[plumeId].startDate;
-    plumeMetaMap[plumeId].endDatetime = plumeMap[plumeId].endDate;
-  });
-  return plumeMetaMap;
-}
+  let res: DataTree = dataTransformation(mockItems, mockMeta);
+  console.log(">>>>>", res);
+})();

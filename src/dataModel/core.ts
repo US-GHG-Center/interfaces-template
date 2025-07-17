@@ -19,6 +19,11 @@ interface Properties {
   [key: string]: any;
 }
 
+export interface LocationMeta {
+  type: string;
+  coordinates: [Lon, Lat];
+}
+
 interface Link {
   rel: string;
   type: string;
@@ -67,7 +72,7 @@ interface Statistics {
   valid_percent: number;
 }
 
-interface Geometry {
+export interface Geometry {
   type: string;
   coordinates: string[][][];
 }
