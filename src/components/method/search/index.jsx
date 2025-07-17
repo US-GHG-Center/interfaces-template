@@ -12,7 +12,11 @@ import { TrieSearch } from './helper/trieSearch';
       @param {function} onSelectedVizItemSearch -  will provide vizItemId as a parameter to the callback when a item is clicked from dropdown 
       
 */
-export function Search({ vizItems, onSelectedVizItemSearch }) {
+export function Search({
+  vizItems,
+  onSelectedVizItemSearch,
+  placeHolderText, // str
+}) {
   const ids = vizItems?.map((vizItem) => vizItem.id);
   const trieSearch = useRef(null);
   const [searchOptions, setSearchOptions] = useState([]);
@@ -49,7 +53,9 @@ export function Search({ vizItems, onSelectedVizItemSearch }) {
         <TextField
           {...params}
           id='outlined-basic'
-          label='Search by Plume ID or Location'
+          label={
+            placeHolderText ? placeHolderText : 'Search by STAC Item Id'
+          }
           variant='outlined'
           style={{ width: '100%', backgroundColor: '#EEEEEE' }}
           onChange={handleOnInputTextChange}
