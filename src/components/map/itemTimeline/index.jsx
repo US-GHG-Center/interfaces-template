@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 
-
-// import material-ui icons for timeline controls
 import ReplayIcon from '@mui/icons-material/Replay';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
@@ -12,176 +10,187 @@ import LastPageIcon from '@mui/icons-material/LastPage';
 import './index.css';
 
 export const VizItemTimeline = ({
-  dates = [
-    new Date('2002-03-01'),
-    new Date('2002-03-04'),
-    new Date('2005-07-10'),
-    new Date('2008-10-05'),
-  ],
-  onDateChange = (d) => console.log('Selected date:', d),
+  vizItems = [],
+  onVizItemSelect = () => {},
   title = 'Timeline',
 }) => {
   const svgRef = useRef();
   const zoomRef = useRef();
   const containerRef = useRef();
-  const [activeDate, _setActiveDate] = useState(dates[0]);
+
+  const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
+
+  const parsedItems = useMemo(() =>
+    vizItems
+      .map(item => ({
+        id: item.id,
+        date: new Date(item.properties.datetime),
+      }))
+      .sort((a, b) => a.date - b.date), [vizItems]);
+
+  const dates = parsedItems.map(item => item.date);
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeDate = dates[activeIndex];
   const activeDateRef = useRef(activeDate);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 60 });
 
   const margin = { left: 30, right: 30 };
 
-  const setActiveDate = (date) => {
-    activeDateRef.current = date;
-    _setActiveDate(date);
+  const updateHighlights = (activeDate) => {
+    d3.select(svgRef.current)
+      .selectAll('circle')
+      .attr('fill', d => d.date.getTime() === activeDate.getTime() ? '#3b82f6' : '#9ca3af');
+  };
+
+
+  const setActiveDateIndex = (idx) => {
+    activeDateRef.current = dates[idx];
+    setActiveIndex(idx);
+    onVizItemSelect(parsedItems[idx].id);
+
+    updateHighlights(activeDateRef.current);
   };
 
   useEffect(() => {
-    const containerNode = containerRef.current;
-    if (!containerNode) return;
-
-    const resizeObserver = new ResizeObserver(entries => {
-      if (entries[0]) {
-        setDimensions({
-          width: entries[0].contentRect.width,
-          height: 60,
-        });
-      }
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setDimensions({ width: entry.contentRect.width, height: 60 });
     });
-    resizeObserver.observe(containerNode);
-    return () => resizeObserver.disconnect();
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
 
-  const minDate = d3.min(dates);
-  const maxDate = d3.max(dates);
-  const startDomain = d3.timeMonth.floor(minDate);
-  const endDomain = d3.timeMonth.ceil(maxDate);
-  
-
   const getBaseX = () => {
-    if (dimensions.width === 0) return null;
-    return d3.scaleTime().domain([startDomain, endDomain]).range([margin.left, dimensions.width - margin.right]);
-  }
+    if (!dates.length || !dimensions.width) return null;
+    const minDate = d3.min(dates);
+    const maxDate = d3.max(dates);
+    return d3.scaleTime()
+      .domain([d3.timeMonth.floor(minDate), d3.timeMonth.ceil(maxDate)])
+      .range([margin.left, dimensions.width - margin.right]);
+  };
 
   const centerOnDate = (date, scale) => {
     const svg = d3.select(svgRef.current);
     const baseX = getBaseX();
     if (!svg.node() || !baseX) return;
-
-    const dateX = baseX(date);
-    const viewCenter = (dimensions.width - margin.left - margin.right) / 2 + margin.left;
-    const idealTranslateX = viewCenter - dateX * scale;
-    const maxTranslateX = margin.left * (1 - scale);
-    const minTranslateX = (dimensions.width - margin.right) * (1 - scale);
-    const translateX = Math.max(minTranslateX, Math.min(idealTranslateX, maxTranslateX));
-
-    const newTransform = d3.zoomIdentity.translate(translateX, 0).scale(scale);
-    svg.transition().duration(250).call(zoomRef.current.transform, newTransform);
+    const x = baseX(date);
+    const center = (dimensions.width - margin.left - margin.right) / 2 + margin.left;
+    const idealTranslateX = center - x * scale;
+    const maxX = margin.left * (1 - scale);
+    const minX = (dimensions.width - margin.right) * (1 - scale);
+    const tx = Math.max(minX, Math.min(idealTranslateX, maxX));
+    const transform = d3.zoomIdentity.translate(tx, 0).scale(scale);
+    svg.transition().duration(250).call(zoomRef.current.transform, transform);
   };
-  
-  // Main D3 setup effect
+
   useEffect(() => {
-    if (dimensions.width === 0) return;
+    if (!dimensions.width || !dates.length) return;
+
+    const svg = d3.select(svgRef.current);
     const { width, height } = dimensions;
+    svg.selectAll('*').remove();
+
     const baseX = getBaseX();
     if (!baseX) return;
 
-    const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    // Clip path to prevent labels from being clipped
     const clipId = 'timeline-clip-path';
-    const clipPadding = 25;
+    const clipPadding = 25
 
-    svg.append('defs')
-      .append('clipPath')
+    svg.append('defs').append('clipPath')
       .attr('id', clipId)
       .append('rect')
-      .attr('x', margin.left - clipPadding) // Start slightly before the margin
+      .attr('x', margin.left - clipPadding)
       .attr('y', -height)
-      .attr('width', (width - margin.left - margin.right) + (clipPadding * 2)) // Add padding to both sides
+      .attr('width', (width - margin.left - margin.right) + (clipPadding * 2))
       .attr('height', height * 2);
-
-    // Apply the clip path to the main group element
-    const g = svg.append('g')
+    
+      const g = svg.append('g')
       .attr('transform', `translate(0, ${height / 2})`)
       .attr('clip-path', `url(#${clipId})`);
 
     const render = (transform) => {
       g.selectAll('*').remove();
       const x = transform.rescaleX(baseX);
-      const totalRange = x(endDomain) - x(startDomain);
-      const months = d3.timeMonths(startDomain, endDomain);
-      const pixelsPerMonth = months.length > 1 ? totalRange / months.length : totalRange;
+      const minDate = d3.min(dates);
+      const maxDate = d3.max(dates);
+      const totalRange = x(maxDate) - x(minDate);
+      const months = d3.timeMonths(minDate, maxDate);
+      const ppm = months.length > 1 ? totalRange / months.length : totalRange;
 
-      let tickDates;
-      if (pixelsPerMonth > 55) tickDates = d3.timeMonths(startDomain, endDomain);
-      else if (pixelsPerMonth > 34) tickDates = d3.timeMonths(startDomain, endDomain, 2);
-      else if (pixelsPerMonth > 12) tickDates = d3.timeMonths(startDomain, endDomain, 6);
-      else if (pixelsPerMonth > 4) tickDates = d3.timeYears(startDomain, endDomain);
-      else if (pixelsPerMonth > 2) tickDates = d3.timeYears(startDomain, endDomain, 2);
-      else tickDates = d3.timeYears(startDomain, endDomain, 5);
-      
-      g.selectAll('month-lines').data(tickDates).enter().append('line')
-        .attr('x1', d => x(d)).attr('x2', d => x(d))
-        .attr('y1', -height * 0.15).attr('y2', height * 0.15).attr('stroke', '#aaa');
-      g.selectAll('labels').data(tickDates).enter().append('text')
-        .attr('x', d => x(d)).attr('y', -height * 0.35).attr('text-anchor', 'middle')
-        .attr('font-size', '10px').attr('fill', '#6b7280')
-        .text(d => pixelsPerMonth > 12 ? d3.timeFormat('%b %Y')(d) : d3.timeFormat('%Y')(d));
+      let ticks;
+      if (ppm > 55) ticks = d3.timeMonths(minDate, maxDate);
+      else if (ppm > 34) ticks = d3.timeMonths(minDate, maxDate, 2);
+      else if (ppm > 12) ticks = d3.timeMonths(minDate, maxDate, 6);
+      else if (ppm > 4) ticks = d3.timeYears(minDate, maxDate);
+      else if (ppm > 2) ticks = d3.timeYears(minDate, maxDate, 2);
+      else ticks = d3.timeYears(minDate, maxDate, 5);
+
+      g.selectAll('lines')
+        .data(ticks)
+        .enter().append('line')
+        .attr('x1', d => x(d))
+        .attr('x2', d => x(d))
+        .attr('y1', -height * 0.15)
+        .attr('y2', height * 0.15)
+        .attr('stroke', '#aaa');
+
+      g.selectAll('labels')
+        .data(ticks)
+        .enter().append('text')
+        .attr('x', d => x(d))
+        .attr('y', -height * 0.35)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', '#6b7280')
+        .text(d => ppm > 12 ? d3.timeFormat('%b %Y')(d) : d3.timeFormat('%Y')(d));
 
       g.append('line')
-        .attr('x1', margin.left).attr('x2', width - margin.right)
-        .attr('stroke', '#d1d5db').attr('stroke-width', 2);
+        .attr('x1', margin.left)
+        .attr('x2', width - margin.right)
+        .attr('stroke', '#d1d5db')
+        .attr('stroke-width', 2);
 
-      const circles = g.selectAll('circle').data(dates).enter().append('circle')
-        .attr('cx', d => x(d)).attr('cy', 0).attr('r', 5)
-        .attr('fill', d => d.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
-        .style('cursor', 'pointer');
-      circles.append('title').text(d => d3.timeFormat('%Y-%m-%d')(d));
-      circles.on('click', (event, date) => {
-        const currentT = d3.zoomTransform(svg.node());
-        setActiveDate(date);
-        onDateChange(date);
-        centerOnDate(date, currentT.k);
-      });
+      const circles = g.selectAll('circle')
+        .data(parsedItems)
+        .enter()
+        .append('circle')
+        .attr('cx', d => x(d.date))
+        .attr('cy', 0)
+        .attr('r', 5)
+        .attr('fill', d => d.date.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
+        .style('cursor', 'pointer')
+        .on('click', (e, d) => {
+          const currentT = d3.zoomTransform(svg.node());
+          const idx = parsedItems.findIndex(item => item.id === d.id);
+          setActiveDateIndex(idx);
+          centerOnDate(d.date, currentT.k);
+        });
+
+      circles.append('title').text(d => d3.timeFormat('%Y-%m-%d')(d.date));
     };
 
     const zoom = d3.zoom()
       .scaleExtent([1, 40])
       .translateExtent([[margin.left, 0], [width - margin.right, 0]])
       .extent([[margin.left, 0], [width - margin.right, 0]])
-      .on('zoom', (event) => render(event.transform));
+      .on('zoom', e => render(e.transform));
 
     zoomRef.current = zoom;
     svg.call(zoom);
-
     render(d3.zoomIdentity);
     centerOnDate(activeDate, 1);
+  }, [dimensions, parsedItems]);
 
-  }, [dimensions]);
-
-  // Handles date changes, and calls the main centerOnDate function to adjust the view
-  useEffect(() => {
-    if (dimensions.width === 0 || !svgRef.current) return;
-    const svg = d3.select(svgRef.current);
-    const currentT = d3.zoomTransform(svg.node());
-    centerOnDate(activeDate, currentT.k);
-  }, [activeDate]);
-  
   const move = (direction) => {
-    const idx = dates.findIndex(d => d.getTime() === activeDate.getTime());
-    let newIdx;
-    if (direction === 'first') newIdx = 0;
-    else if (direction === 'last') newIdx = dates.length - 1;
-    else newIdx = direction === 'left' ? Math.max(idx - 1, 0) : Math.min(idx + 1, dates.length - 1);
-    setActiveDate(dates[newIdx]);
+    let newIndex = activeIndex;
+    if (direction === 'first') newIndex = 0;
+    else if (direction === 'last') newIndex = dates.length - 1;
+    else newIndex = direction === 'left' ? Math.max(0, activeIndex - 1) : Math.min(dates.length - 1, activeIndex + 1);
+    setActiveDateIndex(newIndex);
   };
 
-  const resetZoom = () => {
-    if (dimensions.width === 0) return;
-    centerOnDate(activeDate, 1);
-  };
-  
+  const resetZoom = () => centerOnDate(activeDate, 1);
   const format = d3.utcFormat('%Y-%m-%d');
 
   return (
@@ -190,44 +199,20 @@ export const VizItemTimeline = ({
         <div className="timeline-card">
           <div className="timeline-header">
             <span className="timeline-title">{title}</span>
-
             <div className="timeline-controls">
-              <button className="timeline-button timeline-button-circle" onClick={resetZoom} title="Reset Zoom">
-                <ReplayIcon />
-              </button>
-
+              <button className="timeline-button timeline-button-circle" onClick={resetZoom}><ReplayIcon /></button>
               <div className="timeline-divider"></div>
-
-              <button className="timeline-button" onClick={() => move('first')} title="First">
-                <FirstPageIcon />
-              </button>
-              <button className="timeline-button" onClick={() => move('left')} title="Previous">
-                <KeyboardArrowLeftIcon />
-              </button>
-              <button className="timeline-button" onClick={() => move('right')} title="Next">
-                <KeyboardArrowRightIcon />
-              </button>
-              <button className="timeline-button" onClick={() => move('last')} title="Last">
-                <LastPageIcon />
-              </button>
+              <button className="timeline-button" onClick={() => move('first')}><FirstPageIcon /></button>
+              <button className="timeline-button" onClick={() => move('left')}><KeyboardArrowLeftIcon /></button>
+              <button className="timeline-button" onClick={() => move('right')}><KeyboardArrowRightIcon /></button>
+              <button className="timeline-button" onClick={() => move('last')}><LastPageIcon /></button>
             </div>
           </div>
-          <div>
-            <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
-            <div className="timeline-footer">
-              <div>
-                Start Date<br />
-                <span className="timeline-footer-item"><strong>{format(dates[0])}</strong></span>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                Active Date<br />
-                <span className="timeline-footer-item"><strong>{format(activeDate)}</strong></span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                End Date<br />
-                <span className="timeline-footer-item"><strong>{format(dates[dates.length - 1])}</strong></span>
-              </div>
-            </div>
+          <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
+          <div className="timeline-footer">
+            <div>Start<br /><strong>{format(dates[0])}</strong></div>
+            <div style={{ textAlign: 'center' }}>Active<br /><strong>{format(activeDate)}</strong></div>
+            <div style={{ textAlign: 'right' }}>End<br /><strong>{format(dates[dates.length - 1])}</strong></div>
           </div>
         </div>
       )}
