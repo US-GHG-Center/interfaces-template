@@ -20,6 +20,7 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
     return requiredResult;
   } catch (error) {
     console.error('Error fetching data:', error);
+    return [];
   }
 };
 

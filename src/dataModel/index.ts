@@ -1,13 +1,11 @@
-import {
-  PlumeRegion,
-  Plume,
-  SubDailyPlume,
-  DateTime,
-  Lon,
-  Lat,
-  STACItem,
-} from './plumes';
+import { STACItem, DateTime, Lon, Lat } from './core';
 import { PlumeMeta, PlumeRegionMeta } from './plumeMeta';
+
+import { PlumeRegion, Plume, SubDailyPlume } from './plumes';
+
+import { SAM, Target } from './sams';
+
+// logically Plume and Target are analogous.
 
 export type {
   PlumeRegion,
@@ -19,4 +17,6 @@ export type {
   STACItem,
   PlumeMeta,
   PlumeRegionMeta,
+  SAM,
+  Target,
 };
