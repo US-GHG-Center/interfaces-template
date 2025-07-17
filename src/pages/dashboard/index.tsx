@@ -132,7 +132,7 @@ export function Dashboard({
 
   const handleResetHome = () => {
     setHoveredVizLayerId('');
-    setFilteredVizItems([]);
+    setFilteredVizItems(selectedVizItems);
     setVizItemsForAnimation([]);
     setOpenDrawer(false);
     setZoomLevel(4);
