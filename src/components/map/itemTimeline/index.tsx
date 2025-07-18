@@ -47,11 +47,25 @@ export const VizItemTimeline = ({
   const margin = { left: 30, right: 30 };
 
   const updateHighlights = (activeDate: Date) => {
-    d3.select(svgRef.current)
-      .selectAll('circle')
-      .attr('fill', d => {
-        return (d as { id: string; date: Date }).date.getTime() === activeDate.getTime() ? '#3b82f6' : '#9ca3af';
-      });
+    const g = d3.select(svgRef.current).select('g');
+
+   g.selectAll('circle:not(.active-circle)')
+    .attr('fill', d =>
+      (d as { date: Date }).date.getTime() === activeDate.getTime()
+        ? '#3b82f6'
+        : '#9ca3af'
+    );
+
+    // Update the active circle overlay position
+    const x = getBaseX();
+    if (!x) return;
+
+    const activeItem = parsedItems.find(d => d.date.getTime() === activeDate.getTime());
+    if (!activeItem) return;
+
+    g.select('.active-circle')
+      .attr('cx', x(activeItem.date))
+      .attr('cy', 0);
   };
 
 
@@ -191,7 +205,6 @@ export const VizItemTimeline = ({
           .text(d => d3.utcFormat('%d %b')(d));
       }
 
-
       // Draw circles for each item  
       const circles = g.selectAll('circle')
         .data(parsedItems)
@@ -206,6 +219,18 @@ export const VizItemTimeline = ({
           const idx = parsedItems.findIndex(item => item.id === d.id);
           setActiveDateIndex(idx);
         });
+
+        // Remove previous active circle if any (prevent duplicates)
+        g.selectAll('.active-circle').remove();
+
+        // Append one persistent "active circle" on top
+        g.append('circle')
+          .attr('class', 'active-circle')
+          .attr('r', 5)
+          .attr('fill', '#3b82f6')
+          .attr('cx', x(activeDateRef.current))
+          .attr('cy', 0)
+          .style('pointer-events', 'none');
 
       circles.append('title').text(d => d3.utcFormat('%Y-%m-%d')(d.date));
     };
