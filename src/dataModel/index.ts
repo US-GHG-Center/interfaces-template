@@ -3,7 +3,14 @@ import { PlumeMeta, PlumeRegionMeta } from './plumeMeta';
 
 import { PlumeRegion, Plume, SubDailyPlume } from './plumes';
 
-import { SAM, Target, SamsTarget, STACItemSAM, DataTree, SAMMissingMetaData, SAMProperties } from './sams';
+import {
+  SAM,
+  Target,
+  STACItemSAM,
+  DataTree,
+  SAMMissingMetaData,
+  SAMProperties,
+} from './sams';
 
 // logically Plume and Target are analogous.
 

@@ -1,7 +1,8 @@
-import { start } from 'repl';
 import { STACItem, DateTime, Lon, Lat, Geometry, LocationMeta } from './core';
 import moment from 'moment';
 
+// TODO: change the properties to camelCase for consistency.
+// Its left at it is as the incoming data is snakecase.
 export interface SAMMissingMetaData {
   target_id: string;
   target_name: string;
@@ -12,8 +13,8 @@ export interface SAMMissingMetaData {
 }
 
 export interface SAMProperties extends SAMMissingMetaData {
-  start_date: string;
-  end_date: string;
+  start_datetime: string;
+  end_datetime: string;
 }
 
 export interface STACItemSAM extends STACItem {
@@ -31,12 +32,13 @@ export interface Target {
   id: string; //Format: <data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>. e.g. "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
   siteName: string;
   location: [Lon, Lat];
-  startDate: DateTime;
-  endDate: DateTime;
+  startDatetime: DateTime;
+  endDatetime: DateTime;
   sams: SAM[];
 
   // methods
   getRepresentationalSAM(): SAM;
+  getSortedSAMs(): SAM[];
   addSAM(sam: SAM): void;
 }
 
@@ -46,18 +48,17 @@ export class SamsTarget implements Target {
   id: string; //Format: <data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>. e.g. "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
   siteName: string;
   location: [Lon, Lat];
-  startDate: DateTime;
-  endDate: DateTime;
+  startDatetime: DateTime;
+  endDatetime: DateTime;
   sams: SAM[];
 
-  constructor(id: string, siteName: string, location: [Lon, Lat], sam: SAM) {
+  constructor(id: string, siteName: string, location: [Lon, Lat]) {
     this.id = id;
     this.siteName = siteName;
     this.location = location;
-    this.startDate = '';
-    this.endDate = '';
+    this.startDatetime = '';
+    this.endDatetime = '';
     this.sams = [];
-    this.addSAM(sam);
   }
 
   getRepresentationalSAM(): SAM {
@@ -65,26 +66,33 @@ export class SamsTarget implements Target {
   }
 
   addSAM(sam: SAM): void {
-    // update startDate and endDate based on the new sam.
-    let { start_date: startDate, end_date: endDate } = sam.properties;
-    if (!this.startDate) this.startDate = startDate;
-    if (!this.endDate) this.endDate = endDate;
+    if (!this.sams.length) {
+      this.startDatetime = sam.properties.start_datetime;
+      this.endDatetime = sam.properties.end_datetime;
+    }
 
-    // let mStartDate = moment(startDate);
-    // let mEndDate = moment(endDate);
-    // // check if the current sam start/end datetime is different than the one in the
-    // if (mStartDate.isBefore(moment(this.startDate))) this.startDate = startDate;
-    // if (mEndDate.isAfter(moment(this.endDate))) this.endDate = endDate;
-    this.startDate = startDate;
-    this.endDate = endDate;
+    // update startDatetime and endDatetime based on the new sam.
+    this.sams.push(sam);
+
+    return;
+    let { start_datetime: startDate, end_datetime: endDatetime } = sam.properties;
+    if (!this.startDatetime) this.startDatetime = startDate;
+    if (!this.endDatetime) this.endDatetime = endDatetime;
+
+    let mStartDate = moment(startDate);
+    let mEndDate = moment(endDatetime);
+    if (mStartDate.isBefore(moment(this.startDatetime))) this.startDatetime = startDate;
+    if (mEndDate.isAfter(moment(this.endDatetime))) this.endDatetime = endDatetime;
+    this.startDatetime = startDate;
+    this.endDatetime = endDatetime;
   }
 
   getSortedSAMs(): SAM[] {
     const sortedSAMS: SAM[] = [...this.sams];
     sortedSAMS.sort(
       (prev: SAM, next: SAM) =>
-        moment(prev.properties.start_date).valueOf() -
-        moment(next.properties.start_date).valueOf()
+        moment(prev.properties.start_datetime).valueOf() -
+        moment(next.properties.start_datetime).valueOf()
     );
     return sortedSAMS;
   }
