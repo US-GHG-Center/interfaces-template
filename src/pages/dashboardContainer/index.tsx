@@ -5,13 +5,13 @@ import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
 import { dataTransformation } from './helper/dataTransform';
 
-import { STACItem, SAMMissingMetaData } from '../../dataModel';
+import { STACItem, SAMMissingMetaData, DataTree } from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
 
-interface DataTree {
-  [key: string]: STACItem;
-}
+// interface DataTree {
+//   [key: string]: STACItem;
+// }
 
 export function DashboardContainer(): React.JSX.Element {
   // get the query params
@@ -47,16 +47,18 @@ export function DashboardContainer(): React.JSX.Element {
 
         const missingData: SAMMissingMetaData[] = missingProperties.data;
 
-        const dtm = dataTransformation(filteredData, missingData);
+        const dtm: DataTree = dataTransformation(filteredData, missingData);
 
         console.log(">>>>", dtm)
 
-        const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
-        const testSample: STACItem[] = data.slice(0, 10);
-        testSample.forEach((items) => {
-          vizItemsDict[items.id] = items;
-        });
-        dataTree.current = vizItemsDict;
+        // const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
+        // const testSample: STACItem[] = data.slice(0, 10);
+        // testSample.forEach((items) => {
+        //   vizItemsDict[items.id] = items;
+        // });
+        // dataTree.current = vizItemsDict;
+
+        dataTree.current = dtm;
 
         // NOTE: incase we need metadata and other added information,
         // add that to the STAC Item Property

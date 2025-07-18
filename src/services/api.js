@@ -4,22 +4,25 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
   try {
     let requiredResult = [];
     // fetch in the collection from the stac api
-    const response = await fetch(STACApiUrl);
-    if (!response.ok) {
-      throw new Error('Error in Network');
-    }
-    const jsonResult = await response.json();
-    requiredResult.push(...getResultArray(jsonResult));
+    // const response = await fetch(STACApiUrl);
+    // if (!response.ok) {
+    //   throw new Error('Error in Network');
+    // }
+    // const jsonResult = await response.json();
+    // requiredResult.push(...getResultArray(jsonResult));
 
-    // need to pull in remaining data based on the pagination information
-    // TODO: use pagination or next to pull all the data.
-    let { numberMatched: matched, numberReturned: returned } = jsonResult;
-    if (matched > returned) {
-      if (matched > 10000) matched = 10000;
-      let allData = await fetchAllDataSTAC(STACApiUrl, matched);
-      requiredResult = [...allData];
-    }
-    return requiredResult;
+    let allData = await fetchAllDataSTAC(STACApiUrl, 1000);
+    return [...allData];
+
+    // // need to pull in remaining data based on the pagination information
+    // // TODO: use pagination or next to pull all the data.
+    // let { numberMatched: matched, numberReturned: returned } = jsonResult;
+    // if (matched > returned) {
+    //   if (matched > 10000) matched = 10000;
+    //   let allData = await fetchAllDataSTAC(STACApiUrl, matched);
+    //   requiredResult = [...allData];
+    // }
+    // return requiredResult;
   } catch (error) {
     console.error('Error fetching data:', error);
     return [];
