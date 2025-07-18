@@ -9,6 +9,8 @@ import LastPageIcon from '@mui/icons-material/LastPage';
 
 import { STACItem } from '../../../dataModel';
 
+import { isSameMonthAndYear } from './helper';
+
 import './index.css';
 
 interface VizItemTimelineProps {
@@ -76,7 +78,8 @@ export const VizItemTimeline = ({
     const minDate = d3.min(dates)!;
     const maxDate = d3.max(dates)!;
     return d3.scaleUtc()
-      .domain([d3.utcMonth.floor(minDate), d3.utcMonth.ceil(maxDate)])
+      // .domain([d3.utcMonth.floor(minDate), d3.utcMonth.ceil(maxDate)])
+      .domain([minDate, maxDate])
       .range([margin.left, dimensions.width - margin.right]);
   };
 
@@ -127,13 +130,16 @@ export const VizItemTimeline = ({
     const render = (transform: d3.ZoomTransform) => {
       g.selectAll('*').remove();
       const x = transform.rescaleX(baseX);
+      
       const minDate = d3.min(dates)!;
-      const maxDate = d3.max(dates)!;
+      // extending the max date by one day to ensure the last tick is visible
+      const maxDate = d3.utcDay.offset(d3.max(dates)!, 1);
+
       const totalRange = x(maxDate) - x(minDate);
       const months = d3.utcMonths(minDate, maxDate);
       const ppm = months.length > 1 ? totalRange / months.length : totalRange;
 
-      let ticks;
+      let ticks: Date[] = [];
       if (ppm > 55) ticks = d3.utcMonths(minDate, maxDate);
       else if (ppm > 34) ticks = d3.utcMonths(minDate, maxDate, 2);
       else if (ppm > 12) ticks = d3.utcMonths(minDate, maxDate, 6);
@@ -166,6 +172,27 @@ export const VizItemTimeline = ({
         .attr('stroke', '#d1d5db')
         .attr('stroke-width', 2);
 
+      // Add labels for start and end dates if they are in the same month and year
+      // This is to ensure that we have some labels in the timeline
+      if (isSameMonthAndYear(minDate, maxDate)) {
+        const forcedDates = [parsedItems[0].date, parsedItems[parsedItems.length - 1].date];
+        const forcedOnly = forcedDates.filter(
+          d => !ticks.some(t => t.getTime() === d.getTime())
+        );
+
+        g.selectAll('forced-labels')
+          .data(forcedOnly)
+          .enter().append('text')
+          .attr('x', d => x(d))
+          .attr('y', -height * 0.35)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', '#6b7280')
+          .text(d => d3.utcFormat('%d %b')(d));
+      }
+
+
+      // Draw circles for each item  
       const circles = g.selectAll('circle')
         .data(parsedItems)
         .enter()
