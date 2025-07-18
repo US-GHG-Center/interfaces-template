@@ -21,7 +21,7 @@ interface Properties {
 
 export interface LocationMeta {
   type: string;
-  coordinates: [Lon, Lat];
+  coordinates: number[];
 }
 
 interface Link {
@@ -74,7 +74,7 @@ interface Statistics {
 
 export interface Geometry {
   type: string;
-  coordinates: string[][][];
+  coordinates: number[][][];
 }
 
 interface ProjJSON {

@@ -8,7 +8,7 @@ export interface SAMMissingMetaData {
   target_name: string;
   target_location: LocationMeta;
   spatial_region: Geometry;
-  target_altitude: string;
+  target_altitude: string | null;
   target_type: string;
 }
 

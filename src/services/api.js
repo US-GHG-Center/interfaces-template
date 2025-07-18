@@ -12,8 +12,10 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
     requiredResult.push(...getResultArray(jsonResult));
 
     // need to pull in remaining data based on the pagination information
-    const { matched, returned } = jsonResult.context;
+    // TODO: use pagination or next to pull all the data.
+    let { numberMatched: matched, numberReturned: returned } = jsonResult;
     if (matched > returned) {
+      if (matched > 10000) matched = 10000;
       let allData = await fetchAllDataSTAC(STACApiUrl, matched);
       requiredResult = [...allData];
     }

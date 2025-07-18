@@ -3,8 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
+import { dataTransformation } from './helper/dataTransform';
 
-import { STACItem } from '../../dataModel';
+import { STACItem, SAMMissingMetaData } from '../../dataModel';
+
+import missingProperties from '../../assets/dataset/metadata.json';
 
 interface DataTree {
   [key: string]: STACItem;
@@ -25,7 +28,7 @@ export function DashboardContainer(): React.JSX.Element {
       : null
   ); // let default zoom level be controlled by map component
   const [collectionId] = useState<string>(
-    searchParams.get('collection-id') || 'goes-ch4plume-v1'
+    searchParams.get('collection-id') || 'oco3-co2-sam-cogs'
   );
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const dataTree = useRef<DataTree | null>(null);
@@ -38,6 +41,15 @@ export function DashboardContainer(): React.JSX.Element {
         // get all the collection items
         const collectionItemUrl: string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
         const data: STACItem[] = await fetchAllFromSTACAPI(collectionItemUrl);
+        const filteredData: STACItem[] = data.filter(
+          (item: STACItem) => !item.id.includes('unfiltered')
+        );
+
+        const missingData: SAMMissingMetaData[] = missingProperties.data;
+
+        const dtm = dataTransformation(filteredData, missingData);
+
+        console.log(">>>>", dtm)
 
         const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
         const testSample: STACItem[] = data.slice(0, 10);
