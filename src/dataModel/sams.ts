@@ -66,25 +66,26 @@ export class SamsTarget implements Target {
   }
 
   addSAM(sam: SAM): void {
+    this.sams.push(sam);
+
+    // TODO: check why the datetime is not updating
+    // update startDatetime and endDatetime based on the new sam.
     if (!this.sams.length) {
       this.startDatetime = sam.properties.start_datetime;
       this.endDatetime = sam.properties.end_datetime;
+      return;
     }
 
-    // update startDatetime and endDatetime based on the new sam.
-    this.sams.push(sam);
-
-    return;
-    let { start_datetime: startDate, end_datetime: endDatetime } = sam.properties;
-    if (!this.startDatetime) this.startDatetime = startDate;
-    if (!this.endDatetime) this.endDatetime = endDatetime;
-
-    let mStartDate = moment(startDate);
+    let { start_datetime: startDateTime, end_datetime: endDatetime } =
+      sam.properties;
+    let mStartDate = moment(startDateTime);
     let mEndDate = moment(endDatetime);
-    if (mStartDate.isBefore(moment(this.startDatetime))) this.startDatetime = startDate;
-    if (mEndDate.isAfter(moment(this.endDatetime))) this.endDatetime = endDatetime;
-    this.startDatetime = startDate;
-    this.endDatetime = endDatetime;
+    if (mStartDate.isBefore(moment(this.startDatetime))) {
+      this.startDatetime = startDateTime;
+    }
+    if (mEndDate.isAfter(moment(this.endDatetime))) {
+      this.endDatetime = endDatetime;
+    }
   }
 
   getSortedSAMs(): SAM[] {
