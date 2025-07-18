@@ -89,8 +89,9 @@ export const VizItemTimeline = ({
 
   const getBaseX = () => {
     if (!dates.length || !dimensions.width) return null;
-    const minDate = d3.min(dates)!;
-    const maxDate = d3.max(dates)!;
+    // add 20 day padding
+    const minDate = d3.utcDay.offset(d3.min(dates)!, -20);
+    const maxDate = d3.utcDay.offset(d3.max(dates)!, 20);
     return d3.scaleUtc()
       // .domain([d3.utcMonth.floor(minDate), d3.utcMonth.ceil(maxDate)])
       .domain([minDate, maxDate])
@@ -144,10 +145,12 @@ export const VizItemTimeline = ({
     const render = (transform: d3.ZoomTransform) => {
       g.selectAll('*').remove();
       const x = transform.rescaleX(baseX);
-      
-      const minDate = d3.min(dates)!;
-      // extending the max date by one day to ensure the last tick is visible
-      const maxDate = d3.utcDay.offset(d3.max(dates)!, 1);
+
+
+      // Add 15 day padding to the min and max dates
+      // todo: make this padding configurable
+      const minDate = d3.utcDay.offset(d3.min(dates)!, -20);
+      const maxDate = d3.utcDay.offset(d3.max(dates)!, 20);
 
       const totalRange = x(maxDate) - x(minDate);
       const months = d3.utcMonths(minDate, maxDate);
