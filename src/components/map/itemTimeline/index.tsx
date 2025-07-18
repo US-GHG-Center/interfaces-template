@@ -25,6 +25,7 @@ export const VizItemTimeline = ({
 }: VizItemTimelineProps & { title?: string }) : JSX.Element => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
@@ -57,8 +58,10 @@ export const VizItemTimeline = ({
     );
 
     // Update the active circle overlay position
-    const x = getBaseX();
-    if (!x) return;
+    const baseX = getBaseX();
+    if (!baseX) return;
+
+    const x = transformRef.current.rescaleX(baseX);
 
     const activeItem = parsedItems.find(d => d.date.getTime() === activeDate.getTime());
     if (!activeItem) return;
@@ -143,6 +146,8 @@ export const VizItemTimeline = ({
       .attr('clip-path', `url(#${clipId})`);
 
     const render = (transform: d3.ZoomTransform) => {
+      transformRef.current = transform;
+
       g.selectAll('*').remove();
       const x = transform.rescaleX(baseX);
 
