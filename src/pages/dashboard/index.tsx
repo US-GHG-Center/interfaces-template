@@ -18,7 +18,8 @@ import {
   Search,
   FilterByDate,
   VizItemAnimation,
-  VisualizationItemCard
+  VisualizationItemCard,
+  VizItemTimeline
 } from '../../components/index.js';
 
 import { STACItem } from '../../dataModel';
