@@ -7,26 +7,34 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
 
+import { STACItem } from '../../../dataModel';
+
 import './index.css';
+
+interface VizItemTimelineProps {
+  vizItems: STACItem[];
+  onVizItemSelect: (id: string) => void;
+}
 
 export const VizItemTimeline = ({
   vizItems = [],
   onVizItemSelect = () => {},
   title = 'Timeline',
-}) => {
-  const svgRef = useRef();
-  const zoomRef = useRef();
-  const containerRef = useRef();
+}: VizItemTimelineProps & { title?: string }) : JSX.Element => {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
 
-  const parsedItems = useMemo(() =>
+  const parsedItems: { id: string; date: Date }[] = useMemo(() =>
     vizItems
       .map(item => ({
         id: item.id,
-        date: new Date(item.properties.datetime),
+        date: d3.utcParse('%Y-%m-%dT%H:%M:%SZ')(item.properties.datetime) || new Date(item.properties.datetime),
       }))
-      .sort((a, b) => a.date - b.date), [vizItems]);
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+  , [vizItems]);
 
   const dates = parsedItems.map(item => item.date);
 
@@ -36,14 +44,16 @@ export const VizItemTimeline = ({
 
   const margin = { left: 30, right: 30 };
 
-  const updateHighlights = (activeDate) => {
+  const updateHighlights = (activeDate: Date) => {
     d3.select(svgRef.current)
       .selectAll('circle')
-      .attr('fill', d => d.date.getTime() === activeDate.getTime() ? '#3b82f6' : '#9ca3af');
+      .attr('fill', d => {
+        return (d as { id: string; date: Date }).date.getTime() === activeDate.getTime() ? '#3b82f6' : '#9ca3af';
+      });
   };
 
 
-  const setActiveDateIndex = (idx) => {
+  const setActiveDateIndex = (idx: number) => {
     activeDateRef.current = dates[idx];
     setActiveIndex(idx);
     onVizItemSelect(parsedItems[idx].id);
@@ -63,14 +73,14 @@ export const VizItemTimeline = ({
 
   const getBaseX = () => {
     if (!dates.length || !dimensions.width) return null;
-    const minDate = d3.min(dates);
-    const maxDate = d3.max(dates);
-    return d3.scaleTime()
-      .domain([d3.timeMonth.floor(minDate), d3.timeMonth.ceil(maxDate)])
+    const minDate = d3.min(dates)!;
+    const maxDate = d3.max(dates)!;
+    return d3.scaleUtc()
+      .domain([d3.utcMonth.floor(minDate), d3.utcMonth.ceil(maxDate)])
       .range([margin.left, dimensions.width - margin.right]);
   };
 
-  const centerOnDate = (date, scale) => {
+  const centerOnDate = (date: Date, scale: number) => {
     const svg = d3.select(svgRef.current);
     const baseX = getBaseX();
     if (!svg.node() || !baseX) return;
@@ -81,13 +91,18 @@ export const VizItemTimeline = ({
     const minX = (dimensions.width - margin.right) * (1 - scale);
     const tx = Math.max(minX, Math.min(idealTranslateX, maxX));
     const transform = d3.zoomIdentity.translate(tx, 0).scale(scale);
-    svg.transition().duration(250).call(zoomRef.current.transform, transform);
-  };
+    if (zoomRef.current) {
+      svg.transition().duration(250).call(zoomRef.current.transform as any, transform);
+    }
+  }
 
   useEffect(() => {
     if (!dimensions.width || !dates.length) return;
 
     const svg = d3.select(svgRef.current);
+    const svgNode = svg.node();
+    if (!svgNode) return;
+
     const { width, height } = dimensions;
     svg.selectAll('*').remove();
 
@@ -95,7 +110,7 @@ export const VizItemTimeline = ({
     if (!baseX) return;
 
     const clipId = 'timeline-clip-path';
-    const clipPadding = 25
+    const clipPadding = 25;
 
     svg.append('defs').append('clipPath')
       .attr('id', clipId)
@@ -109,22 +124,22 @@ export const VizItemTimeline = ({
       .attr('transform', `translate(0, ${height / 2})`)
       .attr('clip-path', `url(#${clipId})`);
 
-    const render = (transform) => {
+    const render = (transform: d3.ZoomTransform) => {
       g.selectAll('*').remove();
       const x = transform.rescaleX(baseX);
-      const minDate = d3.min(dates);
-      const maxDate = d3.max(dates);
+      const minDate = d3.min(dates)!;
+      const maxDate = d3.max(dates)!;
       const totalRange = x(maxDate) - x(minDate);
-      const months = d3.timeMonths(minDate, maxDate);
+      const months = d3.utcMonths(minDate, maxDate);
       const ppm = months.length > 1 ? totalRange / months.length : totalRange;
 
       let ticks;
-      if (ppm > 55) ticks = d3.timeMonths(minDate, maxDate);
-      else if (ppm > 34) ticks = d3.timeMonths(minDate, maxDate, 2);
-      else if (ppm > 12) ticks = d3.timeMonths(minDate, maxDate, 6);
-      else if (ppm > 4) ticks = d3.timeYears(minDate, maxDate);
-      else if (ppm > 2) ticks = d3.timeYears(minDate, maxDate, 2);
-      else ticks = d3.timeYears(minDate, maxDate, 5);
+      if (ppm > 55) ticks = d3.utcMonths(minDate, maxDate);
+      else if (ppm > 34) ticks = d3.utcMonths(minDate, maxDate, 2);
+      else if (ppm > 12) ticks = d3.utcMonths(minDate, maxDate, 6);
+      else if (ppm > 4) ticks = d3.utcYears(minDate, maxDate);
+      else if (ppm > 2) ticks = d3.utcYears(minDate, maxDate, 2);
+      else ticks = d3.utcYears(minDate, maxDate, 5);
 
       g.selectAll('lines')
         .data(ticks)
@@ -143,7 +158,7 @@ export const VizItemTimeline = ({
         .attr('text-anchor', 'middle')
         .attr('font-size', '10px')
         .attr('fill', '#6b7280')
-        .text(d => ppm > 12 ? d3.timeFormat('%b %Y')(d) : d3.timeFormat('%Y')(d));
+        .text(d => ppm > 12 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%Y')(d));
 
       g.append('line')
         .attr('x1', margin.left)
@@ -161,33 +176,39 @@ export const VizItemTimeline = ({
         .attr('fill', d => d.date.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
         .style('cursor', 'pointer')
         .on('click', (e, d) => {
-          const currentT = d3.zoomTransform(svg.node());
           const idx = parsedItems.findIndex(item => item.id === d.id);
           setActiveDateIndex(idx);
-          centerOnDate(d.date, currentT.k);
         });
 
-      circles.append('title').text(d => d3.timeFormat('%Y-%m-%d')(d.date));
+      circles.append('title').text(d => d3.utcFormat('%Y-%m-%d')(d.date));
     };
 
-    const zoom = d3.zoom()
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([1, 40])
       .translateExtent([[margin.left, 0], [width - margin.right, 0]])
       .extent([[margin.left, 0], [width - margin.right, 0]])
       .on('zoom', e => render(e.transform));
 
     zoomRef.current = zoom;
-    svg.call(zoom);
+    (svg as d3.Selection<SVGSVGElement, unknown, null, undefined>).call(zoom);
     render(d3.zoomIdentity);
     centerOnDate(activeDate, 1);
   }, [dimensions, parsedItems]);
 
-  const move = (direction) => {
+  const move = (direction: string) => {
     let newIndex = activeIndex;
     if (direction === 'first') newIndex = 0;
     else if (direction === 'last') newIndex = dates.length - 1;
     else newIndex = direction === 'left' ? Math.max(0, activeIndex - 1) : Math.min(dates.length - 1, activeIndex + 1);
     setActiveDateIndex(newIndex);
+
+    // Get the current zoom transform
+    const svg = d3.select(svgRef.current);
+    const currentTransform = d3.zoomTransform(svg.node()!);
+
+    // Center on the new date with the current zoom level
+    centerOnDate(dates[newIndex], currentTransform.k);
+
   };
 
   const resetZoom = () => centerOnDate(activeDate, 1);
@@ -218,4 +239,4 @@ export const VizItemTimeline = ({
       )}
     </div>
   );
-};
+}
