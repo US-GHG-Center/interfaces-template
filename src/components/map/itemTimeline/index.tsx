@@ -16,13 +16,14 @@ import './index.css';
 interface VizItemTimelineProps {
   vizItems: STACItem[];
   onVizItemSelect: (id: string) => void;
+  title?: string;
 }
 
 export const VizItemTimeline = ({
   vizItems = [],
   onVizItemSelect = () => {},
   title = 'Timeline',
-}: VizItemTimelineProps & { title?: string }) : JSX.Element => {
+}: VizItemTimelineProps): JSX.Element => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
