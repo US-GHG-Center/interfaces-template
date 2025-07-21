@@ -16,12 +16,16 @@ import './index.css';
 interface VizItemTimelineProps {
   vizItems: STACItem[];
   onVizItemSelect: (id: string) => void;
+  activeItem?: STACItem | null;
+  onVizItemHover?: (id: string) => void;
   title?: string;
 }
 
 export const VizItemTimeline = ({
   vizItems = [],
   onVizItemSelect = () => {},
+  activeItem = null,
+  onVizItemHover = () => {},
   title = 'Timeline',
 }: VizItemTimelineProps): JSX.Element => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -42,7 +46,7 @@ export const VizItemTimeline = ({
 
   const dates = parsedItems.map(item => item.date);
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(activeItem ? parsedItems.findIndex(item => item.id === activeItem.id) : 0);
   const activeDate = dates[activeIndex];
   const activeDateRef = useRef(activeDate);
 
@@ -73,12 +77,16 @@ export const VizItemTimeline = ({
   };
 
 
-  const setActiveDateIndex = (idx: number) => {
+  const handleVizItemClick = (idx: number) => {
     activeDateRef.current = dates[idx];
     setActiveIndex(idx);
     onVizItemSelect(parsedItems[idx].id);
 
     updateHighlights(activeDateRef.current);
+  };
+
+  const handleVizItemHover = (idx: number) => {
+    onVizItemHover(parsedItems[idx].id);
   };
 
   useEffect(() => {
@@ -226,7 +234,17 @@ export const VizItemTimeline = ({
         .style('cursor', 'pointer')
         .on('click', (e, d) => {
           const idx = parsedItems.findIndex(item => item.id === d.id);
-          setActiveDateIndex(idx);
+          handleVizItemClick(idx);
+        })
+        .on('mouseover', function (e, d) {
+          const isActive = d.date.getTime() === activeDateRef.current.getTime();
+          if (!isActive) d3.select(this).attr('fill', '#9dc1fa'); // muted hover color
+          const idx = parsedItems.findIndex(item => item.id === d.id);
+          handleVizItemHover(idx);
+        })
+        .on('mouseout', function (e, d) {
+          const isActive = d.date.getTime() === activeDateRef.current.getTime();
+          if (!isActive) d3.select(this).attr('fill', '#9ca3af'); // back to default
         });
 
         // Remove previous active circle if any (prevent duplicates)
@@ -261,7 +279,7 @@ export const VizItemTimeline = ({
     if (direction === 'first') newIndex = 0;
     else if (direction === 'last') newIndex = dates.length - 1;
     else newIndex = direction === 'left' ? Math.max(0, activeIndex - 1) : Math.min(dates.length - 1, activeIndex + 1);
-    setActiveDateIndex(newIndex);
+    handleVizItemClick(newIndex);
 
     // Get the current zoom transform
     const svg = d3.select(svgRef.current);
