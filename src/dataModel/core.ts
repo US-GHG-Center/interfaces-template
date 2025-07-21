@@ -5,8 +5,7 @@ export interface STACItem {
   type: string;
   links: Link[];
   assets: {
-    rad: Asset;
-    rendered_preview: Asset;
+    [key: string]: Asset;
   };
   geometry: Geometry;
   collection: string;
