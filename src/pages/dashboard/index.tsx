@@ -17,7 +17,7 @@ import {
   MapZoom,
   Search,
   FilterByDate,
-  VizItemAnimation
+  VizItemAnimation,
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
@@ -65,8 +65,8 @@ export function Dashboard({
   const [targets, setTargets] = useState<VizItem[]>([]);
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState<string>(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
-  const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]); //all visualization items for the selected region (marker)
-
+  const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]); //all visualization items for the selected region (marker) // TODO: make it take just one instead of a list.
+  const [selectedSams, setSelectedSams] = useState<VizItem[]>([]);
   //color map
   const [VMAX, setVMAX] = useState<number>(100);
   const [VMIN, setVMIN] = useState<number>(-92);
@@ -78,14 +78,16 @@ export function Dashboard({
 
   // handler functions
   const handleSelectedMarker = (vizItemId: string) => {
-    if (!vizItemId) return;
+    if (!vizItemId || !dataTree.current) return;
     let targetId: string = vizItemId.split('_')[1];
     let target: Target | undefined = dataTree.current?.[targetId];
 
     // instead get the sam with the provided vizItemId
     let sam: SAM | undefined = target?.getRepresentationalSAM();
+    let candidateSams: SAM[] = target ? target.sams : [];
     if (!sam) return;
     setVisualizationLayers([sam]);
+    setSelectedSams(candidateSams);
     let location: number[] = [
       Number(sam.geometry.coordinates[0][0][0]),
       Number(sam.geometry.coordinates[0][0][1]),
@@ -218,20 +220,22 @@ export function Dashboard({
                 fontWeight='bold'
                 className='drawer-head-content'
               >
-                USA
+                SAMs
               </Typography>
               <Typography
-                variant='subtitle1'
+                variant='h6'
                 component='div'
+                fontWeight='bold'
                 className='drawer-head-content'
               >
-                - Denver
+                {visualizationLayers.length &&
+                  visualizationLayers[0].properties.target_name}
               </Typography>
             </>
           }
           body={
-            !!visualizationLayers.length &&
-            visualizationLayers.map((vizItem: VizItem) => (
+            !!selectedSams.length &&
+            selectedSams.map((vizItem: VizItem) => (
               <SamInfoCard
                 stacItem={vizItem}
                 onClick={(id: string): void => {}}

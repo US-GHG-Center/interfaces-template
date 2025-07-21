@@ -40,6 +40,7 @@ export interface Target {
   getRepresentationalSAM(): SAM;
   getSortedSAMs(): SAM[];
   addSAM(sam: SAM): void;
+  getSAMbyId(id: string): SAM | undefined;
 }
 
 // Implementation
@@ -90,12 +91,26 @@ export class SamsTarget implements Target {
 
   getSortedSAMs(): SAM[] {
     const sortedSAMS: SAM[] = [...this.sams];
-    sortedSAMS.sort(
-      (prev: SAM, next: SAM) =>
-        moment(prev.properties.start_datetime).valueOf() -
-        moment(next.properties.start_datetime).valueOf()
-    );
+    sortedSAMS.sort((prev: SAM, next: SAM) => {
+      const prevTime = prev.properties.start_datetime
+        ? moment(prev.properties.start_datetime).valueOf()
+        : Number.MAX_VALUE;
+      const nextTime = next.properties.start_datetime
+        ? moment(next.properties.start_datetime).valueOf()
+        : Number.MAX_VALUE;
+
+      return prevTime - nextTime;
+    });
     return sortedSAMS;
+  }
+
+  getSAMbyId(id: string): SAM | undefined {
+    for (let i = 0; i <= this.sams.length; i++) {
+      if (this.sams[i].id === id) {
+        return this.sams[i];
+      }
+    }
+    return undefined;
   }
 }
 
