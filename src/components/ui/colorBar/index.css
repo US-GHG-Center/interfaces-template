@@ -9,6 +9,7 @@
   height: var(--colorbar-height);
   width: 30rem;
   z-index: 10000;
+  background-color: white;
   padding: 1rem;
   display: flex;
   flex-direction: column;

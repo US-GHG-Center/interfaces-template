@@ -6,7 +6,6 @@ import { createColorbar } from './helper';
 import * as d3 from 'd3';
 
 import './index.css';
-import { rgbToHex } from '@mui/material';
 
 /*
       Component to create colorbar
@@ -32,14 +31,7 @@ export const ColorBar = ({ label, VMIN, VMAX, STEPSIZE = 1, colormap }) => {
   }, [label, VMIN, VMAX, STEPSIZE, colormap]);
 
   return (
-    <Card 
-      id='colorbar'
-      sx={{
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(2px)',
-        borderRadius:'16px',
-      }}
-    >
+    <Card id='colorbar'>
       <div ref={colorBarScale} className='colorbar-scale'></div>
       <Typography
         variant='subtitle2'

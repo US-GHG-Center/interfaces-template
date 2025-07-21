@@ -57,7 +57,7 @@ export function Search({
             placeHolderText ? placeHolderText : 'Search by STAC Item Id'
           }
           variant='outlined'
-          style={{ width: '100%' }}
+          style={{ width: '100%', backgroundColor: '#EEEEEE' }}
           onChange={handleOnInputTextChange}
           InputProps={{
             ...params.InputProps,
