@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { useMapbox } from '../../../context/mapContext';
 import './index.css';
-import { ZOOM_LEVEL_MARGIN } from '../utils/constants';
+import { ZOOM_LEVEL_MARGIN, PopularMapMarkerColors } from '../utils/constants';
+import { stringToNumberHash } from '../utils';
 
 export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
   const { map } = useMapbox();
@@ -10,24 +11,24 @@ export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
   const markersRef = useRef([]);
 
   const createMarker = useCallback(
-    (item) => {
+    (item, idx) => {
       if (!map || !item?.geometry?.coordinates.length) {
         console.warn('Skipping marker: invalid map or coordinates', item);
         return null;
       }
 
       const { id, geometry } = item;
-      const [lon, lat] = geometry.coordinates[0][0]
-      const markerColor = '#00b7eb';
+      const [lon, lat] = geometry.coordinates[0][0];
+      const targetType = item.properties.target_type;
+
+      let colorIdx = stringToNumberHash(targetType) % PopularMapMarkerColors.length;
+      const markerColor = PopularMapMarkerColors[colorIdx];
 
       const el = document.createElement('div');
       el.className = 'marker';
       el.innerHTML = getMarkerSVG(markerColor);
 
-      const marker = new mapboxgl.Marker({
-        element: el,
-        anchor: 'top',
-      }).setLngLat([lon, lat]);
+      const marker = new mapboxgl.Marker(el).setLngLat([lon, lat]);
 
       // // hover popup on hover
       // const popup = getPopupContent
@@ -86,15 +87,16 @@ export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
       const zoom = map.getZoom();
       const show = zoom <= ZOOM_LEVEL_MARGIN;
       setMarkersVisible(show);
-
-      markersRef.current.forEach(({ element }) => {
-        element.style.display = show ? 'block' : 'none';
-      });
     };
-
     map.on('zoom', handleZoom);
     return () => map.off('zoom', handleZoom);
   }, [map]);
+
+  useEffect(() => {
+    markersRef.current.forEach(({ element }) => {
+      element.style.display = markersVisible ? 'block' : 'none';
+    });
+  }, [markersVisible]);
 
   return <></>;
 };

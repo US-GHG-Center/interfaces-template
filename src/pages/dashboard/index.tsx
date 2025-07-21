@@ -17,9 +17,10 @@ import {
   MapZoom,
   Search,
   FilterByDate,
-  VizItemAnimation,
-  VisualizationItemCard,
+  VizItemAnimation
 } from '../../components/index.js';
+
+import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
 import { DataTree, Target, SAM } from '../../dataModel';
 
@@ -207,7 +208,7 @@ export function Dashboard({
             onHoverOverLayer={setHoveredVizLayerId}
           />
         </MainMap>
-        {/* <PersistentDrawerRight
+        <PersistentDrawerRight
           open={openDrawer}
           header={
             <>
@@ -229,28 +230,18 @@ export function Dashboard({
             </>
           }
           body={
-            !!targets.length &&
-            targets.map((vizItem) => (
-              <VisualizationItemCard
-                key={vizItem.id}
-                vizItemSourceId={vizItem.id}
-                vizItemSourceName={vizItem.id}
-                imageUrl={`xyz`}
-                tiffUrl={`abc`}
-                lon={vizItem.geometry.coordinates[0][0][0]}
-                lat={vizItem.geometry.coordinates[0][0][1]}
-                totalReleaseMass={vizItem.properties.releaseMass}
-                colEnhancements={vizItem.properties.colEnhancements}
-                startDatetime={vizItem.properties.startDatetime}
-                endDatetime={vizItem.properties.endDatetime}
-                duration={vizItem.properties.duration}
-                handleSelectedVizItemCard={handleSelectedMarker
-                hoveredVizItemId={hoveredVizLayerId}
-                setHoveredVizItemId={setHoveredVizLayerId}
+            !!visualizationLayers.length &&
+            visualizationLayers.map((vizItem: VizItem) => (
+              <SamInfoCard
+                stacItem={vizItem}
+                onClick={(id: string): void => {}}
+                onHover={(id: string): void => {}}
+                hovered={false}
+                clicked={false}
               />
             ))
           }
-        /> */}
+        />
       </div>
       {VMAX && (
         <ColorBar
