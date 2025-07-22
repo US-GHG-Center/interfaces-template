@@ -37,7 +37,7 @@ import './index.css';
 interface VizItemTimelineProps {
   vizItems: STACItem[];
   onVizItemSelect: (id: string) => void;
-  activeItem?: STACItem | null;
+  activeItemId?: string | null;
   onVizItemHover?: (id: string) => void;
   title?: string;
 }
@@ -47,7 +47,7 @@ interface VizItemTimelineProps {
 export const VizItemTimeline = ({
   vizItems = [],
   onVizItemSelect = () => {},
-  activeItem = null,
+  activeItemId = null,
   onVizItemHover = () => {},
   title = 'Timeline',
 }: VizItemTimelineProps): JSX.Element => {
@@ -61,7 +61,10 @@ export const VizItemTimeline = ({
   const parsedItems = useMemo(() => parseItems(vizItems), [vizItems]);
   const dates = useMemo(() => parsedItems.map(item => item.date), [parsedItems]);
 
-  const [activeIndex, setActiveIndex] = useState(activeItem ? parsedItems.findIndex(item => item.id === activeItem.id) : 0);
+  // get the activeItemIndex based on the activeItemId prop
+  const activeItemIndex = parsedItems.findIndex(item => item.id === activeItemId);
+  const [activeIndex, setActiveIndex] = useState(activeItemIndex >= 0 ? activeItemIndex : 0);
+
   const activeDate = dates[activeIndex];
   const activeDateRef = useRef(activeDate);
 
