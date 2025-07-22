@@ -43,6 +43,11 @@ export interface Target {
   getSAMbyId(id: string): SAM | undefined;
 }
 
+export interface TargetTypeInterface {
+  name: string;
+  targets: Target[];
+}
+
 // Implementation
 
 export class SamsTarget implements Target {
@@ -113,6 +118,27 @@ export class SamsTarget implements Target {
     return undefined;
   }
 }
+
+// TODO: when we put this in here, it does not work!
+// Error message: Error fetching data: TypeError: _dataModel__WEBPACK_IMPORTED_MODULE_0__.TargetType is not a constructor
+// Currently is put directly in index.ts. Fix it!!
+// export class TargetType implements TargetTypeInterface {
+//   name: string;
+//   targets: Target[];
+
+//   constructor(name: string) {
+//     this.name = name;
+//     this.targets = [];
+//   }
+
+//   addTarget(target: Target) {
+//     this.targets.push(target);
+//   }
+// }
+
+// export interface SamsTargetDict {
+//   [key: string]: TargetType;
+// }
 
 export interface DataTree {
   [key: string]: Target;

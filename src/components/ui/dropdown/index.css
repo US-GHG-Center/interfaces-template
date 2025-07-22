@@ -1,0 +1,15 @@
+#dropdown {
+    position: absolute;
+    bottom: 2vh;
+    left: 0;
+    z-index: 1;
+    background-color: rgba(255, 255, 255, 0.9);
+    z-index: 20000;
+    color: #082A63;
+    font-family: 'Inter', sans-serif;
+    min-width: 450px;
+    font-size: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    margin: 0 0.9rem;
+}

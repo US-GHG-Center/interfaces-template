@@ -18,11 +18,12 @@ import {
   Search,
   FilterByDate,
   VizItemAnimation,
+  Dropdown,
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
-import { DataTree, Target, SAM } from '../../dataModel';
+import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
 
 interface VizItem extends SAM {}
 
@@ -46,6 +47,7 @@ interface DashboardProps {
    * - representing one to many relationships - hence requiring n-tree instead of simple dictionary.
    */
   dataTree: React.MutableRefObject<DataTree | null>;
+  samsTargetDict: React.MutableRefObject<SamsTargetDict | null>;
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
   zoomLevel: number | null;
@@ -55,6 +57,7 @@ interface DashboardProps {
 
 export function Dashboard({
   dataTree,
+  samsTargetDict,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
@@ -72,6 +75,9 @@ export function Dashboard({
   const [VMIN, setVMIN] = useState<number>(-92);
   const [colormap, setColormap] = useState<string>('default');
   const [assets, setAssets] = useState<string>('rad');
+  // targets based on target type
+  const [targetTypes, setTargetTypes] = useState<string[]>(['all']);
+  const [selectedTargetType, setSelectedTargetType] = useState<string>('all');
 
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
@@ -129,18 +135,7 @@ export function Dashboard({
   };
 
   const handleResetHome = () => {
-    setVisualizationLayers([]);
-    setFilteredVizItems(targets);
-    setHoveredVizLayerId('');
-    setOpenDrawer(false);
-    setZoomLevel(4);
-    setZoomLocation([-98.771556, 32.967243]);
-  };
-
-  // Component Effects
-  useEffect(() => {
     if (!dataTree.current) return;
-
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
     let targets: SAM[] = [];
     Object.keys(dataTree.current).forEach((target_id: string) => {
@@ -154,6 +149,61 @@ export function Dashboard({
       targets.push(target.getRepresentationalSAM());
     });
     setTargets(targets);
+    setVisualizationLayers([]);
+    setFilteredVizItems(targets);
+    setHoveredVizLayerId('');
+    setOpenDrawer(false);
+    setZoomLevel(4);
+    setZoomLocation([-98.771556, 32.967243]);
+  };
+
+  const handleSelectedTargetType = (targetType: string) => {
+    setSelectedTargetType(targetType);
+
+    if (targetType === 'all') {
+      if (!dataTree.current) return;
+      let targets: Target[] = getTargetsFromDataTree(dataTree.current);
+      let repTargets: SAM[] = getSamRepOfTarget(targets)
+      setTargets(repTargets);
+      return;
+    }
+
+    if (!samsTargetDict.current) return;
+    let targets: Target[] = samsTargetDict.current[targetType]?.targets;
+    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    setTargets(repTargets);
+  };
+
+  // helpers
+  const getSamRepOfTarget = (targets: Target[]): SAM[] => {
+    if (!dataTree) return [];
+    const repTargets: SAM[] = [];
+    targets.forEach((target: Target) => {
+      if (!target) {
+        return undefined;
+      }
+      let repTarget: SAM = target.getRepresentationalSAM();
+      // use the location in the target.
+      repTarget.geometry.coordinates = [[target.location]];
+      repTargets.push(target.getRepresentationalSAM());
+    });
+    return repTargets;
+  }
+
+  const getTargetsFromDataTree = (dataTree: DataTree): Target[] => {
+    if (!dataTree) return [];
+    let targets: Target[] = Object.values(dataTree);
+    return targets;
+  }
+
+  // Component Effects
+  useEffect(() => {
+    if (!dataTree.current) return;
+
+    // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
+    let targets: Target[] = getTargetsFromDataTree(dataTree.current);
+    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    setTargets(repTargets);
 
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
@@ -164,6 +214,12 @@ export function Dashboard({
     setColormap(colormap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataTree.current]);
+
+  useEffect(() => {
+    if (!samsTargetDict.current) return;
+    const targetTypesLocal = Object.keys(samsTargetDict.current);
+    setTargetTypes(['all', ...targetTypesLocal]);
+  }, [samsTargetDict.current]);
 
   // JSX
   return (
@@ -210,6 +266,11 @@ export function Dashboard({
             onHoverOverLayer={setHoveredVizLayerId}
           />
         </MainMap>
+        <Dropdown
+          items={targetTypes}
+          onSelection={handleSelectedTargetType}
+          selectedItemId={selectedTargetType}
+        ></Dropdown>
         <PersistentDrawerRight
           open={openDrawer}
           header={

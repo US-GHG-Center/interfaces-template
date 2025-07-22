@@ -3,9 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
-import { dataTransformation } from './helper/dataTransform';
+import {
+  dataTransformation,
+  DataTransformationResult,
+} from './helper/dataTransform';
 
-import { STACItem, SAMMissingMetaData, DataTree } from '../../dataModel';
+import {
+  STACItem,
+  SAMMissingMetaData,
+  DataTree,
+  SamsTargetDict,
+  SamsTarget,
+} from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
 
@@ -32,6 +41,7 @@ export function DashboardContainer(): React.JSX.Element {
   );
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const dataTree = useRef<DataTree | null>(null);
+  const samsTargetDict = useRef<SamsTargetDict | null>(null);
 
   useEffect(() => {
     setLoadingData(true);
@@ -47,9 +57,13 @@ export function DashboardContainer(): React.JSX.Element {
 
         const missingData: SAMMissingMetaData[] = missingProperties.data;
 
-        const dtm: DataTree = dataTransformation(filteredData, missingData);
+        const transformedData: DataTransformationResult = dataTransformation(
+          filteredData,
+          missingData
+        );
 
-        console.log(">>>>", dtm)
+        const dtm: DataTree = transformedData.DATA_TREE;
+        const std: SamsTargetDict = transformedData.samsTargetDict;
 
         // const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
         // const testSample: STACItem[] = data.slice(0, 10);
@@ -59,7 +73,7 @@ export function DashboardContainer(): React.JSX.Element {
         // dataTree.current = vizItemsDict;
 
         dataTree.current = dtm;
-
+        samsTargetDict.current = std;
         // NOTE: incase we need metadata and other added information,
         // add that to the STAC Item Property
 
@@ -76,6 +90,7 @@ export function DashboardContainer(): React.JSX.Element {
   return (
     <Dashboard
       dataTree={dataTree}
+      samsTargetDict={samsTargetDict}
       zoomLocation={zoomLocation}
       zoomLevel={zoomLevel}
       setZoomLocation={setZoomLocation}

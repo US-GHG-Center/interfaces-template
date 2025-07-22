@@ -7,12 +7,20 @@ import {
   SAMProperties,
   Lon,
   Lat,
+  SamsTargetDict,
 } from '../../../dataModel';
+
+import { TargetType } from '../../../dataModel';
+
+export interface DataTransformationResult {
+  DATA_TREE: DataTree;
+  samsTargetDict: SamsTargetDict;
+}
 
 export function dataTransformation(
   stacItems: STACItem[],
   missingSamsProperties: SAMMissingMetaData[]
-): DataTree {
+): DataTransformationResult {
   interface SAMMissingMetaDataDict {
     [key: string]: SAMMissingMetaData;
   }
@@ -40,24 +48,33 @@ export function dataTransformation(
     };
     fullStacItems.push({
       ...item,
-      properties: addedProperties
+      properties: addedProperties,
     });
   });
 
   const DATA_TREE: DataTree = {};
+  const samsTargetDict: SamsTargetDict = {};
 
   fullStacItems.forEach((stacItem: STACItemSAM): void => {
     let targetId: string = stacItem.properties.target_id;
     let siteName: string = stacItem.properties.target_name;
+    let targetType: string = stacItem.properties.target_type;
     let location: [Lon, Lat] = [
       stacItem.properties.target_location.coordinates[0],
       stacItem.properties.target_location.coordinates[1],
     ];
     if (!(targetId in DATA_TREE)) {
-      DATA_TREE[targetId] = new SamsTarget(targetId, siteName, location);
+      let st = new SamsTarget(targetId, siteName, location);
+      DATA_TREE[targetId] = st;
+      // create the SamsTargetDict and link the reference of target.
+      if (!(targetType in samsTargetDict)) {
+        let tt = new TargetType(targetType);
+        samsTargetDict[targetType] = tt;
+      }
+      samsTargetDict[targetType].addTarget(st);
     }
     DATA_TREE[targetId].addSAM(stacItem);
   });
 
-  return DATA_TREE;
+  return { DATA_TREE, samsTargetDict };
 }
