@@ -1,0 +1,324 @@
+// This file implements a timeline visualization for STAC items using D3.js and React.
+// It allows users to select and hover over items, displaying their dates on a timeline.
+
+// Import react libraries and hooks
+import { useEffect, useRef, useState, useMemo } from 'react';
+
+// Import D3.js for timeline rendering and interaction
+import * as d3 from 'd3';
+import Tooltip from '@mui/material/Tooltip';
+
+// MUI Icons for timeline controls
+import ReplayIcon from '@mui/icons-material/Replay';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import LastPageIcon from '@mui/icons-material/LastPage';
+
+// Data model import
+import { STACItem } from '../../../dataModel';
+
+// Helper functions
+import { 
+  parseItems,
+  getBaseX,
+  centerOnDate,
+  updateHighlights,
+  isSameMonthAndYear,
+  getTickDates,
+  moveToIndex
+} from './helper';
+
+// Stylesheet import
+import './index.css';
+
+
+// Define the props for the VizItemTimeline component
+interface VizItemTimelineProps {
+  vizItems: STACItem[];
+  onVizItemSelect: (id: string) => void;
+  activeItem?: STACItem | null;
+  onVizItemHover?: (id: string) => void;
+  title?: string;
+}
+
+
+// The main component that renders the timeline visualization
+export const VizItemTimeline = ({
+  vizItems = [],
+  onVizItemSelect = () => {},
+  activeItem = null,
+  onVizItemHover = () => {},
+  title = 'Timeline',
+}: VizItemTimelineProps): JSX.Element => {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
+
+  const parsedItems = useMemo(() => parseItems(vizItems), [vizItems]);
+  const dates = useMemo(() => parsedItems.map(item => item.date), [parsedItems]);
+
+  const [activeIndex, setActiveIndex] = useState(activeItem ? parsedItems.findIndex(item => item.id === activeItem.id) : 0);
+  const activeDate = dates[activeIndex];
+  const activeDateRef = useRef(activeDate);
+
+  const margin = { left: 30, right: 30 };
+
+  const baseX = useMemo(() => getBaseX(dates, dimensions.width, margin), [dates, dimensions.width]);
+
+  const handleVizItemClick = (idx: number) => {
+    activeDateRef.current = dates[idx];
+    setActiveIndex(idx);
+    onVizItemSelect(parsedItems[idx].id);
+    updateHighlights(
+      svgRef,
+      parsedItems,
+      activeDateRef.current,
+      baseX,
+      transformRef.current
+    );
+  };
+
+  const handleVizItemHover = (idx: number) => {
+    onVizItemHover(parsedItems[idx].id);
+  };
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setDimensions({ width: entry.contentRect.width, height: 60 });
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+
+  useEffect(() => {
+    if (!dimensions.width || !dates.length) return;
+
+    const svg = d3.select(svgRef.current);
+    const svgNode = svg.node();
+    if (!svgNode) return;
+
+    const { width, height } = dimensions;
+    svg.selectAll('*').remove();
+
+    if (!baseX) return;
+
+    const clipId = 'timeline-clip-path';
+    const clipPadding = 25;
+
+    svg.append('defs').append('clipPath')
+      .attr('id', clipId)
+      .append('rect')
+      .attr('x', margin.left - clipPadding)
+      .attr('y', -height)
+      .attr('width', (width - margin.left - margin.right) + (clipPadding * 2))
+      .attr('height', height * 2);
+    
+      const g = svg.append('g')
+      .attr('transform', `translate(0, ${height / 2})`)
+      .attr('clip-path', `url(#${clipId})`);
+
+    const render = (transform: d3.ZoomTransform) => {
+      transformRef.current = transform;
+
+      g.selectAll('*').remove();
+      const x = transform.rescaleX(baseX);
+
+
+      const PADDING_DAYS = 20;
+      const { ticks, ppm } = getTickDates(dates, transform, baseX, PADDING_DAYS);
+
+      g.selectAll('lines')
+        .data(ticks)
+        .enter().append('line')
+        .attr('x1', d => x(d))
+        .attr('x2', d => x(d))
+        .attr('y1', -height * 0.15)
+        .attr('y2', height * 0.15)
+        .attr('stroke', '#aaa');
+
+      g.selectAll('labels')
+        .data(ticks)
+        .enter().append('text')
+        .attr('x', d => x(d))
+        .attr('y', -height * 0.35)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', '#6b7280')
+        .text(d => ppm > 12 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%Y')(d));
+
+      g.append('line')
+        .attr('x1', margin.left)
+        .attr('x2', width - margin.right)
+        .attr('stroke', '#d1d5db')
+        .attr('stroke-width', 2);
+
+      
+      // // Add labels for start and end dates if they are in the same month and year
+      // // This is to ensure that we have some labels in the timeline
+      // if (isSameMonthAndYear(minDate, maxDate)) {
+      //   const forcedDates = [parsedItems[0].date, parsedItems[parsedItems.length - 1].date];
+      //   const forcedOnly = forcedDates.filter(
+      //     d => !ticks.some(t => t.getTime() === d.getTime())
+      //   );
+
+      //   g.selectAll('forced-labels')
+      //     .data(forcedOnly)
+      //     .enter().append('text')
+      //     .attr('x', d => x(d))
+      //     .attr('y', -height * 0.35)
+      //     .attr('text-anchor', 'middle')
+      //     .attr('font-size', '10px')
+      //     .attr('fill', '#6b7280')
+      //     .text(d => d3.utcFormat('%d %b')(d));
+      // }
+
+      // Draw circles for each item  
+      const circles = g.selectAll('circle')
+        .data(parsedItems)
+        .enter()
+        .append('circle')
+        .attr('cx', d => x(d.date))
+        .attr('cy', 0)
+        .attr('r', 5)
+        .attr('fill', d => d.date.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
+        .style('cursor', 'pointer')
+        .on('click', (e, d) => {
+          const idx = parsedItems.findIndex(item => item.id === d.id);
+          handleVizItemClick(idx);
+        })
+        .on('mouseover', function (e, d) {
+          const isActive = d.date.getTime() === activeDateRef.current.getTime();
+          if (!isActive) d3.select(this).attr('fill', '#9dc1fa'); // muted hover color
+          const idx = parsedItems.findIndex(item => item.id === d.id);
+          handleVizItemHover(idx);
+        })
+        .on('mouseout', function (e, d) {
+          const isActive = d.date.getTime() === activeDateRef.current.getTime();
+          if (!isActive) d3.select(this).attr('fill', '#9ca3af'); // back to default
+        });
+
+        // Remove previous active circle if any (prevent duplicates)
+        g.selectAll('.active-circle').remove();
+
+        // Append one persistent "active circle" on top
+        g.append('circle')
+          .attr('class', 'active-circle')
+          .attr('r', 5)
+          .attr('fill', '#3b82f6')
+          .attr('cx', x(activeDateRef.current))
+          .attr('cy', 0)
+          .style('pointer-events', 'none');
+
+      circles.append('title').text(d => d3.utcFormat('%Y-%m-%d')(d.date));
+    };
+
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([1, 40])
+      .translateExtent([[margin.left, 0], [width - margin.right, 0]])
+      .extent([[margin.left, 0], [width - margin.right, 0]])
+      .on('zoom', e => render(e.transform));
+
+    zoomRef.current = zoom;
+    (svg as d3.Selection<SVGSVGElement, unknown, null, undefined>).call(zoom);
+    render(d3.zoomIdentity);
+    centerOnDate(
+      svgRef,
+      activeDate,
+      1,
+      dimensions.width,
+      margin,
+      baseX!,
+      zoomRef.current!
+    );
+  }, [dimensions, parsedItems]);
+
+
+  // Handle movement controls
+  const move = (direction: 'left' | 'right' | 'first' | 'last') => {
+    moveToIndex(
+      direction,
+      activeIndex,
+      dates,
+      svgRef,
+      dimensions,
+      margin,
+      baseX!,
+      zoomRef.current!,
+      handleVizItemClick
+    );
+  };
+
+  // Reset zoom to the initial state
+  const resetZoom = () => {
+    centerOnDate(
+      svgRef,
+      activeDate,
+      1,
+      dimensions.width,
+      margin,
+      baseX!,
+      zoomRef.current!
+    );
+  };
+
+  // Format function for displaying dates
+  const format = d3.utcFormat('%Y-%m-%d');
+
+  return (
+    <div ref={containerRef} style={{ width: '100%' }}>
+      {dimensions.width > 0 && (
+        <div className="timeline-card">
+          <div className="timeline-header">
+            <span className="timeline-title">{title}</span>
+            <div className="timeline-controls">
+              <Tooltip title="Reset Zoom">
+                <button className="timeline-button timeline-button-circle" onClick={resetZoom}>
+                  <ReplayIcon />
+                </button>
+              </Tooltip>
+
+              <div className="timeline-divider"></div>
+
+              <Tooltip title="First Item">
+                <button className="timeline-button" onClick={() => move('first')}>
+                  <FirstPageIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Previous Item">
+                <button className="timeline-button" onClick={() => move('left')}>
+                  <KeyboardArrowLeftIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Next Item">
+                <button className="timeline-button" onClick={() => move('right')}>
+                  <KeyboardArrowRightIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Last Item">
+                <button className="timeline-button" onClick={() => move('last')}>
+                  <LastPageIcon />
+                </button>
+              </Tooltip>
+            </div>
+          </div>
+          <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
+          <div className="timeline-footer">
+            <div>Start<br /><strong>{format(dates[0])}</strong></div>
+            <div style={{ textAlign: 'center' }}>Active<br /><strong>{format(activeDate)}</strong></div>
+            <div style={{ textAlign: 'right' }}>End<br /><strong>{format(dates[dates.length - 1])}</strong></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
