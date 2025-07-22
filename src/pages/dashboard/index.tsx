@@ -20,6 +20,7 @@ import {
   VizItemAnimation,
   Dropdown,
   VizItemTimeline,
+  ConfigurableColorBar,
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
@@ -338,13 +339,17 @@ export function Dashboard({
         />
       </div>
       {VMAX && (
-        <ColorBar
-          label={'Methane Column Enhancement (mol/m²)'}
-          VMAX={VMAX}
-          VMIN={VMIN}
-          colormap={colormap}
-          STEPSIZE={1}
-        />
+        <div style={{ position: 'absolute', right: 10, bottom: 18 }}>
+          <ConfigurableColorBar
+            id='coolcolor'
+            VMAXLimit={420}
+            VMINLimit={400}
+            colorMap={colormap}
+            setColorMap={setColormap}
+            setVMIN={setVMIN}
+            setVMAX={setVMAX}
+          />
+        </div>
       )}
       {loadingData && <LoadingSpinner />}
     </Box>
