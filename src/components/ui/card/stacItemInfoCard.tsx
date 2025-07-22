@@ -77,6 +77,10 @@ export interface StacItemInfoCardProps {
   hovered: boolean;
   clicked: boolean;
   children?: JSX.Element;
+  VMIN?: number;
+  VMAX?: number;
+  colorMap?: string;
+  assets?: string;
 }
 
 export function StacItemInfoCard({
@@ -86,6 +90,10 @@ export function StacItemInfoCard({
   onClick,
   onHover,
   children,
+  VMIN,
+  VMAX,
+  colorMap,
+  assets,
 }: StacItemInfoCardProps): JSX.Element {
   const [isHovered, setIsHovered] = useState<boolean>(hovered || false);
   const [id, setId] = useState<string>('');
@@ -118,16 +126,17 @@ export function StacItemInfoCard({
     setLon(coordinates[0]);
     setLat(coordinates[1]);
 
-    let VMIN = 0;
-    let VMAX = 0.4;
-    let colorMap = 'plasma';
-    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=rad&rescale=${VMIN}%2C${VMAX}&colormap_name=${colorMap}`;
+    let lvmin = VMIN || 400;
+    let lvmax = VMAX || 420;
+    let lcolormap = colorMap || 'plasma';
+    let lassets = assets || 'rad';
+    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=${lassets}&rescale=${lvmin}%2C${lvmax}&colormap_name=${lcolormap}`;
     setThumbnailUrl(thumbnailUrl);
 
     let firstAssetKey = Object.keys(stacItem.assets)[0];
     let firstAsset = stacItem.assets[firstAssetKey];
     setTiffUrl(firstAsset.href);
-  }, [stacItem]);
+  }, [stacItem, VMIN, VMAX, colorMap, assets]);
 
   useEffect(() => {
     setIsHovered(hovered);

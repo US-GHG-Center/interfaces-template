@@ -328,6 +328,10 @@ export function Dashboard({
                 hovered={false} //hovered from inside
                 clicked={false}
                 hoveredVizid={hoveredVizLayerId}
+                VMAX={VMAX}
+                VMIN={VMIN}
+                assets={assets}
+                colorMap={colormap}
               />
             ))
           }

@@ -18,6 +18,10 @@ export const SamInfoCard = ({
   hovered,
   clicked,
   hoveredVizid,
+  VMAX,
+  VMIN,
+  colorMap,
+  assets,
 }: SamInfoCardProps): JSX.Element => {
   const [startDatetime, setStartDatetime] = useState<string>('');
   const [endDatetime, setEndDatetime] = useState<string>('');
@@ -54,6 +58,10 @@ export const SamInfoCard = ({
       onHover={onHover}
       hovered={hov}
       clicked={clicked}
+      VMAX={VMAX}
+      VMIN={VMIN}
+      colorMap={colorMap}
+      assets={assets}
     >
       <>
         <HorizontalLayout>
