@@ -20,6 +20,7 @@ export { Search } from './method/search';
 export { VisualizationItemCard } from './ui/card';
 export { PersistentDrawerRight } from './ui/drawer';
 export { ColorBar } from './ui/colorBar';
+export { ConfigurableColorBar } from './ui/configurableColorBar';
 export { LoadingSpinner } from './ui/loading';
 export { Title } from './ui/title';
 
