@@ -8,9 +8,10 @@ import {
   Lon,
   Lat,
   SamsTargetDict,
+  TargetType,
 } from '../../../dataModel';
 
-import { TargetType } from '../../../dataModel';
+import { getTargetIdFromStacIdSAM } from '.';
 
 export interface DataTransformationResult {
   DATA_TREE: DataTree;
@@ -34,7 +35,7 @@ export function dataTransformation(
   stacItems.forEach((item: STACItem) => {
     //for SAMOCO3, stac_item_id format is: <data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>
     const stacItemId = item.id;
-    const targetId = stacItemId.split('_')[1];
+    const targetId = getTargetIdFromStacIdSAM(stacItemId);
 
     if (!(targetId in samMissingMetaDataDict)) {
       // if missing properties are not available for target_id, we ignore whole SamSTACItem.
