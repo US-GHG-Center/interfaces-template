@@ -32,7 +32,7 @@ import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 interface VizItem extends SAM {}
 
 const TITLE: string = 'OCO3 SAMS';
-const DESCRIPTION: string = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book`;
+const DESCRIPTION: string = `OCO-3, aboard the ISS, uses an agile pointing mirror to quickly collect 80x80km "Snapshot Area Maps" (SAMs) and target observations. These datasets, including XCO2 and SIF, help study carbon sources and plant health.`;
 
 const HorizontalLayout = styled.div`
   width: 90%;
