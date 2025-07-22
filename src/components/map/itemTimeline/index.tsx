@@ -300,12 +300,37 @@ export const VizItemTimeline = ({
           <div className="timeline-header">
             <span className="timeline-title">{title}</span>
             <div className="timeline-controls">
-              <button className="timeline-button timeline-button-circle" onClick={resetZoom}><ReplayIcon /></button>
+              <Tooltip title="Reset Zoom">
+                <button className="timeline-button timeline-button-circle" onClick={resetZoom}>
+                  <ReplayIcon />
+                </button>
+              </Tooltip>
+
               <div className="timeline-divider"></div>
-              <button className="timeline-button" onClick={() => move('first')}><FirstPageIcon /></button>
-              <button className="timeline-button" onClick={() => move('left')}><KeyboardArrowLeftIcon /></button>
-              <button className="timeline-button" onClick={() => move('right')}><KeyboardArrowRightIcon /></button>
-              <button className="timeline-button" onClick={() => move('last')}><LastPageIcon /></button>
+
+              <Tooltip title="First Item">
+                <button className="timeline-button" onClick={() => move('first')}>
+                  <FirstPageIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Previous Item">
+                <button className="timeline-button" onClick={() => move('left')}>
+                  <KeyboardArrowLeftIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Next Item">
+                <button className="timeline-button" onClick={() => move('right')}>
+                  <KeyboardArrowRightIcon />
+                </button>
+              </Tooltip>
+
+              <Tooltip title="Last Item">
+                <button className="timeline-button" onClick={() => move('last')}>
+                  <LastPageIcon />
+                </button>
+              </Tooltip>
             </div>
           </div>
           <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
