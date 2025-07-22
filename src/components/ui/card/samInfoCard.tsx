@@ -7,7 +7,9 @@ import {
   CaptionValue,
 } from './stacItemInfoCard';
 
-interface SamInfoCardProps extends StacItemInfoCardProps {}
+interface SamInfoCardProps extends StacItemInfoCardProps {
+  hoveredVizid: string;
+}
 
 export const SamInfoCard = ({
   stacItem,
@@ -15,6 +17,7 @@ export const SamInfoCard = ({
   onHover,
   hovered,
   clicked,
+  hoveredVizid,
 }: SamInfoCardProps): JSX.Element => {
   const [startDatetime, setStartDatetime] = useState<string>('');
   const [endDatetime, setEndDatetime] = useState<string>('');
@@ -22,6 +25,11 @@ export const SamInfoCard = ({
   const [targetName, setTargetName] = useState<string>('');
   const [targetType, setTargetType] = useState<string>('');
   const [targetAltitude, setTargetAltitude] = useState<string>('');
+  const [hov, setHov] = useState<boolean>(false);
+
+  useEffect(() => {
+    setHov(stacItem.id === hoveredVizid);
+  }, [hoveredVizid, stacItem.id]);
 
   useEffect(() => {
     let startDatetime: string = stacItem.properties.start_datetime;
@@ -44,7 +52,7 @@ export const SamInfoCard = ({
       stacItem={stacItem}
       onClick={onClick}
       onHover={onHover}
-      hovered={hovered}
+      hovered={hov}
       clicked={clicked}
     >
       <>

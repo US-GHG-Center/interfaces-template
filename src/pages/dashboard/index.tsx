@@ -72,12 +72,12 @@ export function Dashboard({
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState<string>(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
   const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]); //all visualization items for the selected region (marker) // TODO: make it take just one instead of a list.
-  const [selectedSams, setSelectedSams] = useState<VizItem[]>([]);
+  const [selectedSams, setSelectedSams] = useState<VizItem[]>([]); // this represents the sams, when a target is selected.
   //color map
-  const [VMAX, setVMAX] = useState<number>(100);
-  const [VMIN, setVMIN] = useState<number>(-92);
+  const [VMAX, setVMAX] = useState<number>(420);
+  const [VMIN, setVMIN] = useState<number>(400);
   const [colormap, setColormap] = useState<string>('default');
-  const [assets, setAssets] = useState<string>('rad');
+  const [assets, setAssets] = useState<string>('cog_default');
   // targets based on target type
   const [targetTypes, setTargetTypes] = useState<string[]>(['all']);
   const [selectedTargetType, setSelectedTargetType] = useState<string>('all');
@@ -140,20 +140,12 @@ export function Dashboard({
   const handleResetHome = () => {
     if (!dataTree.current) return;
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
-    let targets: SAM[] = [];
-    Object.keys(dataTree.current).forEach((target_id: string) => {
-      let target: Target | undefined = dataTree.current?.[target_id];
-      if (!target) {
-        return undefined;
-      }
-      let repTarget: SAM = target.getRepresentationalSAM();
-      // use the location in the target.
-      repTarget.geometry.coordinates = [[target.location]];
-      targets.push(target.getRepresentationalSAM());
-    });
-    setTargets(targets);
+    let targets: Target[] = getTargetsFromDataTree(dataTree.current);
+    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    setTargets(repTargets);
     setVisualizationLayers([]);
-    setFilteredVizItems(targets);
+    setSelectedSams([]);
+    setFilteredVizItems(repTargets);
     setHoveredVizLayerId('');
     setOpenDrawer(false);
     setZoomLevel(4);
@@ -183,10 +175,12 @@ export function Dashboard({
     const targetId: string = getTargetIdFromStacIdSAM(vizItemId);
     const target: Target = dataTree.current[targetId];
     // using the targetId, find the necessary sam.
-    console.log("9897987979",target)
     const changedVizItem: VizItem | undefined = target.getSAMbyId(vizItemId);
-    console.log(target, " ++++++++++++ ", changedVizItem)
     if (changedVizItem) setVisualizationLayers([changedVizItem]);
+  };
+
+  const handleHoverOverSelectedSams = (vizItemId: string) => {
+    setHoveredVizLayerId(vizItemId);
   };
 
   // helpers
@@ -221,8 +215,8 @@ export function Dashboard({
     setTargets(repTargets);
 
     // also few extra things for the application state. We can receive it from collection json.
-    const VMIN = 0;
-    const VMAX = 0.4;
+    const VMIN = 415;
+    const VMAX = 420;
     const colormap: string = 'plasma';
     setVMIN(VMIN);
     setVMAX(VMAX);
@@ -258,18 +252,20 @@ export function Dashboard({
                 />
               </HorizontalLayout>
             </div> */}
-            {selectedSams.length && (
+            {selectedSams.length ? (
               <HorizontalLayout>
                 {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
                 <VizItemTimeline
                   vizItems={selectedSams}
                   onVizItemSelect={handleTimelineTimeChange}
-                  activeItem={null}
-                  onVizItemHover={() => {}}
+                  activeItemId={hoveredVizLayerId}
+                  onVizItemHover={handleHoverOverSelectedSams}
                   title=''
                 />
                 {/* </div> */}
               </HorizontalLayout>
+            ) : (
+              <></>
             )}
           </Paper>
 
@@ -328,9 +324,10 @@ export function Dashboard({
               <SamInfoCard
                 stacItem={vizItem}
                 onClick={(id: string): void => {}}
-                onHover={(id: string): void => {}}
-                hovered={false}
+                onHover={handleHoverOverSelectedSams}
+                hovered={false} //hovered from inside
                 clicked={false}
+                hoveredVizid={hoveredVizLayerId}
               />
             ))
           }

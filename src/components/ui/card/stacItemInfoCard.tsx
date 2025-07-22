@@ -129,6 +129,10 @@ export function StacItemInfoCard({
     setTiffUrl(firstAsset.href);
   }, [stacItem]);
 
+  useEffect(() => {
+    setIsHovered(hovered);
+  }, [hovered]);
+
   return (
     <HighlightableCard
       sx={{ display: 'flex', flex: '0 0 auto', margin: '15px' }}
