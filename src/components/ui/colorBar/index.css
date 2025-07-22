@@ -1,42 +1,42 @@
 :root {
-  --colorbar-height: 7rem; /* Adjust this value to match your d2 height */
+    --colorbar-height: 7rem; /* Adjust this value to match your d2 height */
 }
 
 #colorbar {
-  position: absolute; 
-  bottom: 3%; 
-  right: 5px; 
-  height: var(--colorbar-height);
-  width: 30rem;
-  z-index: 10000;
-  background-color: white;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
+    /* position: absolute; */
+    /* bottom: 3%; */
+    /* right: 5px; */
+    /* height: var(--colorbar-height); */
+    width: 100%;
+    z-index: 10000;
+    background-color: white;
+    padding: 1rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
 }
 
 .colorbar-svg {
-  height: 1rem;
-  width: 28rem; /* this will define the colorbar width, make it a bit small than container */
+    height: 1rem;
+    width: 100%; /* this will define the colorbar width, make it a bit small than container */
 }
 
 .colorbar-scale {
-  text-align: center;
+    text-align: center;
 }
 
 .colorbar-label {
-  text-align: center;
-  margin-bottom: 0px;
+    text-align: center;
+    margin-bottom: 0px;
 }
 
 .colorbar-scale-tick-label-container {
-  display: flex;
-  justify-content: space-between;
+    display: flex;
+    justify-content: space-between;
 }
 
 .colorbar-scale-tick-label {
-  font-family: 'Roboto', 'Helvetica', 'Arial', 'sans-serif';
-  font-weight: 400;
-  font-size: 1rem;
+    font-family: "Roboto","Helvetica","Arial","sans-serif";
+    font-weight: 400;
+    font-size: 1rem;
 }
