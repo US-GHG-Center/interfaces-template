@@ -3,14 +3,8 @@
 }
 
 #colorbar {
-    /* position: absolute; */
-    /* bottom: 3%; */
-    /* right: 5px; */
-    /* height: var(--colorbar-height); */
     width: 100%;
     z-index: 10000;
-    background-color: white;
-    padding: 1rem;
     display: flex;
     flex-direction: row;
     justify-content: space-around;

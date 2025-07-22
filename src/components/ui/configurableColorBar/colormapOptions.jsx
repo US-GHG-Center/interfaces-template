@@ -104,10 +104,10 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
   };
   
   return (
-    <Box sx={{ p: 2, maxWidth: 350, border: "1px solid #f5f5f5", borderRadius: 1 }}>
+    <Box sx={{ p: 2, maxWidth: 350, border: "1px solid #f5f5f5", borderRadius: 1, padding: "1rem" }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography fontWeight="medium">Colormap Options</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', }}>
           <Typography variant="body2" sx={{ mr: 1 }}>
             Reverse
           </Typography>
@@ -120,113 +120,99 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
       </Box>
 
       
-      <Box sx={{ mb: 1 }}>
-        <Grid container spacing={1} alignItems="flex-start">
-          {/* Rescale */}
-          <Grid item xs={8}>
-            <Box>
-              <Typography variant="body2" gutterBottom sx={{ fontWeight: 500 }}>
-                Rescale
-              </Typography>
-              <Grid container spacing={1} alignItems="center">
-                <Grid item xs={3}>
-                  <TextField
-                    value={minValue}
-                    onChange={handleMinInputChange}
-                    size="small"
-                    type="number"
-                    fullWidth
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <Slider
-                    value={[minValue, maxValue]}
-                    onChange={handleSliderChange}
-                    min={parseFloat(VMIN)}
-                    max={parseFloat(VMAX)}
-                    step={parseFloat((VMAX - VMIN) / 20)}
-                    size="small"
-                    sx={{
-                      '& .MuiSlider-rail': { height: 2 },
-                      '& .MuiSlider-track': { height: 2 },
-                      '& .MuiSlider-thumb': {
-                        width: 14,
-                        height: 14,
-                        border: '2px solid currentColor',
-                        backgroundColor: '#fff',
-                      },
-                    }}
-                    disableSwap
-                  />
-                </Grid>
-                <Grid item xs={3}>
-                  <TextField
-                    value={maxValue}
-                    onChange={handleMaxInputChange}
-                    size="small"
-                    type="number"
-                    fullWidth
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-          </Grid>
-
-          {/* Reverse */}
-          <Grid item xs={4}>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body2" gutterBottom sx={{ fontWeight: 500 }}>
-                Reverse
-              </Typography>
-              <Switch
-                checked={reverse}
-                onChange={handleReverseChange}
+      {/* Rescale section with text input and slider */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" gutterBottom>
+          Rescale
+        </Typography>
+        <Grid container spacing={1} alignItems="center">
+          <Grid item xs={3}>
+            <Tooltip title={minValue}>
+              <TextField
+                value={minValue}
+                onChange={handleMinInputChange}
                 size="small"
+                type="number"
+                fullWidth
               />
-            </Box>
+            </Tooltip>
+          </Grid>
+          <Grid item xs={6} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Slider
+              value={[minValue, maxValue]}
+              onChange={handleSliderChange}
+              min={parseFloat(VMIN)}
+              max={parseFloat(VMAX)}
+              step={parseFloat((VMAX-VMIN)/20)}
+              size="small"
+              sx={{ 
+                width: '100%',
+                marginLeft: '5px',
+                marginRight: '5px',
+                // Custom styling to match the image
+                '& .MuiSlider-rail': {
+                  height: 2,
+                },
+                '& .MuiSlider-track': {
+                  height: 2,
+                },
+                '& .MuiSlider-thumb': {
+                  width: 14,
+                  height: 14,
+                  border: '2px solid currentColor',
+                  backgroundColor: '#fff',
+                },
+              }}
+              disableSwap   // Prevents thumbs from swapping positions
+            />
+          </Grid>
+          <Grid item xs={3}>
+            <Tooltip title={maxValue}>
+              <TextField
+                value={maxValue}
+                onChange={handleMaxInputChange}
+                size="small"
+                type="number"
+                fullWidth
+              />
+            </Tooltip>
           </Grid>
         </Grid>
-
-        {error && (
-          <Typography
-            variant="caption"
-            sx={{ display: 'block', color: 'red', mt: 0.5 }}
-          >
-            Min should be smaller than Max rescale.
-          </Typography>
-        )}
       </Box>
 
+      {error && <Typography variant="caption" gutterBottom sx={{ display: 'block', color: "red" }}>Min should be smaller than Max recale.</Typography>}
       
+      
+      {/* Colorbar selection */}
       <Box sx={{ mb: 2 }}>
         <Typography variant="body2" gutterBottom>
           Colorbar
         </Typography>
         <TextField
-  select
-  fullWidth
-  size="small"
-  value={selectedColorbar}
-  onChange={(e) => handleColorbarClick(e.target.value)}
->
-  {Object.keys(COLOR_MAP)
-    .filter(name => !name.includes('_r') && !name.includes('default'))
-    .map((colorbarName) => (
-      <MenuItem key={colorbarName} value={colorbarName} sx={{ display: 'block' }}>
-        <Typography variant="body2">{colorbarName}</Typography>
-        <Box mt={0.5}>
-          <ColorBar
-            VMIN={VMIN}
-            VMAX={VMAX}
-            STEP={(VMAX - VMIN) / 5}
-            colorMap={colorbarName}
-            skipStep
-            skipLabel
-          />
-        </Box>
-      </MenuItem>
-    ))}
-</TextField>
+          select
+          fullWidth
+          size="small"
+          value={selectedColorbar}
+          onChange={(e) => handleColorbarClick(e.target.value)}
+        >
+          {Object.keys(COLOR_MAP)
+            .filter(name => !name.includes('_r') && !name.includes('default'))
+            .map((colorbarName) => (
+              <MenuItem key={colorbarName} value={colorbarName} sx={{ display: 'block' }}>
+                <Typography variant="body2">{colorbarName}</Typography>
+                <Box mt={0.5}>
+                  <ColorBar
+                    VMIN={VMIN}
+                    VMAX={VMAX}
+                    STEP={(VMAX - VMIN) / 5}
+                    colorMap={colorbarName}
+                    skipStep
+                    skipLabel
+                  />
+                </Box>
+              </MenuItem>
+            ))}
+        </TextField>
       </Box>
 
     </Box>

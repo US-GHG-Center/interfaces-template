@@ -10,6 +10,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import { ColormapOptions } from './colormapOptions';
 import { ColorBar } from '../colorBar';
+import { Padding } from "@mui/icons-material";
 
 export const ConfigurableColorBar = ({ id, VMIN, VMAX, colorMap, dataProductBasedColorMap, setDataProductBasedColorMap }) => {
   const [currVMIN, setCurrVMIN] = useState(VMIN);
@@ -41,12 +42,14 @@ export const ConfigurableColorBar = ({ id, VMIN, VMAX, colorMap, dataProductBase
         aria-controls="panel1-content"
         id="panel1-header"
       >
-        <ColorBar
-          VMIN={currVMIN}
-          VMAX={currVMAX}
-          colorMap={currColorMap}
-          STEP={(currVMAX-currVMIN)/5}
-        />
+        <div style={{ padding: '1rem' }}>
+          <ColorBar
+            VMIN={currVMIN}
+            VMAX={currVMAX}
+            colorMap={currColorMap}
+            STEP={(currVMAX-currVMIN)/5}
+          />
+        </div>
       </AccordionSummary>
       <AccordionDetails>
         <ColormapOptions
