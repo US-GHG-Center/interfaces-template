@@ -12,26 +12,23 @@ import { ColormapOptions } from './colormapOptions';
 import { ColorBar } from '../colorBar';
 import { Padding } from "@mui/icons-material";
 
-export const ConfigurableColorBar = ({ id, VMIN, VMAX, colorMap, dataProductBasedColorMap, setDataProductBasedColorMap }) => {
-  const [currVMIN, setCurrVMIN] = useState(VMIN);
-  const [currVMAX, setCurrVMAX] = useState(VMAX);
+export const ConfigurableColorBar = ({ id, VMINLimit, VMAXLimit, colorMap, setVMIN, setVMAX, setColorMap }) => {
+  const [currVMIN, setCurrVMIN] = useState(VMINLimit);
+  const [currVMAX, setCurrVMAX] = useState(VMAXLimit);
   const [currColorMap, setCurrColorMap] = useState(colorMap);
   const [isReversed, setIsReverse] = useState(false);
   const [selColorMap, setSelColorMap] = useState(colorMap);
 
+
   useEffect(() => {
     // key == dataProduct
     // id == dataProduct + selectedCycloneId
-    let v = { ...dataProductBasedColorMap }
     let colorMap = selColorMap;
     if (isReversed) colorMap += "_r";
-    v[id] = {
-      colorMap: colorMap,
-      VMIN: currVMIN,
-      VMAX: currVMAX
-    }
     setCurrColorMap(colorMap);
-    setDataProductBasedColorMap(v)
+    setColorMap(colorMap);
+    setVMIN(currVMIN);
+    setVMAX(currVMAX);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currVMIN, currVMAX, selColorMap, isReversed])
 
@@ -39,10 +36,8 @@ export const ConfigurableColorBar = ({ id, VMIN, VMAX, colorMap, dataProductBase
     <Accordion>
       <AccordionSummary
         expandIcon={<ExpandMoreIcon />}
-        aria-controls="panel1-content"
-        id="panel1-header"
       >
-        <div style={{ padding: '1rem' }}>
+        <div style={{ padding: '.8rem' }}>
           <ColorBar
             VMIN={currVMIN}
             VMAX={currVMAX}
@@ -53,8 +48,8 @@ export const ConfigurableColorBar = ({ id, VMIN, VMAX, colorMap, dataProductBase
       </AccordionSummary>
       <AccordionDetails>
         <ColormapOptions
-          VMIN={VMIN}
-          VMAX={VMAX}
+          VMIN={VMINLimit}
+          VMAX={VMAXLimit}
           colorMap={colorMap}
           setCurrVMAX={setCurrVMAX}
           setCurrVMIN={setCurrVMIN}

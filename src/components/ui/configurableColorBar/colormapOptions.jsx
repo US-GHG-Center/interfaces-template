@@ -196,7 +196,7 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
           onChange={(e) => handleColorbarClick(e.target.value)}
         >
           {Object.keys(COLOR_MAP)
-            .filter(name => !name.includes('_r') && !name.includes('default'))
+            .filter(name => !name.includes('_r'))
             .map((colorbarName) => (
               <MenuItem key={colorbarName} value={colorbarName} sx={{ display: 'block' }}>
                 <Typography variant="body2">{colorbarName}</Typography>
