@@ -1,4 +1,4 @@
-export const ZOOM_LEVEL_MARGIN = 12;
+export const ZOOM_LEVEL_MARGIN = 8;
 
 export const PopularMapMarkerColors = [
   '#00b7eb',
