@@ -110,7 +110,7 @@ export class SamsTarget implements Target {
   }
 
   getSAMbyId(id: string): SAM | undefined {
-    for (let i = 0; i <= this.sams.length; i++) {
+    for (let i = 0; i < this.sams.length; i++) {
       if (this.sams[i].id === id) {
         return this.sams[i];
       }

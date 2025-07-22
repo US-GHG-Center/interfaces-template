@@ -19,11 +19,14 @@ import {
   FilterByDate,
   VizItemAnimation,
   Dropdown,
+  VizItemTimeline,
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
 import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
+
+import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 
 interface VizItem extends SAM {}
 
@@ -85,7 +88,7 @@ export function Dashboard({
   // handler functions
   const handleSelectedMarker = (vizItemId: string) => {
     if (!vizItemId || !dataTree.current) return;
-    let targetId: string = vizItemId.split('_')[1];
+    let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
     let target: Target | undefined = dataTree.current?.[targetId];
 
     // instead get the sam with the provided vizItemId
@@ -105,7 +108,7 @@ export function Dashboard({
 
   const handleSelectedVizLayer = (vizItemId: string) => {
     if (!vizItemId) return;
-    let targetId: string = vizItemId.split('_')[1];
+    let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
     let target: Target | undefined = dataTree.current?.[targetId];
 
     let vizItem: SAM | undefined = target?.getRepresentationalSAM();
@@ -163,7 +166,7 @@ export function Dashboard({
     if (targetType === 'all') {
       if (!dataTree.current) return;
       let targets: Target[] = getTargetsFromDataTree(dataTree.current);
-      let repTargets: SAM[] = getSamRepOfTarget(targets)
+      let repTargets: SAM[] = getSamRepOfTarget(targets);
       setTargets(repTargets);
       return;
     }
@@ -172,6 +175,18 @@ export function Dashboard({
     let targets: Target[] = samsTargetDict.current[targetType]?.targets;
     let repTargets: SAM[] = getSamRepOfTarget(targets);
     setTargets(repTargets);
+  };
+
+  const handleTimelineTimeChange = (vizItemId: string) => {
+    if (!dataTree.current) return;
+    // from the vizItemId, find the target id.
+    const targetId: string = getTargetIdFromStacIdSAM(vizItemId);
+    const target: Target = dataTree.current[targetId];
+    // using the targetId, find the necessary sam.
+    console.log("9897987979",target)
+    const changedVizItem: VizItem | undefined = target.getSAMbyId(vizItemId);
+    console.log(target, " ++++++++++++ ", changedVizItem)
+    if (changedVizItem) setVisualizationLayers([changedVizItem]);
   };
 
   // helpers
@@ -188,13 +203,13 @@ export function Dashboard({
       repTargets.push(target.getRepresentationalSAM());
     });
     return repTargets;
-  }
+  };
 
   const getTargetsFromDataTree = (dataTree: DataTree): Target[] => {
     if (!dataTree) return [];
     let targets: Target[] = Object.values(dataTree);
     return targets;
-  }
+  };
 
   // Component Effects
   useEffect(() => {
@@ -243,6 +258,19 @@ export function Dashboard({
                 />
               </HorizontalLayout>
             </div> */}
+            {selectedSams.length && (
+              <HorizontalLayout>
+                {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
+                <VizItemTimeline
+                  vizItems={selectedSams}
+                  onVizItemSelect={handleTimelineTimeChange}
+                  activeItem={null}
+                  onVizItemHover={() => {}}
+                  title=''
+                />
+                {/* </div> */}
+              </HorizontalLayout>
+            )}
           </Paper>
 
           <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
