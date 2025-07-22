@@ -1,18 +1,39 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import * as d3 from 'd3';
+// This file implements a timeline visualization for STAC items using D3.js and React.
+// It allows users to select and hover over items, displaying their dates on a timeline.
 
+// Import react libraries and hooks
+import { useEffect, useRef, useState, useMemo } from 'react';
+
+// Import D3.js for timeline rendering and interaction
+import * as d3 from 'd3';
+import Tooltip from '@mui/material/Tooltip';
+
+// MUI Icons for timeline controls
 import ReplayIcon from '@mui/icons-material/Replay';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
 
+// Data model import
 import { STACItem } from '../../../dataModel';
 
-import { isSameMonthAndYear } from './helper';
+// Helper functions
+import { 
+  parseItems,
+  getBaseX,
+  centerOnDate,
+  updateHighlights,
+  isSameMonthAndYear,
+  getTickDates,
+  moveToIndex
+} from './helper';
 
+// Stylesheet import
 import './index.css';
 
+
+// Define the props for the VizItemTimeline component
 interface VizItemTimelineProps {
   vizItems: STACItem[];
   onVizItemSelect: (id: string) => void;
@@ -21,6 +42,8 @@ interface VizItemTimelineProps {
   title?: string;
 }
 
+
+// The main component that renders the timeline visualization
 export const VizItemTimeline = ({
   vizItems = [],
   onVizItemSelect = () => {},
@@ -35,16 +58,8 @@ export const VizItemTimeline = ({
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
 
-  const parsedItems: { id: string; date: Date }[] = useMemo(() =>
-    vizItems
-      .map(item => ({
-        id: item.id,
-        date: d3.utcParse('%Y-%m-%dT%H:%M:%SZ')(item.properties.datetime) || new Date(item.properties.datetime),
-      }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-  , [vizItems]);
-
-  const dates = parsedItems.map(item => item.date);
+  const parsedItems = useMemo(() => parseItems(vizItems), [vizItems]);
+  const dates = useMemo(() => parsedItems.map(item => item.date), [parsedItems]);
 
   const [activeIndex, setActiveIndex] = useState(activeItem ? parsedItems.findIndex(item => item.id === activeItem.id) : 0);
   const activeDate = dates[activeIndex];
@@ -52,37 +67,19 @@ export const VizItemTimeline = ({
 
   const margin = { left: 30, right: 30 };
 
-  const updateHighlights = (activeDate: Date) => {
-    const g = d3.select(svgRef.current).select('g');
-
-   g.selectAll('circle:not(.active-circle)')
-    .attr('fill', d =>
-      (d as { date: Date }).date.getTime() === activeDate.getTime()
-        ? '#3b82f6'
-        : '#9ca3af'
-    );
-
-    // Update the active circle overlay position
-    const baseX = getBaseX();
-    if (!baseX) return;
-
-    const x = transformRef.current.rescaleX(baseX);
-
-    const activeItem = parsedItems.find(d => d.date.getTime() === activeDate.getTime());
-    if (!activeItem) return;
-
-    g.select('.active-circle')
-      .attr('cx', x(activeItem.date))
-      .attr('cy', 0);
-  };
-
+  const baseX = useMemo(() => getBaseX(dates, dimensions.width, margin), [dates, dimensions.width]);
 
   const handleVizItemClick = (idx: number) => {
     activeDateRef.current = dates[idx];
     setActiveIndex(idx);
     onVizItemSelect(parsedItems[idx].id);
-
-    updateHighlights(activeDateRef.current);
+    updateHighlights(
+      svgRef,
+      parsedItems,
+      activeDateRef.current,
+      baseX,
+      transformRef.current
+    );
   };
 
   const handleVizItemHover = (idx: number) => {
@@ -99,32 +96,6 @@ export const VizItemTimeline = ({
     return () => observer.disconnect();
   }, []);
 
-  const getBaseX = () => {
-    if (!dates.length || !dimensions.width) return null;
-    // add 20 day padding
-    const minDate = d3.utcDay.offset(d3.min(dates)!, -20);
-    const maxDate = d3.utcDay.offset(d3.max(dates)!, 20);
-    return d3.scaleUtc()
-      // .domain([d3.utcMonth.floor(minDate), d3.utcMonth.ceil(maxDate)])
-      .domain([minDate, maxDate])
-      .range([margin.left, dimensions.width - margin.right]);
-  };
-
-  const centerOnDate = (date: Date, scale: number) => {
-    const svg = d3.select(svgRef.current);
-    const baseX = getBaseX();
-    if (!svg.node() || !baseX) return;
-    const x = baseX(date);
-    const center = (dimensions.width - margin.left - margin.right) / 2 + margin.left;
-    const idealTranslateX = center - x * scale;
-    const maxX = margin.left * (1 - scale);
-    const minX = (dimensions.width - margin.right) * (1 - scale);
-    const tx = Math.max(minX, Math.min(idealTranslateX, maxX));
-    const transform = d3.zoomIdentity.translate(tx, 0).scale(scale);
-    if (zoomRef.current) {
-      svg.transition().duration(250).call(zoomRef.current.transform as any, transform);
-    }
-  }
 
   useEffect(() => {
     if (!dimensions.width || !dates.length) return;
@@ -136,7 +107,6 @@ export const VizItemTimeline = ({
     const { width, height } = dimensions;
     svg.selectAll('*').remove();
 
-    const baseX = getBaseX();
     if (!baseX) return;
 
     const clipId = 'timeline-clip-path';
@@ -161,22 +131,8 @@ export const VizItemTimeline = ({
       const x = transform.rescaleX(baseX);
 
 
-      // Add 15 day padding to the min and max dates
-      // todo: make this padding configurable
-      const minDate = d3.utcDay.offset(d3.min(dates)!, -20);
-      const maxDate = d3.utcDay.offset(d3.max(dates)!, 20);
-
-      const totalRange = x(maxDate) - x(minDate);
-      const months = d3.utcMonths(minDate, maxDate);
-      const ppm = months.length > 1 ? totalRange / months.length : totalRange;
-
-      let ticks: Date[] = [];
-      if (ppm > 55) ticks = d3.utcMonths(minDate, maxDate);
-      else if (ppm > 34) ticks = d3.utcMonths(minDate, maxDate, 2);
-      else if (ppm > 12) ticks = d3.utcMonths(minDate, maxDate, 6);
-      else if (ppm > 4) ticks = d3.utcYears(minDate, maxDate);
-      else if (ppm > 2) ticks = d3.utcYears(minDate, maxDate, 2);
-      else ticks = d3.utcYears(minDate, maxDate, 5);
+      const PADDING_DAYS = 20;
+      const { ticks, ppm } = getTickDates(dates, transform, baseX, PADDING_DAYS);
 
       g.selectAll('lines')
         .data(ticks)
@@ -203,24 +159,25 @@ export const VizItemTimeline = ({
         .attr('stroke', '#d1d5db')
         .attr('stroke-width', 2);
 
-      // Add labels for start and end dates if they are in the same month and year
-      // This is to ensure that we have some labels in the timeline
-      if (isSameMonthAndYear(minDate, maxDate)) {
-        const forcedDates = [parsedItems[0].date, parsedItems[parsedItems.length - 1].date];
-        const forcedOnly = forcedDates.filter(
-          d => !ticks.some(t => t.getTime() === d.getTime())
-        );
+      
+      // // Add labels for start and end dates if they are in the same month and year
+      // // This is to ensure that we have some labels in the timeline
+      // if (isSameMonthAndYear(minDate, maxDate)) {
+      //   const forcedDates = [parsedItems[0].date, parsedItems[parsedItems.length - 1].date];
+      //   const forcedOnly = forcedDates.filter(
+      //     d => !ticks.some(t => t.getTime() === d.getTime())
+      //   );
 
-        g.selectAll('forced-labels')
-          .data(forcedOnly)
-          .enter().append('text')
-          .attr('x', d => x(d))
-          .attr('y', -height * 0.35)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('fill', '#6b7280')
-          .text(d => d3.utcFormat('%d %b')(d));
-      }
+      //   g.selectAll('forced-labels')
+      //     .data(forcedOnly)
+      //     .enter().append('text')
+      //     .attr('x', d => x(d))
+      //     .attr('y', -height * 0.35)
+      //     .attr('text-anchor', 'middle')
+      //     .attr('font-size', '10px')
+      //     .attr('fill', '#6b7280')
+      //     .text(d => d3.utcFormat('%d %b')(d));
+      // }
 
       // Draw circles for each item  
       const circles = g.selectAll('circle')
@@ -271,26 +228,47 @@ export const VizItemTimeline = ({
     zoomRef.current = zoom;
     (svg as d3.Selection<SVGSVGElement, unknown, null, undefined>).call(zoom);
     render(d3.zoomIdentity);
-    centerOnDate(activeDate, 1);
+    centerOnDate(
+      svgRef,
+      activeDate,
+      1,
+      dimensions.width,
+      margin,
+      baseX!,
+      zoomRef.current!
+    );
   }, [dimensions, parsedItems]);
 
-  const move = (direction: string) => {
-    let newIndex = activeIndex;
-    if (direction === 'first') newIndex = 0;
-    else if (direction === 'last') newIndex = dates.length - 1;
-    else newIndex = direction === 'left' ? Math.max(0, activeIndex - 1) : Math.min(dates.length - 1, activeIndex + 1);
-    handleVizItemClick(newIndex);
 
-    // Get the current zoom transform
-    const svg = d3.select(svgRef.current);
-    const currentTransform = d3.zoomTransform(svg.node()!);
-
-    // Center on the new date with the current zoom level
-    centerOnDate(dates[newIndex], currentTransform.k);
-
+  // Handle movement controls
+  const move = (direction: 'left' | 'right' | 'first' | 'last') => {
+    moveToIndex(
+      direction,
+      activeIndex,
+      dates,
+      svgRef,
+      dimensions,
+      margin,
+      baseX!,
+      zoomRef.current!,
+      handleVizItemClick
+    );
   };
 
-  const resetZoom = () => centerOnDate(activeDate, 1);
+  // Reset zoom to the initial state
+  const resetZoom = () => {
+    centerOnDate(
+      svgRef,
+      activeDate,
+      1,
+      dimensions.width,
+      margin,
+      baseX!,
+      zoomRef.current!
+    );
+  };
+
+  // Format function for displaying dates
   const format = d3.utcFormat('%Y-%m-%d');
 
   return (
