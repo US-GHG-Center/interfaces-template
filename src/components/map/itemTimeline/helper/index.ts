@@ -21,7 +21,7 @@ export function parseItems(vizItems: STACItem[]) {
   return vizItems
     .map(item => ({
       id: item.id,
-      date: moment.utc(item.properties.datetime).toDate(),
+      date: moment.utc(item.properties.start_datetime).toDate(),
     }))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }
