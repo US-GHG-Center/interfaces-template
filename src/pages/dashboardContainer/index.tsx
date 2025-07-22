@@ -13,7 +13,6 @@ import {
   SAMMissingMetaData,
   DataTree,
   SamsTargetDict,
-  SamsTarget,
 } from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
@@ -37,7 +36,7 @@ export function DashboardContainer(): React.JSX.Element {
       : null
   ); // let default zoom level be controlled by map component
   const [collectionId] = useState<string>(
-    searchParams.get('collection-id') || 'oco3-co2-sam-cogs'
+    searchParams.get('collection-id') || 'oco3-co2-sams-daygrid-v11r'
   );
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const dataTree = useRef<DataTree | null>(null);

@@ -12,6 +12,7 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
     // requiredResult.push(...getResultArray(jsonResult));
 
     let allData = await fetchAllDataSTAC(STACApiUrl, 1000);
+    console.log(":::", allData)
     return [...allData];
 
     // // need to pull in remaining data based on the pagination information
@@ -32,6 +33,7 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
 const fetchAllDataSTAC = async (STACApiUrl, numberMatched) => {
   // NOTE: STAC API doesnot accept offset as a query params. So, need to pull all the items using limit.
   try {
+    console.log("++++", STACApiUrl)
     const fullDataPromise = fetch(
       addOffsetsToURL(STACApiUrl, 0, numberMatched)
     );
