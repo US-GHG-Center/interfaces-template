@@ -253,21 +253,25 @@ export function Dashboard({
                 />
               </HorizontalLayout>
             </div> */}
-            {selectedSams.length ? (
-              <HorizontalLayout>
-                {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
-                <VizItemTimeline
-                  vizItems={selectedSams}
-                  onVizItemSelect={handleTimelineTimeChange}
-                  activeItemId={hoveredVizLayerId}
-                  onVizItemHover={handleHoverOverSelectedSams}
-                  title=''
-                />
-                {/* </div> */}
-              </HorizontalLayout>
-            ) : (
-              <></>
-            )}
+            <div className='title-content'>
+              {selectedSams.length ? (
+                <HorizontalLayout>
+                  {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
+                  <VizItemTimeline
+                    vizItems={selectedSams}
+                    onVizItemSelect={handleTimelineTimeChange}
+                    activeItemId={hoveredVizLayerId}
+                    onVizItemHover={handleHoverOverSelectedSams}
+                    hoveredItemId={hoveredVizLayerId}
+                    title=''
+                  />
+                  {/* </div> */}
+                </HorizontalLayout>
+              ) : (
+                <></>
+              )}
+            </div>
+
           </Paper>
 
           <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />

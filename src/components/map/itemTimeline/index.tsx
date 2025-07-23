@@ -39,6 +39,7 @@ interface VizItemTimelineProps {
   onVizItemSelect: (id: string) => void;
   activeItemId?: string | null;
   onVizItemHover?: (id: string) => void;
+  hoveredItemId?: string | null;
   title?: string;
 }
 
@@ -49,6 +50,7 @@ export const VizItemTimeline = ({
   onVizItemSelect = () => {},
   activeItemId = null,
   onVizItemHover = () => {},
+  hoveredItemId = null,
   title = 'Timeline',
 }: VizItemTimelineProps): JSX.Element => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -190,7 +192,11 @@ export const VizItemTimeline = ({
         .attr('cx', d => x(d.date))
         .attr('cy', 0)
         .attr('r', 5)
-        .attr('fill', d => d.date.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
+        .attr('fill', d => {
+            if (d.id === hoveredItemId) return '#9dc1fa'; // color for hovered item
+            if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active item color
+            return '#9ca3af'; // default gray
+          })
         .style('cursor', 'pointer')
         .on('click', (e, d) => {
           const idx = parsedItems.findIndex(item => item.id === d.id);
