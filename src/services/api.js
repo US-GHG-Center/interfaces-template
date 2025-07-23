@@ -12,7 +12,6 @@ export const fetchAllFromSTACAPI = async (STACApiUrl) => {
     // requiredResult.push(...getResultArray(jsonResult));
 
     let allData = await fetchAllDataSTAC(STACApiUrl, 1000);
-    console.log(":::", allData)
     return [...allData];
 
     // // need to pull in remaining data based on the pagination information
