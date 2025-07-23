@@ -326,19 +326,19 @@ export const VizItemTimeline = ({
           <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
           <div className="timeline-footer">
             <div>
-              <Typography variant="caption">Start</Typography>
+              <Typography variant="caption">Start Date</Typography>
               <Typography variant="subtitle2" fontWeight="bold">
                 {format(dates[0])}
               </Typography>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <Typography variant="caption">Active</Typography>
+              <Typography variant="caption">Active Date</Typography>
               <Typography variant="subtitle2" fontWeight="bold">
                 {format(activeDate)}
               </Typography>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <Typography variant="caption">End</Typography>
+              <Typography variant="caption">End Date</Typography>
               <Typography variant="subtitle2" fontWeight="bold">
                 {format(dates[dates.length - 1])}
               </Typography>
