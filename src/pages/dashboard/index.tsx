@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
@@ -86,6 +86,9 @@ export function Dashboard({
 
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
+
+  // ref. to scroll to the hovered card within the drawer
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // callback handler functions
   // Note: these callback handler function needs to be initilaized only once.
@@ -301,6 +304,7 @@ export function Dashboard({
         ></Dropdown>
         <PersistentDrawerRight
           open={openDrawer}
+          cardRef={cardRef}
           header={
             <>
               <Typography
@@ -336,6 +340,9 @@ export function Dashboard({
                 VMIN={VMIN}
                 assets={assets}
                 colorMap={colormap}
+                cardRef={
+                  vizItem?.id === hoveredVizLayerId ? cardRef : undefined
+                }
               />
             ))
           }
