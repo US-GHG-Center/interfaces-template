@@ -15,6 +15,9 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
 
+// MUI Typography for text rendering
+import Typography from '@mui/material/Typography';
+
 // Data model import
 import { STACItem } from '../../../dataModel';
 
@@ -246,7 +249,7 @@ export const VizItemTimeline = ({
       baseX!,
       zoomRef.current!
     );
-  }, [dimensions, parsedItems]);
+  }, [dimensions, parsedItems, hoveredItemId]);
 
 
   // Handle movement controls
@@ -322,9 +325,24 @@ export const VizItemTimeline = ({
           </div>
           <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
           <div className="timeline-footer">
-            <div>Start<br /><strong>{format(dates[0])}</strong></div>
-            <div style={{ textAlign: 'center' }}>Active<br /><strong>{format(activeDate)}</strong></div>
-            <div style={{ textAlign: 'right' }}>End<br /><strong>{format(dates[dates.length - 1])}</strong></div>
+            <div>
+              <Typography variant="caption">Start</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(dates[0])}
+              </Typography>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <Typography variant="caption">Active</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(activeDate)}
+              </Typography>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <Typography variant="caption">End</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(dates[dates.length - 1])}
+              </Typography>
+            </div>
           </div>
         </div>
       )}
