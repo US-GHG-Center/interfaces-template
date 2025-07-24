@@ -30,3 +30,4 @@ package-lock.json
 dist/
 
 .parcel-cache
+.dist
