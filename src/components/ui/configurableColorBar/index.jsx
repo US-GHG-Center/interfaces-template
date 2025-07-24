@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import {  
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Typography
 } from '@mui/material';
 
 // import hamburger icon and close icon
@@ -13,6 +14,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import { ColormapOptions } from './colormapOptions';
 import { ColorBar } from '../colorBar';
 import { Padding } from "@mui/icons-material";
+
+import './index.css';
 
 export const ConfigurableColorBar = ({ 
     id,
@@ -49,6 +52,7 @@ export const ConfigurableColorBar = ({
     <Accordion
       expanded={expanded}
       onChange={() => setExpanded(!expanded)}
+      className="configurable-colorbar-container"
     >
       <AccordionSummary
         expandIcon={expanded ? <CloseIcon /> : <HamburgerMenu />}
@@ -70,13 +74,13 @@ export const ConfigurableColorBar = ({
             STEP={(currVMAX-currVMIN)/5}
           />
           
-          { unit && <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-            <span style={{ fontSize: '1rem', color: '#666' }}>{unit}</span>
+          { unit && <div style={{ textAlign: 'center'}}>
+            <Typography style={{ fontSize: '.9rem', color: '#666', marginTop: '0.5rem' }}>{unit}</Typography>
           </div> }
          
         </div>
       </AccordionSummary>
-      <AccordionDetails>
+      <AccordionDetails className="configurable-colorbar-details">
         <ColormapOptions
           VMIN={VMINLimit}
           VMAX={VMAXLimit}

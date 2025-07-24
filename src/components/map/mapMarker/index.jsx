@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { useMapbox } from '../../../context/mapContext';
 import './index.css';
-import { ZOOM_LEVEL_MARGIN, PopularMapMarkerColors } from '../utils/constants';
-import { stringToNumberHash } from '../utils';
+import { ZOOM_LEVEL_MARGIN  } from '../utils/constants';
+import { getMarkerColor } from '../utils';
+
 
 export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
   const { map } = useMapbox();
@@ -21,8 +22,7 @@ export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
       const [lon, lat] = geometry.coordinates[0][0];
       const targetType = item.properties.target_type;
 
-      let colorIdx = stringToNumberHash(targetType) % PopularMapMarkerColors.length;
-      const markerColor = PopularMapMarkerColors[colorIdx];
+      const markerColor = getMarkerColor(targetType);
 
       const el = document.createElement('div');
       el.className = 'marker';

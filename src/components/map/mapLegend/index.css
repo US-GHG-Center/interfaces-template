@@ -1,0 +1,12 @@
+.map-legend-title {
+    color: var(--main-blue);
+    font-weight: bold !important;
+    padding-left: 0.2rem;
+    text-align: left;
+}
+
+.clear-filter-button {
+  display: flex !important;
+  padding: 4px 8px !important;
+  transition: background-color 0.2s !important;
+}

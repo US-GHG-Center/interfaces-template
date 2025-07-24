@@ -9,6 +9,7 @@ export { VizItemTimeline } from './map/itemTimeline/index.tsx';
 export { MeasurementLayer } from './map/measurementLayer';
 export { MarkerFeature } from './map/mapMarker';
 export { MapZoom } from './map/mapZoom';
+export { MapLegend } from './map/mapLegend';
 
 // Map Layers
 export { VisualizationLayers } from './map/mapLayer';
@@ -31,6 +32,7 @@ export {
   addSourceLayerToMap,
   layerExists,
   sourceExists,
+  getMarkerColor
 } from './map/utils';
 
 // Add other component exports here as needed

@@ -14,6 +14,7 @@ import {
 import { ColorBar } from '../colorBar';
 import { COLOR_MAP } from '../colorBar/helper';
 
+import './index.css';
 
 export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN, setSelColorMap, setIsReverse}) => {
   // State for the input values

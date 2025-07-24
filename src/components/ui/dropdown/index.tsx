@@ -7,6 +7,8 @@ import {
 } from '@mui/material';
 import { Box } from '@mui/system';
 
+import { titleCase } from '../../../utils';
+
 import './index.css';
 
 interface DropdownInterface {
@@ -49,19 +51,4 @@ export function Dropdown({
   );
 }
 
-function titleCase(text: string) {
-  if (!text) {
-    return ''; // Handle empty strings gracefully
-  }
 
-  // Convert the string to lowercase, then split it into an array of words
-  const words = text.toLowerCase().split(' ');
-
-  // Map over the array, capitalizing the first letter of each word
-  const titleCasedWords = words.map((word: string) => {
-    return word.charAt(0).toUpperCase() + word.slice(1);
-  });
-
-  // Join the words back into a single string with spaces
-  return titleCasedWords.join(' ');
-}

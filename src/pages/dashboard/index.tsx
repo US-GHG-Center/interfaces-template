@@ -21,6 +21,7 @@ import {
   Dropdown,
   VizItemTimeline,
   ConfigurableColorBar,
+  MapLegend
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
@@ -77,11 +78,11 @@ export function Dashboard({
   //color map
   const [VMAX, setVMAX] = useState<number>(420);
   const [VMIN, setVMIN] = useState<number>(400);
-  const [colormap, setColormap] = useState<string>('default');
+  const [colormap, setColormap] = useState<string>('magma');
   const [assets, setAssets] = useState<string>('cog_default');
   // targets based on target type
-  const [targetTypes, setTargetTypes] = useState<string[]>(['all']);
-  const [selectedTargetType, setSelectedTargetType] = useState<string>('all');
+  const [targetTypes, setTargetTypes] = useState<string[]>([]);
+  const [selectedTargetType, setSelectedTargetType] = useState<string[]>([]);
 
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
@@ -153,10 +154,10 @@ export function Dashboard({
     setZoomLocation([-98.771556, 32.967243]);
   };
 
-  const handleSelectedTargetType = (targetType: string) => {
+  const handleSelectedTargetType = (targetType: string[]) => {
     setSelectedTargetType(targetType);
 
-    if (targetType === 'all') {
+    if (!targetType || targetType.length === 0) {
       if (!dataTree.current) return;
       let targets: Target[] = getTargetsFromDataTree(dataTree.current);
       let repTargets: SAM[] = getSamRepOfTarget(targets);
@@ -165,7 +166,9 @@ export function Dashboard({
     }
 
     if (!samsTargetDict.current) return;
-    let targets: Target[] = samsTargetDict.current[targetType]?.targets;
+    let targets: Target[] = samsTargetDict.current
+      ? targetType.flatMap(type => samsTargetDict.current![type]?.targets || [])
+      : [];
     let repTargets: SAM[] = getSamRepOfTarget(targets);
     setTargets(repTargets);
   };
@@ -228,7 +231,7 @@ export function Dashboard({
   useEffect(() => {
     if (!samsTargetDict.current) return;
     const targetTypesLocal = Object.keys(samsTargetDict.current);
-    setTargetTypes(['all', ...targetTypesLocal]);
+    setTargetTypes([...targetTypesLocal]);
   }, [samsTargetDict.current]);
 
   // JSX
@@ -236,44 +239,6 @@ export function Dashboard({
     <Box className='fullSize'>
       <div id='dashboard-map-container'>
         <MainMap>
-          <Paper className='title-container'>
-            <Title title={TITLE} description={DESCRIPTION} />
-            {/* <div className='title-content'>
-              <HorizontalLayout>
-                <Search
-                  vizItems={targets}
-                  onSelectedVizItemSearch={handleSelectedVizItemSearch}
-                  placeHolderText={'Search by vizItem ID and substring'}
-                ></Search>
-              </HorizontalLayout>
-              <HorizontalLayout>
-                <FilterByDate
-                  vizItems={targets}
-                  onFilteredVizItems={setFilteredVizItems}
-                />
-              </HorizontalLayout>
-            </div> */}
-            <div className='title-content'>
-              {selectedSams.length ? (
-                <HorizontalLayout>
-                  {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
-                  <VizItemTimeline
-                    vizItems={selectedSams}
-                    onVizItemSelect={handleTimelineTimeChange}
-                    activeItemId={hoveredVizLayerId}
-                    onVizItemHover={handleHoverOverSelectedSams}
-                    hoveredItemId={hoveredVizLayerId}
-                    title=''
-                  />
-                  {/* </div> */}
-                </HorizontalLayout>
-              ) : (
-                <></>
-              )}
-            </div>
-
-          </Paper>
-
           <MapZoom zoomLocation={zoomLocation} zoomLevel={zoomLevel} />
           <MapControls
             openDrawer={openDrawer}
@@ -295,11 +260,67 @@ export function Dashboard({
             onHoverOverLayer={setHoveredVizLayerId}
           />
         </MainMap>
-        <Dropdown
-          items={targetTypes}
-          onSelection={handleSelectedTargetType}
-          selectedItemId={selectedTargetType}
-        ></Dropdown>
+
+            <div className="flex-left-column">
+              <Paper className='title-container'>
+                <Title title={TITLE} description={DESCRIPTION} />
+                {/* <div className='title-content'>
+                  <HorizontalLayout>
+                    <Search
+                      vizItems={targets}
+                      onSelectedVizItemSearch={handleSelectedVizItemSearch}
+                      placeHolderText={'Search by vizItem ID and substring'}
+                    ></Search>
+                  </HorizontalLayout>
+                  <HorizontalLayout>
+                    <FilterByDate
+                      vizItems={targets}
+                      onFilteredVizItems={setFilteredVizItems}
+                    />
+                  </HorizontalLayout>
+                </div> */}
+                <div className='title-content'>
+                  {selectedSams.length ? (
+                    <HorizontalLayout>
+                      {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
+                      <VizItemTimeline
+                        vizItems={selectedSams}
+                        onVizItemSelect={handleTimelineTimeChange}
+                        activeItemId={hoveredVizLayerId}
+                        onVizItemHover={handleHoverOverSelectedSams}
+                        hoveredItemId={hoveredVizLayerId}
+                        title=''
+                      />
+                      {/* </div> */}
+                    </HorizontalLayout>
+                  ) : (
+                    <></>
+                  )}
+                </div>
+              </Paper>
+              <div className='legend-container'>
+                {targetTypes.length > 0 && (
+                  <MapLegend
+                    title={'Marker Categories'}
+                    items={targetTypes}
+                    onSelect={handleSelectedTargetType}
+                  />
+                )}
+                {VMAX && (
+                    <ConfigurableColorBar
+                      id='coolcolor'
+                      VMAXLimit={420}
+                      VMINLimit={400}
+                      colorMap={colormap}
+                      setColorMap={setColormap}
+                      setVMIN={setVMIN}
+                      setVMAX={setVMAX}
+                      unit='Measurement Unit'
+                    />
+                )}
+              </div>
+            </div>
+        
         <PersistentDrawerRight
           open={openDrawer}
           header={
@@ -342,19 +363,7 @@ export function Dashboard({
           }
         />
       </div>
-      {VMAX && (
-        <div style={{ position: 'absolute', right: 10, bottom: 18 }}>
-          <ConfigurableColorBar
-            id='coolcolor'
-            VMAXLimit={420}
-            VMINLimit={400}
-            colorMap={colormap}
-            setColorMap={setColormap}
-            setVMIN={setVMIN}
-            setVMAX={setVMAX}
-          />
-        </div>
-      )}
+      
       {loadingData && <LoadingSpinner />}
     </Box>
   );

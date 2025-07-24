@@ -4,9 +4,9 @@
 }
 
 #dashboard-map-container {
-  width: 100%;
-  height: 100%;
   position: relative;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -66,4 +66,33 @@ button.clear-icon {
 button.menu-open-icon {
   display: flex;
   align-items: center;
+}
+
+.flex-left-column {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-height: 100vh;
+  overflow: hidden;
+  padding: .5rem;
+  min-width: 400px;
+  width: 25%;
+  height: 100vh;
+  z-index: 1000;
+  box-sizing: border-box;
+  top: 0;
+  left: 0;
+  gap: 0.5rem;
+  pointer-events: none; /* allow map to receive events through gaps */
+}
+
+.flex-left-column > * {
+  pointer-events: auto; /* allow interaction with child elements */
+}
+
+.legend-container {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
 }
