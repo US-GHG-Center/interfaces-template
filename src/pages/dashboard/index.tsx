@@ -10,6 +10,7 @@ import {
   MarkerFeature,
   VisualizationLayers,
   ColorBar,
+  ConfigurableColorBar,
   LoadingSpinner,
   PersistentDrawerRight,
   Title,
@@ -258,12 +259,14 @@ export function Dashboard({
         />
       </div>
       {VMAX && (
-        <ColorBar
-          label={'Methane Column Enhancement (mol/m²)'}
-          VMAX={VMAX}
-          VMIN={VMIN}
-          colormap={colormap}
-          STEPSIZE={1}
+        <ConfigurableColorBar
+          id ='configurable-color-bar'
+          VMAXLimit={100}
+          VMINLimit={-92}
+          colorMap={colormap}
+          setVMIN={setVMIN}
+          setVMAX={setVMAX}
+          setColorMap={setColormap}
         />
       )}
       {loadingData && <LoadingSpinner />}
