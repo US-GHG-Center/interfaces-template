@@ -14,6 +14,7 @@ import {
 import { ColorBar } from '../colorBar';
 import { COLOR_MAP } from '../colorBar/helper';
 
+import './index.css';
 
 export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN, setSelColorMap, setIsReverse}) => {
   // State for the input values
@@ -104,8 +105,8 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
   };
   
   return (
-    <Box sx={{ p: 2, maxWidth: 350, border: "1px solid #f5f5f5", borderRadius: 1, padding: "1rem" }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+    <Box sx={{ p: 2, minWidth: 100, border: "1px solid #f5f5f5", borderRadius: 1, padding: "1rem" }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
         <Typography fontWeight="medium">Colormap Options</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', }}>
           <Typography variant="body2" sx={{ mr: 1 }}>
@@ -121,7 +122,7 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
 
       
       {/* Rescale section with text input and slider */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 1 }}>
         <Typography variant="body2" gutterBottom>
           Rescale
         </Typography>
@@ -184,7 +185,7 @@ export const ColormapOptions = ({VMIN, VMAX, colorMap, setCurrVMAX, setCurrVMIN,
       
       
       {/* Colorbar selection */}
-      <Box sx={{ mb: 2 }}>
+      <Box>
         <Typography variant="body2" gutterBottom>
           Colorbar
         </Typography>
