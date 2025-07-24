@@ -19,8 +19,6 @@ export const COLOR_MAP = {
   reds_r: (t) => d3.interpolateReds(1 - t),
   gist_earth: (t) => d3.interpolateGreys(1 - t), // (reversed)
   gist_earth_r: d3.interpolateGreys, // (reversed)
-  default: d3.interpolatePlasma,
-  default_r: (t) => d3.interpolatePlasma(1 - t), // (reversed)
 };
 
 export const createColorbar = (
@@ -28,12 +26,12 @@ export const createColorbar = (
   VMIN = -92,
   VMAX = 100,
   STEP = 30,
-  colorMap = 'default',
+  colorMap = 'magma',
   skipStep = false
 ) => {
   // Create a color scale using D3
   if (!(colorMap in COLOR_MAP)) {
-    colorMap = 'default';
+    colorMap = 'magma';
   }
 
   const colorScale = d3

@@ -6,18 +6,31 @@ import {
   AccordionDetails
 } from '@mui/material';
 
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+// import hamburger icon and close icon
+import HamburgerMenu from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
 
 import { ColormapOptions } from './colormapOptions';
 import { ColorBar } from '../colorBar';
 import { Padding } from "@mui/icons-material";
 
-export const ConfigurableColorBar = ({ id, VMINLimit, VMAXLimit, colorMap, setVMIN, setVMAX, setColorMap }) => {
+export const ConfigurableColorBar = ({ 
+    id,
+    VMINLimit, 
+    VMAXLimit, 
+    colorMap, 
+    setVMIN, 
+    setVMAX, 
+    setColorMap,
+    unit='',
+  }) => {
   const [currVMIN, setCurrVMIN] = useState(VMINLimit);
   const [currVMAX, setCurrVMAX] = useState(VMAXLimit);
   const [currColorMap, setCurrColorMap] = useState(colorMap);
   const [isReversed, setIsReverse] = useState(false);
   const [selColorMap, setSelColorMap] = useState(colorMap);
+
+  const [expanded, setExpanded] = useState(false);
 
 
   useEffect(() => {
@@ -33,17 +46,34 @@ export const ConfigurableColorBar = ({ id, VMINLimit, VMAXLimit, colorMap, setVM
   }, [currVMIN, currVMAX, selColorMap, isReversed])
 
   return (
-    <Accordion>
+    <Accordion
+      expanded={expanded}
+      onChange={() => setExpanded(!expanded)}
+    >
       <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
+        expandIcon={expanded ? <CloseIcon /> : <HamburgerMenu />}
       >
-        <div style={{ padding: '.8rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', marginRight: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '1rem' }}>
+              {currColorMap.replace(/_r/g, '')}
+            </span>
+            <span style={{ fontSize: '0.8rem', color: '#666' }}>
+              {isReversed ? 'Reversed' : 'Normal'}
+            </span>
+          </div>
+          
           <ColorBar
             VMIN={currVMIN}
             VMAX={currVMAX}
             colorMap={currColorMap}
             STEP={(currVMAX-currVMIN)/5}
           />
+          
+          { unit && <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+            <span style={{ fontSize: '1rem', color: '#666' }}>{unit}</span>
+          </div> }
+         
         </div>
       </AccordionSummary>
       <AccordionDetails>
