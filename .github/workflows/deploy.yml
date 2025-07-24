@@ -1,0 +1,137 @@
+name: Deploy Interface Template
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop, main ]
+
+jobs:
+  define-environment:
+    name: Set environment
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.define_environment.outputs.env_name }}
+    steps:
+      - name: Set the environment based on the branch
+        id: define_environment
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "env_name=staging" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "env_name=production" >> $GITHUB_OUTPUT
+          fi
+      - name: Print the environment
+        run: echo "The environment is ${{ steps.define_environment.outputs.env_name }}"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: define-environment
+    environment: ${{ needs.define-environment.outputs.env_name }}
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Validate required variables and secrets
+        run: |
+          missing_vars=()
+
+          # Check for required variables
+          # Variables for the Application: Remove unnecessary variables for the fork. 
+          [ -z "${{ secrets.REACT_APP_MAPBOX_ACCESS_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_ACCESS_TOKEN")
+          [ -z "${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_STYLE_URL")
+          [ -z "${{ vars.PUBLIC_URL }}" ] && missing_vars+=("vars.PUBLIC_URL")
+          # note: vars.PUBLIC_URL is expected to have leading and trailing /
+          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
+          [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
+          [ -z "${{ vars.REACT_APP_FEATURES_API_URL }}" ] && missing_vars+=("vars.REACT_APP_FEATURES_API_URL")
+          [ -z "${{ vars.REACT_APP_CLOUD_BROWSE_URL }}" ] && missing_vars+=("vars.REACT_APP_CLOUD_BROWSE_URL")
+          # Variables for the Static Build placement in AWS.
+          [ -z "${{ vars.DEPLOYMENT_BUCKET }}" ] && missing_vars+=("vars.DEPLOYMENT_BUCKET")
+          [ -z "${{ vars.DEPLOYMENT_REGION }}" ] && missing_vars+=("vars.DEPLOYMENT_REGION")
+          [ -z "${{ secrets.DEPLOYMENT_ROLE_ARN }}" ] && missing_vars+=("secrets.DEPLOYMENT_ROLE_ARN")
+          [ -z "${{ secrets.CF_DISTRIBUTION_ID }}" ] && missing_vars+=("secrets.CF_DISTRIBUTION_ID")
+          # Add additional variables needed for the forked application here to validate.
+
+          # If any variables are missing, print them and exit with an error
+          if [ ${#missing_vars[@]} -ne 0 ]; then
+            echo "Error: The following required variables are missing:"
+            printf '%s\n' "${missing_vars[@]}"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Read Node.js version from .nvmrc
+        id: nvm
+        run: echo "::set-output name=NODE_VERSION::$(cat .nvmrc)"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Building 🔧
+        working-directory: ./
+        env:
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.REACT_APP_MAPBOX_ACCESS_TOKEN }}
+          REACT_APP_MAPBOX_STYLE_URL: ${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          REACT_APP_STAC_API_URL: ${{ vars.REACT_APP_STAC_API_URL }}
+          REACT_APP_RASTER_API_URL: ${{ vars.REACT_APP_RASTER_API_URL }}
+          REACT_APP_FEATURES_API_URL: ${{ vars.REACT_APP_FEATURES_API_URL }}
+          REACT_APP_CLOUD_BROWSE_URL: ${{vars.REACT_APP_CLOUD_BROWSE_URL}}
+        run: |
+          yarn
+          CI=false yarn build
+
+      - name: Upload build folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_folder
+          path: ./build
+
+  deploy:
+    name: Deploy Interface Template to ${{ needs.define-environment.outputs.env_name }} 🚀 
+    needs:
+      - build
+      - define-environment
+    environment: ${{ needs.define-environment.outputs.env_name }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+    steps:
+       
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Download build folder
+        uses: actions/download-artifact@v4
+        with:
+          name: build_folder
+          path: ./build
+
+      - name: ConfigureAWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEPLOYMENT_ROLE_ARN }}
+          role-session-name: ${{ github.repository_owner}}
+          aws-region: ${{ vars.DEPLOYMENT_REGION }}
+      
+      - name: Upload to S3
+        run: |
+          aws s3 sync "./build" s3://${{ vars.DEPLOYMENT_BUCKET }}${{ vars.PUBLIC_URL}} --cache-control max-age=30,must-revalidate,s-maxage=604800 --delete
+
+      - name: Calculate PUBLIC URL Parent Path
+        run: echo "PUBLIC_URL_PARENT=$(dirname '${{ vars.PUBLIC_URL }}')" >> $GITHUB_ENV
+
+      - name: Request Invalidation to AWS Cloudfront
+        uses: oneyedev/aws-cloudfront-invalidation@v1
+        with:
+          distribution-id: ${{ secrets.CF_DISTRIBUTION_ID }}
+          paths: |
+            ${{ env.PUBLIC_URL_PARENT }}/*
