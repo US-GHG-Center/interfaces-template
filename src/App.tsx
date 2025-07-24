@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
-import { DashboardContainer } from './pages/dashboardContainer';
+import { InterfaceTemplate } from './pages/interfaceTemplate';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 
@@ -16,7 +16,7 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterMoment}>
         <BrowserRouter basename={BASE_PATH}>
           <Routes>
-            <Route path='/' element={<DashboardContainer />}></Route>
+            <Route path='/' element={<InterfaceTemplate />}></Route>
           </Routes>
         </BrowserRouter>
       </LocalizationProvider>

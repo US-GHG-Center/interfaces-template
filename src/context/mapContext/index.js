@@ -1,22 +1,23 @@
 import React, { createContext, useContext, useRef, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { useConfig } from '../configContext';
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MapboxContext = createContext();
 
-const accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
-const mapboxStyleBaseUrl = process.env.REACT_APP_MAPBOX_STYLE_URL;
-const BASEMAP_STYLES_MAPBOX_ID =
-  process.env.REACT_APP_BASEMAP_STYLES_MAPBOX_ID || 'cldu1cb8f00ds01p6gi583w1m';
-
 export const MapboxProvider = ({ children }) => {
+  const { config } = useConfig();
   const mapContainer = useRef(null);
   const map = useRef(null);
 
   useEffect(() => {
-    if (map.current) return;
+    if (map.current || !config || !Object.keys(config).length) return;
 
+    const accessToken = config.REACT_APP_MAPBOX_TOKEN;
+    const mapboxStyleBaseUrl = config.REACT_APP_MAPBOX_STYLE_URL;
+    const BASEMAP_STYLES_MAPBOX_ID =
+      config.REACT_APP_BASEMAP_STYLES_MAPBOX_ID || 'cldu1cb8f00ds01p6gi583w1m';
     let mapboxStyleUrl = 'mapbox://styles/mapbox/streets-v12';
     if (mapboxStyleBaseUrl) {
       mapboxStyleUrl = `${mapboxStyleBaseUrl}/${BASEMAP_STYLES_MAPBOX_ID}`;
@@ -38,7 +39,7 @@ export const MapboxProvider = ({ children }) => {
     map.current.touchZoomRotate.disableRotation();
 
     return () => map.current.remove();
-  }, []);
+  }, [config]);
 
   return (
     <MapboxContext.Provider value={{ map: map.current }}>

@@ -10,6 +10,8 @@ import DownloadIcon from '@mui/icons-material/Download';
 
 import { STACItem } from '../../../dataModel';
 
+import { useConfig } from '../../../context/configContext';
+
 import './index.css';
 
 export const HorizontalLayout = styled.div`
@@ -95,6 +97,8 @@ export function StacItemInfoCard({
   const [lat, setLat] = useState<number | undefined>();
   const [tiffUrl, setTiffUrl] = useState<string>('');
 
+  const { config } = useConfig();
+
   const handleCardClick = () => {
     onClick(id ? id : stacItem.id);
   };
@@ -110,6 +114,7 @@ export function StacItemInfoCard({
   };
 
   useEffect(() => {
+    if (!config || !Object.keys(config).length) return;
     let { id, collection } = stacItem;
     setId(id);
     setCollection(collection);
@@ -121,7 +126,7 @@ export function StacItemInfoCard({
     let VMIN = 0;
     let VMAX = 0.4;
     let colorMap = 'plasma';
-    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=rad&rescale=${VMIN}%2C${VMAX}&colormap_name=${colorMap}`;
+    const thumbnailUrl: string = `${config.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=rad&rescale=${VMIN}%2C${VMAX}&colormap_name=${colorMap}`;
     setThumbnailUrl(thumbnailUrl);
 
     let firstAssetKey = Object.keys(stacItem.assets)[0];
