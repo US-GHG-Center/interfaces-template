@@ -11,6 +11,7 @@ import {
   MarkerFeature,
   VisualizationLayers,
   ColorBar,
+  ConfigurableColorBar,
   LoadingSpinner,
   PersistentDrawerRight,
   Title,
@@ -21,7 +22,6 @@ import {
   VizItemAnimation,
   Dropdown,
   VizItemTimeline,
-  ConfigurableColorBar,
 } from '../../components/index.js';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
