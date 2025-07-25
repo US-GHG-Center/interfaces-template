@@ -114,9 +114,9 @@ export function StacItemInfoCard({
     setId(id);
     setCollection(collection);
 
-    let coordinates: number[] = stacItem.geometry.coordinates[0][0];
-    setLon(coordinates[0]);
-    setLat(coordinates[1]);
+    let coordinates: string[] = stacItem.geometry.coordinates[0][0];
+    setLon(Number(coordinates[0]));
+    setLat(Number(coordinates[1]));
 
     let VMIN = 0;
     let VMAX = 0.4;

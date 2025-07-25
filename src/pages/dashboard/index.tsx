@@ -20,7 +20,7 @@ import {
   FilterByDate,
   VizItemAnimation,
   VisualizationItemCard,
-  VizItemTimeline
+  VizItemTimeline,
 } from '../../components/index.js';
 
 import { STACItem } from '../../dataModel';
@@ -72,13 +72,15 @@ export function Dashboard({
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState<string>(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
 
-  const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>([]); // list of subdaily_visualization_item used for animation
+  const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>(
+    []
+  ); // list of subdaily_visualization_item used for animation
   const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]);
 
   //color map
   const [VMAX, setVMAX] = useState<number>(100);
   const [VMIN, setVMIN] = useState<number>(-92);
-  const [colormap, setColormap] = useState<string>('default');
+  const [colormap, setColormap] = useState<string>('magma');
   const [assets, setAssets] = useState<string>('rad');
 
   // states for components/controls
@@ -152,7 +154,7 @@ export function Dashboard({
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
     const VMAX = 0.4;
-    const colormap: string = 'default';
+    const colormap: string = 'magma';
     setVMIN(VMIN);
     setVMAX(VMAX);
     setColormap(colormap);
