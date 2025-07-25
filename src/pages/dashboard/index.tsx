@@ -352,12 +352,13 @@ export function Dashboard({
         <div style={{ position: 'absolute', right: 10, bottom: 18 }}>
           <ConfigurableColorBar
             id='coolcolor'
-            VMAXLimit={420}
-            VMINLimit={400}
+            VMAXLimit={450}
+            VMINLimit={390}
             colorMap={colormap}
             setColorMap={setColormap}
             setVMIN={setVMIN}
             setVMAX={setVMAX}
+            unit='(ppm)'
           />
         </div>
       )}
