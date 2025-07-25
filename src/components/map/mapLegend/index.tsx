@@ -20,9 +20,10 @@ interface MapLegendProps {
   items: string[];
   onSelect: (ids: string[]) => void;
   title: string;
+  description: string;
 }
 
-export const MapLegend: React.FC<MapLegendProps> = ({ items, onSelect, title = '' }) => {
+export const MapLegend: React.FC<MapLegendProps> = ({ items, onSelect, title = '', description = '' }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const COLUMN_THRESHOLD = 3;
 
@@ -44,14 +45,19 @@ export const MapLegend: React.FC<MapLegendProps> = ({ items, onSelect, title = '
 
   return (
     <div>
-      <Box p={2} borderRadius={3} width="100%" bgcolor="background.paper">
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography className='map-legend-title'>{title}</Typography>
-          <Tooltip title="Clear Filter">
-            <ButtonBase className="clear-filter-button" onClick={clearFilter}>
-              <Typography variant="body2" sx={{ mr: 1 }}>Clear filters </Typography><ClearAllIcon fontSize="medium" />
-            </ButtonBase>
-          </Tooltip>
+      <Box p={2} borderRadius={3} width="100%" bgcolor="background.paper" className="map-legend-container">
+        <Box display="flex" alignItems="left" flexDirection={'column'}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography className='map-legend-title'>{title}</Typography>
+            <Tooltip title="Clear Filter">
+              <ButtonBase className="clear-filter-button" onClick={clearFilter}>
+                <Typography variant="body2" sx={{ mr: 1 }}>Clear filters </Typography><ClearAllIcon fontSize="medium" />
+              </ButtonBase>
+            </Tooltip>
+          </Box>
+          <Typography className='map-legend-description'>
+            {description}
+          </Typography>
         </Box>
 
         <Box
@@ -65,19 +71,10 @@ export const MapLegend: React.FC<MapLegendProps> = ({ items, onSelect, title = '
             const selected = selectedIds.includes(category);
             return (
               <ButtonBase
+                disableRipple
                 key={category}
                 onClick={() => toggleSelect(category)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'left',
-                  justifyContent: 'flex-start',
-                  px: 1,
-                  py: 0.5,
-                  borderRadius: 1,
-                  bgcolor: selected ? 'action.selected' : 'transparent',
-                  '&:hover': { bgcolor: 'action.hover' },
-                  textAlign: 'left',
-                }}
+                className={`marker-category-button ${selected ? 'selected' : ''}`}
               >
                 <RoomIcon htmlColor={getMarkerColor(category)} sx={{ mr: 1 }} />
                 <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>

@@ -1,3 +1,8 @@
+.map-legend-container {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
 .map-legend-title {
     color: var(--main-blue);
     font-weight: bold !important;
@@ -6,7 +11,47 @@
 }
 
 .clear-filter-button {
-  display: flex !important;
-  padding: 4px 8px !important;
-  transition: background-color 0.2s !important;
+    display: flex !important;
+    padding: 4px 8px !important;
+    transition: background-color 0.2s !important;
+}
+
+.map-legend-description {
+    color: rgba(0, 0, 0, 0.6);
+    margin-bottom: 8px !important;
+    font-size: 0.875rem !important;
+    padding-left: 0.2rem;
+}
+
+.marker-category-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    text-align: left !important;
+    background-color: transparent !important;
+    cursor: pointer !important;
+    color: rgba(0, 0, 0, 0.6) !important;
+    transition: background-color 0.2s;
+}
+
+.marker-category-button:hover {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.marker-category-button.selected {
+    background-color: rgba(19, 96, 189, 0.1) !important;
+}
+
+.marker-category-button.clicked {
+    background-color: rgba(19, 96, 189, 0.2) !important;
+}
+
+.marker-icon {
+    margin-right: 8px;
+}
+
+.marker-label {
+    white-space: nowrap;
 }

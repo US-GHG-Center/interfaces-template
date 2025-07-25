@@ -302,6 +302,7 @@ export function Dashboard({
                 {targetTypes.length > 0 && (
                   <MapLegend
                     title={'Marker Categories'}
+                    description={'Click one or more categories to filter the markers on the map.'}
                     items={targetTypes}
                     onSelect={handleSelectedTargetType}
                   />
