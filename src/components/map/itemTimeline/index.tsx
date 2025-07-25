@@ -14,12 +14,17 @@ import FirstPageIcon from '@mui/icons-material/FirstPage';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import LastPageIcon from '@mui/icons-material/LastPage';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+
+// MUI Typography for text rendering
+import Typography from '@mui/material/Typography';
+
 
 // Data model import
 import { STACItem } from '../../../dataModel';
 
 // Helper functions
-import { 
+import {
   parseItems,
   getBaseX,
   centerOnDate,
@@ -39,6 +44,7 @@ interface VizItemTimelineProps {
   onVizItemSelect: (id: string) => void;
   activeItemId?: string | null;
   onVizItemHover?: (id: string) => void;
+  hoveredItemId?: string | null;
   title?: string;
 }
 
@@ -46,9 +52,10 @@ interface VizItemTimelineProps {
 // The main component that renders the timeline visualization
 export const VizItemTimeline = ({
   vizItems = [],
-  onVizItemSelect = () => {},
+  onVizItemSelect = () => { },
   activeItemId = null,
-  onVizItemHover = () => {},
+  onVizItemHover = () => { },
+  hoveredItemId = null,
   title = 'Timeline',
 }: VizItemTimelineProps): JSX.Element => {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -56,6 +63,7 @@ export const VizItemTimeline = ({
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const [infoOpen, setInfoOpen] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
 
   const parsedItems = useMemo(() => parseItems(vizItems), [vizItems]);
@@ -71,6 +79,10 @@ export const VizItemTimeline = ({
   const margin = { left: 30, right: 30 };
 
   const baseX = useMemo(() => getBaseX(dates, dimensions.width, margin), [dates, dimensions.width]);
+
+  const toggleInfoOpen = () => {
+    setInfoOpen(!infoOpen);
+  };
 
   const handleVizItemClick = (idx: number) => {
     activeDateRef.current = dates[idx];
@@ -122,8 +134,8 @@ export const VizItemTimeline = ({
       .attr('y', -height)
       .attr('width', (width - margin.left - margin.right) + (clipPadding * 2))
       .attr('height', height * 2);
-    
-      const g = svg.append('g')
+
+    const g = svg.append('g')
       .attr('transform', `translate(0, ${height / 2})`)
       .attr('clip-path', `url(#${clipId})`);
 
@@ -162,7 +174,7 @@ export const VizItemTimeline = ({
         .attr('stroke', '#d1d5db')
         .attr('stroke-width', 2);
 
-      
+
       // // Add labels for start and end dates if they are in the same month and year
       // // This is to ensure that we have some labels in the timeline
       // if (isSameMonthAndYear(minDate, maxDate)) {
@@ -190,7 +202,11 @@ export const VizItemTimeline = ({
         .attr('cx', d => x(d.date))
         .attr('cy', 0)
         .attr('r', 5)
-        .attr('fill', d => d.date.getTime() === activeDateRef.current.getTime() ? '#3b82f6' : '#9ca3af')
+        .attr('fill', d => {
+          if (d.id === hoveredItemId) return '#9dc1fa'; // color for hovered item
+          if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active item color
+          return '#9ca3af'; // default gray
+        })
         .style('cursor', 'pointer')
         .on('click', (e, d) => {
           const idx = parsedItems.findIndex(item => item.id === d.id);
@@ -207,17 +223,17 @@ export const VizItemTimeline = ({
           if (!isActive) d3.select(this).attr('fill', '#9ca3af'); // back to default
         });
 
-        // Remove previous active circle if any (prevent duplicates)
-        g.selectAll('.active-circle').remove();
+      // Remove previous active circle if any (prevent duplicates)
+      g.selectAll('.active-circle').remove();
 
-        // Append one persistent "active circle" on top
-        g.append('circle')
-          .attr('class', 'active-circle')
-          .attr('r', 5)
-          .attr('fill', '#3b82f6')
-          .attr('cx', x(activeDateRef.current))
-          .attr('cy', 0)
-          .style('pointer-events', 'none');
+      // Append one persistent "active circle" on top
+      g.append('circle')
+        .attr('class', 'active-circle')
+        .attr('r', 5)
+        .attr('fill', '#3b82f6')
+        .attr('cx', x(activeDateRef.current))
+        .attr('cy', 0)
+        .style('pointer-events', 'none');
 
       circles.append('title').text(d => d3.utcFormat('%Y-%m-%d')(d.date));
     };
@@ -240,7 +256,7 @@ export const VizItemTimeline = ({
       baseX!,
       zoomRef.current!
     );
-  }, [dimensions, parsedItems]);
+  }, [dimensions, parsedItems, hoveredItemId]);
 
 
   // Handle movement controls
@@ -278,47 +294,81 @@ export const VizItemTimeline = ({
     <div ref={containerRef} style={{ width: '100%' }}>
       {dimensions.width > 0 && (
         <div className="timeline-card">
-          <div className="timeline-header">
-            <span className="timeline-title">{title}</span>
-            <div className="timeline-controls">
-              <Tooltip title="Reset Zoom">
-                <button className="timeline-button timeline-button-circle" onClick={resetZoom}>
-                  <ReplayIcon />
-                </button>
-              </Tooltip>
+          <div className="timeline-header-container">
+            <div className="timeline-header">
+              <span className="timeline-title">{title}</span>
+              <div className="timeline-controls">
+                <Tooltip title="Help">
+                  <button className="timeline-button" onClick={toggleInfoOpen}>
+                    <InfoOutlinedIcon />
+                  </button>
+                </Tooltip>
+                <div className="timeline-divider"></div>
+                <Tooltip title="Reset Zoom">
+                  <button className="timeline-button timeline-button-circle" onClick={resetZoom}>
+                    <ReplayIcon />
+                  </button>
+                </Tooltip>
 
-              <div className="timeline-divider"></div>
+                <div className="timeline-divider"></div>
 
-              <Tooltip title="First Item">
-                <button className="timeline-button" onClick={() => move('first')}>
-                  <FirstPageIcon />
-                </button>
-              </Tooltip>
+                <Tooltip title="First Item">
+                  <button className="timeline-button" onClick={() => move('first')}>
+                    <FirstPageIcon />
+                  </button>
+                </Tooltip>
 
-              <Tooltip title="Previous Item">
-                <button className="timeline-button" onClick={() => move('left')}>
-                  <KeyboardArrowLeftIcon />
-                </button>
-              </Tooltip>
+                <Tooltip title="Previous Item">
+                  <button className="timeline-button" onClick={() => move('left')}>
+                    <KeyboardArrowLeftIcon />
+                  </button>
+                </Tooltip>
 
-              <Tooltip title="Next Item">
-                <button className="timeline-button" onClick={() => move('right')}>
-                  <KeyboardArrowRightIcon />
-                </button>
-              </Tooltip>
+                <Tooltip title="Next Item">
+                  <button className="timeline-button" onClick={() => move('right')}>
+                    <KeyboardArrowRightIcon />
+                  </button>
+                </Tooltip>
 
-              <Tooltip title="Last Item">
-                <button className="timeline-button" onClick={() => move('last')}>
-                  <LastPageIcon />
-                </button>
-              </Tooltip>
+                <Tooltip title="Last Item">
+                  <button className="timeline-button" onClick={() => move('last')}>
+                    <LastPageIcon />
+                  </button>
+                </Tooltip>
+
+              </div>
+            </div>
+            <div>
+              {infoOpen && (
+                <Typography
+                  sx={{ fontSize: '0.8rem', textAlign: 'left', color: 'text.secondary', pl: 1, mt: 1 }}
+                >
+                  This timeline is <strong>zoomable</strong> (mouse wheel or pinch) and <strong>scrollable</strong> (drag horizontally)
+                </Typography>
+              )}
             </div>
           </div>
+
           <svg ref={svgRef} width={dimensions.width} height={dimensions.height} />
           <div className="timeline-footer">
-            <div>Start<br /><strong>{format(dates[0])}</strong></div>
-            <div style={{ textAlign: 'center' }}>Active<br /><strong>{format(activeDate)}</strong></div>
-            <div style={{ textAlign: 'right' }}>End<br /><strong>{format(dates[dates.length - 1])}</strong></div>
+            <div>
+              <Typography variant="caption">Start Date</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(dates[0])}
+              </Typography>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <Typography variant="caption">Active Date</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(activeDate)}
+              </Typography>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <Typography variant="caption">End Date</Typography>
+              <Typography variant="subtitle2" fontWeight="bold">
+                {format(dates[dates.length - 1])}
+              </Typography>
+            </div>
           </div>
         </div>
       )}
