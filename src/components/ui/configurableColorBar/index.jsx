@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import {  
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  Typography
 } from '@mui/material';
 
 // import hamburger icon and close icon
@@ -74,7 +75,7 @@ export const ConfigurableColorBar = ({
           />
           
           { unit && <div style={{ textAlign: 'center'}}>
-            <span style={{ fontSize: '1rem', color: '#666' }}>{unit}</span>
+            <Typography style={{ fontSize: '.9rem', color: '#666', marginTop: '0.5rem' }}>{unit}</Typography>
           </div> }
          
         </div>
