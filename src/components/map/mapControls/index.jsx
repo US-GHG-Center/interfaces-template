@@ -40,18 +40,18 @@ const DefaultMapControls = ({
     });
     const layerVisibilityControl = new LayerVisibilityControl();
     const homeControl = new HomeControl(handleResetHome);
-    const restoreControl = new RestoreControl(handleResetToSelectedRegion);
+    // const restoreControl = new RestoreControl(handleResetToSelectedRegion);
 
     const hamburgerControlElem = hamburgerControl.onAdd(map);
     const homeControlElem = homeControl.onAdd(map);
-    const restoreControlElem = restoreControl.onAdd(map);
+    // const restoreControlElem = restoreControl.onAdd(map);
     const mapboxNavigationElem = mapboxNavigation.onAdd(map);
     const layerVisibilityControlElem = layerVisibilityControl.onAdd(map);
 
     const mapboxCustomControlContainer = customControlContainer.current;
     mapboxCustomControlContainer.append(hamburgerControlElem);
     mapboxCustomControlContainer.append(homeControlElem);
-    mapboxCustomControlContainer.append(restoreControlElem);
+    // mapboxCustomControlContainer.append(restoreControlElem);
     mapboxCustomControlContainer.append(mapboxNavigationElem);
     mapboxCustomControlContainer.append(layerVisibilityControlElem);
 
@@ -61,7 +61,7 @@ const DefaultMapControls = ({
       if (mapboxNavigation) mapboxNavigation.onRemove();
       if (layerVisibilityControl) layerVisibilityControl.onRemove();
       if (homeControl) homeControl.onRemove();
-      if (restoreControl) restoreControl.onRemove();
+      // if (restoreControl) restoreControl.onRemove();
     };
   }, [map]);
 

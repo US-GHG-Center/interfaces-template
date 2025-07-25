@@ -11,6 +11,7 @@ function MeasureButton({ icon: iconClicked, onClick }) {
         style={{
           backgroundColor: !iconClicked ? '' : 'var(--main-blue)',
           color: !iconClicked ? 'var(--main-blue)' : 'white',
+          padding: '3px',
         }}
         onClick={onClick}
       >
