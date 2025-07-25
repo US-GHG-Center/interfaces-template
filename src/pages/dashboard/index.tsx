@@ -289,7 +289,7 @@ export function Dashboard({
                         activeItemId={hoveredVizLayerId}
                         onVizItemHover={handleHoverOverSelectedSams}
                         hoveredItemId={hoveredVizLayerId}
-                        title=''
+                        title='Timeline'
                       />
                       {/* </div> */}
                     </HorizontalLayout>
