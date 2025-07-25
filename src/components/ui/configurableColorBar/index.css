@@ -1,5 +1,6 @@
 .configurable-colorbar-container {
   border-radius: 12px !important;
+  margin-top: 0px !important;
 }
 
 .configurable-colorbar-details {
