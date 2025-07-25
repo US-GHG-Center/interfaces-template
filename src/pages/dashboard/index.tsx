@@ -100,7 +100,7 @@ export function Dashboard({
 
     // instead get the sam with the provided vizItemId
     let sam: SAM | undefined = target?.getRepresentationalSAM();
-    let candidateSams: SAM[] = target ? target.sams : [];
+    let candidateSams: SAM[] = target ? target.getSortedSAMs() : [];
     if (!sam) return;
     setVisualizationLayers([sam]);
     setSelectedSams(candidateSams);

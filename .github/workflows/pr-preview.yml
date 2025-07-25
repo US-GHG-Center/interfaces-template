@@ -47,7 +47,7 @@ jobs:
           [ -z "${{ secrets.DEPLOYMENT_ROLE_ARN }}" ] && missing_vars+=("secrets.DEPLOYMENT_ROLE_ARN")
           [ -z "${{ secrets.CF_DISTRIBUTION_ID }}" ] && missing_vars+=("secrets.CF_DISTRIBUTION_ID")
           # Variables for the domain name needed for PR-preview url comment in ticket.
-          [ -z "${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}" ] && missing_vars+=("vars.DEPLOYMENT_BUCKET")
+          [ -z "${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}" ] && missing_vars+=("vars.PREVIEW_WEB_DISTRIBUTION_URL")
           # Add additional variables needed for the forked application here to validate.
 
           # If any variables are missing, print them and exit with an error
