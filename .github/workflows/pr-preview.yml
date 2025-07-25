@@ -1,0 +1,150 @@
+name: PR preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  S3_BUCKET: ${{ vars.DEPLOYMENT_BUCKET }}
+  PR_STRING: pr-preview-${{ github.event.number }}
+
+jobs:
+  build_and_deploy:
+    if: ${{ github.event.action != 'closed' }}
+    environment: development
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Validate required variables and secrets
+        run: |
+          missing_vars=()
+
+          # Check for required variables
+          # Variables for the Application: Remove unnecessary variables for the fork. 
+          [ -z "${{ secrets.REACT_APP_MAPBOX_ACCESS_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_ACCESS_TOKEN")
+          [ -z "${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_STYLE_URL")
+          [ -z "${{ vars.PUBLIC_URL }}" ] && missing_vars+=("vars.PUBLIC_URL")
+          # note: vars.PUBLIC_URL is expected to have leading and trailing /
+          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
+          [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
+          [ -z "${{ vars.REACT_APP_FEATURES_API_URL }}" ] && missing_vars+=("vars.REACT_APP_FEATURES_API_URL")
+          [ -z "${{ vars.REACT_APP_CLOUD_BROWSE_URL }}" ] && missing_vars+=("vars.REACT_APP_CLOUD_BROWSE_URL")
+          # Variables for the Static Build placement in AWS.
+          [ -z "${{ vars.DEPLOYMENT_BUCKET }}" ] && missing_vars+=("vars.DEPLOYMENT_BUCKET")
+          [ -z "${{ vars.DEPLOYMENT_REGION }}" ] && missing_vars+=("vars.DEPLOYMENT_REGION")
+          [ -z "${{ secrets.DEPLOYMENT_ROLE_ARN }}" ] && missing_vars+=("secrets.DEPLOYMENT_ROLE_ARN")
+          [ -z "${{ secrets.CF_DISTRIBUTION_ID }}" ] && missing_vars+=("secrets.CF_DISTRIBUTION_ID")
+          # Variables for the domain name needed for PR-preview url comment in ticket.
+          [ -z "${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}" ] && missing_vars+=("vars.PREVIEW_WEB_DISTRIBUTION_URL")
+          # Add additional variables needed for the forked application here to validate.
+
+          # If any variables are missing, print them and exit with an error
+          if [ ${#missing_vars[@]} -ne 0 ]; then
+            echo "Error: The following required variables are missing:"
+            printf '%s\n' "${missing_vars[@]}"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Read Node.js version from .nvmrc
+        id: nvm
+        run: echo "::set-output name=NODE_VERSION::$(cat .nvmrc)"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEPLOYMENT_ROLE_ARN }}
+          role-session-name: ${{ github.repository_owner }}
+          aws-region: us-west-2
+
+      - name: Build and deploy
+        working-directory: ./
+        env:
+          REACT_APP_MAPBOX_TOKEN: ${{ secrets.REACT_APP_MAPBOX_ACCESS_TOKEN }}
+          REACT_APP_MAPBOX_STYLE_URL: ${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }}
+          REACT_APP_STAC_API_URL: ${{ vars.REACT_APP_STAC_API_URL }}
+          REACT_APP_RASTER_API_URL: ${{ vars.REACT_APP_RASTER_API_URL }}
+          REACT_APP_FEATURES_API_URL: ${{ vars.REACT_APP_FEATURES_API_URL }}
+          REACT_APP_CLOUD_BROWSE_URL: ${{vars.REACT_APP_CLOUD_BROWSE_URL}}
+        run: |
+          yarn
+          CI=false yarn build
+          aws s3 sync build/ s3://${{ env.S3_BUCKET }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }}
+          COMMENT+="- 🛰️ Pr-Preview on : ${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }} \n \n"
+          echo "COMMENT=${COMMENT}" >> $GITHUB_ENV
+
+      - name: Add/update PR comment
+        id: find-comment
+        run: |
+          COMMENTS_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $COMMENTS_URL)
+          COMMENT_ID=$(echo $COMMENTS | jq -r '.[] | select(.user.login == "github-actions[bot]") | .id')
+          if [ -z "$COMMENT_ID" ]; then
+            curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -X POST -d "{\"body\":\"${{ env.COMMENT }}\"}" "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          else
+            curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -X PATCH -d "{\"body\":\"${{ env.COMMENT }}\"}" "https://api.github.com/repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculate PUBLIC URL Parent Path
+        run: echo "PUBLIC_URL_PARENT=$(dirname '${{ vars.PUBLIC_URL }}')" >> $GITHUB_ENV          
+
+      - name: Request Invalidation to AWS Cloudfront
+        uses: oneyedev/aws-cloudfront-invalidation@v1
+        with:
+          distribution-id: ${{ secrets.CF_DISTRIBUTION_ID }}
+          paths: |
+            ${{ env.PUBLIC_URL_PARENT }}/*
+  clean_up:
+    if: ${{ github.event.action == 'closed' }}
+    environment: development
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Configure AWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEPLOYMENT_ROLE_ARN }}
+          role-session-name: ${{ github.repository_owner }}
+          aws-region: us-west-2
+
+      - name: Delete built websites from S3
+        run: |
+          aws s3 rm s3://${{ env.S3_BUCKET }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }}/ --recursive
+
+      - name: Remove PR comment
+        run: |
+          COMMENTS_URL="https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          COMMENTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $COMMENTS_URL)
+          COMMENT_ID=$(echo $COMMENTS | jq -r '.[] | select(.user.login == "github-actions[bot]") | .id')
+          if [ -n "$COMMENT_ID" ]; then
+            curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -X DELETE -d "{\"body\":\"${{ env.COMMENT }}\"}" "https://api.github.com/repos/${{ github.repository }}/issues/comments/$COMMENT_ID"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

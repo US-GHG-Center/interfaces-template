@@ -66,7 +66,6 @@ export function dataTransformation(
     ];
     if (!(targetId in DATA_TREE)) {
       let st = new SamsTarget(targetId, siteName, location);
-      // console.log(st);
       DATA_TREE[targetId] = st;
       // create the SamsTargetDict and link the reference of target.
       if (!(targetType in samsTargetDict)) {

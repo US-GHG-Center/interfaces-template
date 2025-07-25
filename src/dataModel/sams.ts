@@ -68,7 +68,7 @@ export class SamsTarget implements Target {
   }
 
   getRepresentationalSAM(): SAM {
-    return this.sams[0];
+    return this.getSortedSAMs()[0];
   }
 
   addSAM(sam: SAM): void {

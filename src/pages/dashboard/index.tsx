@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
@@ -10,6 +11,7 @@ import {
   MarkerFeature,
   VisualizationLayers,
   ColorBar,
+  ConfigurableColorBar,
   LoadingSpinner,
   PersistentDrawerRight,
   Title,
@@ -20,7 +22,6 @@ import {
   VizItemAnimation,
   Dropdown,
   VizItemTimeline,
-  ConfigurableColorBar,
   MapLegend
 } from '../../components/index.js';
 
@@ -30,7 +31,7 @@ import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
 
 import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 
-interface VizItem extends SAM {}
+interface VizItem extends SAM { }
 
 const TITLE: string = 'OCO3 SAMS';
 const DESCRIPTION: string = `OCO-3, aboard the ISS, uses an agile pointing mirror to quickly collect 80x80km "Snapshot Area Maps" (SAMs) and target observations. These datasets, including XCO2 and SIF, help study carbon sources and plant health.`;
@@ -87,15 +88,20 @@ export function Dashboard({
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
 
-  // handler functions
-  const handleSelectedMarker = (vizItemId: string) => {
+  // ref. to scroll to the hovered card within the drawer
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // callback handler functions
+  // Note: these callback handler function needs to be initilaized only once.
+  // so using useCallback hook.
+  const handleSelectedMarker = useCallback((vizItemId: string) => {
     if (!vizItemId || !dataTree.current) return;
     let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
     let target: Target | undefined = dataTree.current?.[targetId];
 
     // instead get the sam with the provided vizItemId
     let sam: SAM | undefined = target?.getRepresentationalSAM();
-    let candidateSams: SAM[] = target ? target.sams : [];
+    let candidateSams: SAM[] = target ? target.getSortedSAMs() : [];
     if (!sam) return;
     setVisualizationLayers([sam]);
     setSelectedSams(candidateSams);
@@ -106,9 +112,9 @@ export function Dashboard({
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
     setOpenDrawer(true);
-  };
+  }, []);
 
-  const handleSelectedVizLayer = (vizItemId: string) => {
+  const handleSelectedVizLayer = useCallback((vizItemId: string) => {
     if (!vizItemId) return;
     let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
     let target: Target | undefined = dataTree.current?.[targetId];
@@ -125,9 +131,9 @@ export function Dashboard({
     ];
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
-  };
+  }, []);
 
-  const handleSelectedVizItemSearch = (vizItemId: string) => {
+  const handleSelectedVizItemSearch = useCallback((vizItemId: string) => {
     // will focus on the visualization item along with its visualization item metadata card
     // will react to update the metadata on the sidedrawer
     if (!vizItemId) return;
@@ -137,9 +143,9 @@ export function Dashboard({
     // setOpenDrawer(true);
     // setZoomLocation(location.map((coord) => Number(coord)));
     // setZoomLevel(null); // take the default zoom level
-  };
+  }, []);
 
-  const handleResetHome = () => {
+  const handleResetHome = useCallback(() => {
     if (!dataTree.current) return;
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
     let targets: Target[] = getTargetsFromDataTree(dataTree.current);
@@ -152,9 +158,9 @@ export function Dashboard({
     setOpenDrawer(false);
     setZoomLevel(4);
     setZoomLocation([-98.771556, 32.967243]);
-  };
+  }, []);
 
-  const handleSelectedTargetType = (targetType: string[]) => {
+  const handleSelectedTargetType = useCallback((targetType: string[]) => {
     setSelectedTargetType(targetType);
 
     if (!targetType || targetType.length === 0) {
@@ -166,14 +172,14 @@ export function Dashboard({
     }
 
     if (!samsTargetDict.current) return;
-    let targets: Target[] = samsTargetDict.current
-      ? targetType.flatMap(type => samsTargetDict.current![type]?.targets || [])
-      : [];
+    let targets: Target[] = targetType.flatMap(
+      type => samsTargetDict.current![type]?.targets || []
+    );
     let repTargets: SAM[] = getSamRepOfTarget(targets);
     setTargets(repTargets);
-  };
+  }, []);
 
-  const handleTimelineTimeChange = (vizItemId: string) => {
+  const handleTimelineTimeChange = useCallback((vizItemId: string) => {
     if (!dataTree.current) return;
     // from the vizItemId, find the target id.
     const targetId: string = getTargetIdFromStacIdSAM(vizItemId);
@@ -181,11 +187,11 @@ export function Dashboard({
     // using the targetId, find the necessary sam.
     const changedVizItem: VizItem | undefined = target.getSAMbyId(vizItemId);
     if (changedVizItem) setVisualizationLayers([changedVizItem]);
-  };
+  }, []);
 
-  const handleHoverOverSelectedSams = (vizItemId: string) => {
+  const handleHoverOverSelectedSams = useCallback((vizItemId: string) => {
     setHoveredVizLayerId(vizItemId);
-  };
+  }, []);
 
   // helpers
   const getSamRepOfTarget = (targets: Target[]): SAM[] => {
@@ -244,7 +250,7 @@ export function Dashboard({
             openDrawer={openDrawer}
             setOpenDrawer={setOpenDrawer}
             handleResetHome={handleResetHome}
-            handleResetToSelectedRegion={() => {}}
+            handleResetToSelectedRegion={() => { }}
           />
           <MarkerFeature
             vizItems={targets}
@@ -261,10 +267,10 @@ export function Dashboard({
           />
         </MainMap>
 
-            <div className="flex-left-column">
-              <Paper className='title-container'>
-                <Title title={TITLE} description={DESCRIPTION} />
-                {/* <div className='title-content'>
+        <div className="flex-left-column">
+          <Paper className='title-container'>
+            <Title title={TITLE} description={DESCRIPTION} />
+            {/* <div className='title-content'>
                   <HorizontalLayout>
                     <Search
                       vizItems={targets}
@@ -279,51 +285,52 @@ export function Dashboard({
                     />
                   </HorizontalLayout>
                 </div> */}
-                <div className='title-content'>
-                  {selectedSams.length ? (
-                    <HorizontalLayout>
-                      {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
-                      <VizItemTimeline
-                        vizItems={selectedSams}
-                        onVizItemSelect={handleTimelineTimeChange}
-                        activeItemId={hoveredVizLayerId}
-                        onVizItemHover={handleHoverOverSelectedSams}
-                        hoveredItemId={hoveredVizLayerId}
-                        title='Timeline'
-                      />
-                      {/* </div> */}
-                    </HorizontalLayout>
-                  ) : (
-                    <></>
-                  )}
-                </div>
-              </Paper>
-              <div className='legend-container'>
-                {targetTypes.length > 0 && (
-                  <MapLegend
-                    title={'Marker Categories'}
-                    description={'Click one or more categories to filter the markers on the map.'}
-                    items={targetTypes}
-                    onSelect={handleSelectedTargetType}
+            <div className='title-content'>
+              {selectedSams.length ? (
+                <HorizontalLayout>
+                  {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
+                  <VizItemTimeline
+                    vizItems={selectedSams}
+                    onVizItemSelect={handleTimelineTimeChange}
+                    activeItemId={hoveredVizLayerId}
+                    onVizItemHover={handleHoverOverSelectedSams}
+                    hoveredItemId={hoveredVizLayerId}
+                    title='Timeline'
                   />
-                )}
-                {VMAX && (
-                    <ConfigurableColorBar
-                      id='coolcolor'
-                      VMAXLimit={420}
-                      VMINLimit={400}
-                      colorMap={colormap}
-                      setColorMap={setColormap}
-                      setVMIN={setVMIN}
-                      setVMAX={setVMAX}
-                      unit='Measurement Unit'
-                    />
-                )}
-              </div>
+                  {/* </div> */}
+                </HorizontalLayout>
+              ) : (
+                <></>
+              )}
             </div>
-        
+          </Paper>
+          <div className='legend-container'>
+            {targetTypes.length > 0 && (
+              <MapLegend
+                title={'Marker Categories'}
+                description={'Click one or more categories to filter the markers on the map.'}
+                items={targetTypes}
+                onSelect={handleSelectedTargetType}
+              />
+            )}
+            {VMAX && (
+              <ConfigurableColorBar
+                id='coolcolor'
+                VMAXLimit={420}
+                VMINLimit={400}
+                colorMap={colormap}
+                setColorMap={setColormap}
+                setVMIN={setVMIN}
+                setVMAX={setVMAX}
+                unit='Measurement Unit'
+              />
+            )}
+          </div>
+        </div>
+
         <PersistentDrawerRight
           open={openDrawer}
+          cardRef={cardRef}
           header={
             <>
               <Typography
@@ -350,7 +357,7 @@ export function Dashboard({
             selectedSams.map((vizItem: VizItem) => (
               <SamInfoCard
                 stacItem={vizItem}
-                onClick={(id: string): void => {}}
+                onClick={handleTimelineTimeChange}
                 onHover={handleHoverOverSelectedSams}
                 hovered={false} //hovered from inside
                 clicked={false}
@@ -359,12 +366,15 @@ export function Dashboard({
                 VMIN={VMIN}
                 assets={assets}
                 colorMap={colormap}
+                cardRef={
+                  vizItem?.id === hoveredVizLayerId ? cardRef : undefined
+                }
               />
             ))
           }
         />
       </div>
-      
+
       {loadingData && <LoadingSpinner />}
     </Box>
   );
