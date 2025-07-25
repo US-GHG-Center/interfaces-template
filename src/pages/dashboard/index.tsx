@@ -10,6 +10,7 @@ import {
   MarkerFeature,
   VisualizationLayers,
   ColorBar,
+  ConfigurableColorBar,
   LoadingSpinner,
   PersistentDrawerRight,
   Title,
@@ -260,13 +261,14 @@ export function Dashboard({
         />
       </div>
       {VMAX && (
-        <ColorBar
-          VMAX={VMAX}
-          VMIN={VMIN}
+        <ConfigurableColorBar
+          id ='configurable-color-bar'
+          VMAXLimit={100}
+          VMINLimit={-92}
           colorMap={colormap}
-          STEP={1}
-          skipStep={false}
-          skipLabel={true}
+          setVMIN={setVMIN}
+          setVMAX={setVMAX}
+          setColorMap={setColormap}
         />
       )}
       {loadingData && <LoadingSpinner />}
