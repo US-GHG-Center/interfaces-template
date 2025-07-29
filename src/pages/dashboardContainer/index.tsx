@@ -48,7 +48,8 @@ export function DashboardContainer(): React.JSX.Element {
     const fetchData = async () => {
       try {
         // get all the collection items
-        const collectionItemUrl: string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
+        // const collectionItemUrl: string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
+        const collectionItemUrl: string = `${process.env.PUBLIC_URL}${collectionId}.json`; // This file is created and updated by a workflow task
         const data: STACItem[] = await fetchAllFromSTACAPI(collectionItemUrl);
         const filteredData: STACItem[] = data.filter(
           (item: STACItem) => !item.id.includes('unfiltered')

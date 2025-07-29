@@ -85,6 +85,7 @@ jobs:
         run: |
           yarn
           CI=false yarn build
+          node ./dataCaching.js
 
       - name: Upload build folder
         uses: actions/upload-artifact@v4

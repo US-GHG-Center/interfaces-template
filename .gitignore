@@ -28,3 +28,5 @@ yarn-error.log*
 yarn.lock
 package-lock.json
 dist/
+
+public/oco3-co2-sams-daygrid-v11r.json
