@@ -125,8 +125,8 @@ export function Dashboard({
     // enable the timeline component.
 
     let location = [
-      Number(vizItems[0]?.geometry.coordinates[0][0][0]),
-      Number(vizItems[0]?.geometry.coordinates[0][0][1]),
+      Number(vizItem?.geometry.coordinates[0][0][0]),
+      Number(vizItem?.geometry.coordinates[0][0][1]),
     ];
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
@@ -214,7 +214,7 @@ export function Dashboard({
 
   // Component Effects
   useEffect(() => {
-    if (!dataFactory.current) return;
+    if (!dataTree.current) return;
 
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
     let targets: Target[] = getTargetsFromDataTree(dataTree.current);
