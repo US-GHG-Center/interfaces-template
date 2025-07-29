@@ -122,9 +122,9 @@ export function StacItemInfoCard({
     setId(id);
     setCollection(collection);
 
-    let coordinates: number[] = stacItem.geometry.coordinates[0][0];
-    setLon(coordinates[0]);
-    setLat(coordinates[1]);
+    let coordinates: string[] = stacItem.geometry.coordinates[0][0];
+    setLon(Number(coordinates[0]));
+    setLat(Number(coordinates[1]));
 
     let lvmin = VMIN || 400;
     let lvmax = VMAX || 420;

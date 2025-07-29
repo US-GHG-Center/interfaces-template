@@ -57,3 +57,5 @@ export class TargetType implements TargetTypeInterface {
 export interface SamsTargetDict {
   [key: string]: TargetType;
 }
+
+export interface VizItem extends STACItem {}

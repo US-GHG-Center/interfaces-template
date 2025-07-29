@@ -30,7 +30,7 @@ import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
 
 import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 
-interface VizItem extends SAM {}
+import { VizItem } from '../../dataModel';
 
 const TITLE: string = 'OCO3 SAMS';
 const DESCRIPTION: string = `OCO-3, aboard the ISS, uses an agile pointing mirror to quickly collect 80x80km "Snapshot Area Maps" (SAMs) and target observations. These datasets, including XCO2 and SIF, help study carbon sources and plant health.`;
@@ -125,8 +125,8 @@ export function Dashboard({
     // enable the timeline component.
 
     let location = [
-      Number(vizItem.geometry.coordinates[0][0][0]),
-      Number(vizItem.geometry.coordinates[0][0][1]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][0]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][1]),
     ];
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
@@ -214,7 +214,7 @@ export function Dashboard({
 
   // Component Effects
   useEffect(() => {
-    if (!dataTree.current) return;
+    if (!dataFactory.current) return;
 
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
     let targets: Target[] = getTargetsFromDataTree(dataTree.current);
