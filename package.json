@@ -46,7 +46,7 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "node ./dataCaching.js && craco start",
+    "start": "if [ ! -f ./public/oco3-co2-sams-daygrid-v11r.json ]; then node ./dataCaching.js; fi && craco start",
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
