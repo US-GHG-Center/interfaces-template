@@ -76,6 +76,15 @@ jobs:
           role-session-name: ${{ github.repository_owner }}
           aws-region: us-west-2
 
+      - name: Cache the OCO3 STAC items 🔧
+        working-directory: ./
+        env:
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          REACT_APP_STAC_API_URL: ${{ vars.REACT_APP_STAC_API_URL }}
+        run: |
+          yarn
+          node ./dataCaching.js
+
       - name: Build and deploy
         working-directory: ./
         env:
@@ -88,7 +97,6 @@ jobs:
           REACT_APP_CLOUD_BROWSE_URL: ${{vars.REACT_APP_CLOUD_BROWSE_URL}}
         run: |
           yarn
-          node ./dataCaching.js
           CI=false yarn build
           aws s3 sync build/ s3://${{ env.S3_BUCKET }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }}
           COMMENT+="- 🛰️ Pr-Preview on : ${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }} \n \n"

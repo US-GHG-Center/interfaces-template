@@ -20,6 +20,7 @@ async function downloadCache(collectionId) {
     return data;
   } catch (error) {
     console.error('Error fetching data:', error);
+    process.exit(1);
   }
 }
 
@@ -55,14 +56,19 @@ function stacItemResponse(collectionId, features) {
 }
 
 (async function main() {
-  let collectionId = process.argv.slice(2)[0] || 'oco3-co2-sams-daygrid-v11r';
-  let data = await downloadCache(collectionId);
-  let stacItems = stacItemResponse(collectionId, data);
-  const jsonResponse = JSON.stringify(stacItems, null, 2);
-  if (!fs.existsSync('./public')) {
-    fs.mkdirSync('./public');
+  try {
+    let collectionId = process.argv.slice(2)[0] || 'oco3-co2-sams-daygrid-v11r';
+    let data = await downloadCache(collectionId);
+    let stacItems = stacItemResponse(collectionId, data);
+    const jsonResponse = JSON.stringify(stacItems, null, 2);
+    if (!fs.existsSync('./public')) {
+      fs.mkdirSync('./public');
+    }
+    fs.writeFileSync(`./public/${collectionId}.json`, jsonResponse);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    process.exit(1);
   }
-  fs.writeFileSync(`./public/${collectionId}.json`, jsonResponse);
 })();
 
 // helpers
