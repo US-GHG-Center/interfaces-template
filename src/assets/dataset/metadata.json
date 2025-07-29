@@ -594,7 +594,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ar_slu",
@@ -616,7 +616,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ar_vir",
@@ -638,7 +638,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_asm",
@@ -657,7 +657,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_cum",
@@ -679,7 +679,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_das",
@@ -701,7 +701,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_dry",
@@ -723,7 +723,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_how",
@@ -745,7 +745,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_lit",
@@ -767,7 +767,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_stp",
@@ -789,7 +789,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_tum",
@@ -811,7 +811,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_wom",
@@ -833,7 +833,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_au_ync",
@@ -855,7 +855,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_bdog",
@@ -877,7 +877,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_be_lon",
@@ -896,7 +896,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_be_vie",
@@ -918,7 +918,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_br_cmt",
@@ -940,7 +940,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_br_no",
@@ -962,7 +962,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ca_pr_emss",
@@ -984,7 +984,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ca_tp",
@@ -1006,7 +1006,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ch_dav",
@@ -1028,7 +1028,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ch_fru",
@@ -1050,7 +1050,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ch_lae",
@@ -1072,7 +1072,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_cr_fsc",
@@ -1094,7 +1094,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_cr_srnp_emss",
@@ -1116,7 +1116,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_cz_bk1",
@@ -1135,7 +1135,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_de_rus",
@@ -1154,7 +1154,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_de_tha",
@@ -1176,7 +1176,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_efgf",
@@ -1198,7 +1198,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_fr_fon",
@@ -1217,7 +1217,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_il_yat",
@@ -1236,7 +1236,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_it_cp2",
@@ -1255,7 +1255,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_it_tor",
@@ -1274,7 +1274,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ke_mak",
@@ -1296,7 +1296,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_kr_gck",
@@ -1318,7 +1318,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ne_waf",
@@ -1340,7 +1340,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_npbb",
@@ -1362,7 +1362,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_nz_bfm",
@@ -1381,7 +1381,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_nz_kop",
@@ -1403,7 +1403,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_nz_oxf",
@@ -1425,7 +1425,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_nz_sco",
@@ -1444,7 +1444,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_sleg",
@@ -1466,7 +1466,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ssh_czo_cal",
@@ -1488,7 +1488,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_ssh_czo_shale",
@@ -1510,7 +1510,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_arm",
@@ -1532,7 +1532,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_bar",
@@ -1554,7 +1554,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_bi1",
@@ -1576,7 +1576,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_bsg",
@@ -1598,7 +1598,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_ced",
@@ -1620,7 +1620,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_cf1",
@@ -1642,7 +1642,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_cs1",
@@ -1664,7 +1664,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_cz1",
@@ -1683,7 +1683,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_cz2",
@@ -1702,7 +1702,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_hn1",
@@ -1724,7 +1724,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_hn2",
@@ -1746,7 +1746,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_kfs",
@@ -1768,7 +1768,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_kon",
@@ -1790,7 +1790,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_los",
@@ -1812,7 +1812,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_me2",
@@ -1834,7 +1834,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_men",
@@ -1856,7 +1856,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_mms",
@@ -1878,7 +1878,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_mrf",
@@ -1900,7 +1900,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_ro4",
@@ -1922,7 +1922,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_rr",
@@ -1944,7 +1944,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_scc",
@@ -1963,7 +1963,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_scs",
@@ -1982,7 +1982,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_ses",
@@ -2004,7 +2004,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_slt",
@@ -2023,7 +2023,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_sp",
@@ -2045,7 +2045,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_syv",
@@ -2064,7 +2064,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_tx2",
@@ -2086,7 +2086,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_tx5",
@@ -2108,7 +2108,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_tx6",
@@ -2130,7 +2130,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_tx9",
@@ -2152,7 +2152,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_var",
@@ -2174,7 +2174,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_vcm",
@@ -2196,7 +2196,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_wjs",
@@ -2218,7 +2218,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_wkg",
@@ -2240,7 +2240,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_wpp",
@@ -2262,7 +2262,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "ecostress_us_wwt",
@@ -2284,7 +2284,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_Low"
+      "target_type": "SIF_Low (Ecostress)"
     },
     {
       "target_id": "fossil0001",
@@ -7436,7 +7436,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_atto_2",
@@ -7458,7 +7458,7 @@
         ]
       },
       "target_altitude": null,
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_barro_colorado",
@@ -7477,7 +7477,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_guanika",
@@ -7499,7 +7499,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_hrv",
@@ -7521,7 +7521,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_jro",
@@ -7543,7 +7543,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_k34",
@@ -7565,7 +7565,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_k67",
@@ -7584,7 +7584,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_lambir",
@@ -7606,7 +7606,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_laselva",
@@ -7628,7 +7628,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_mead",
@@ -7647,7 +7647,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_mpj",
@@ -7669,7 +7669,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_mzo",
@@ -7688,7 +7688,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_niwot",
@@ -7710,7 +7710,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_obs",
@@ -7732,7 +7732,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_oko",
@@ -7754,7 +7754,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_pasoh",
@@ -7776,7 +7776,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_santarita",
@@ -7795,7 +7795,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_shq",
@@ -7817,7 +7817,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_umb",
@@ -7839,7 +7839,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "sif_uva",
@@ -7861,7 +7861,7 @@
         ]
       },
       "target_altitude": "0",
-      "target_type": "SIF_High"
+      "target_type": "SIF_High (SIF)"
     },
     {
       "target_id": "tccon100",
