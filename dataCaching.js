@@ -1,4 +1,11 @@
-// this service uses the api service to collect all the data and then create a json at the end.
+// This service uses the api service to collect all the data and then create a json at the end.
+// The reason behind this service is to eager load all the application data beforehand.
+// The current implementation of STAC api doesnot allow parallelization to fetch the STAC items.
+// It is because the pagination of current STAC API implementation needs the next and limit.
+// Here, next dependent on its previous response.
+// Hence, to speed up the process of collecting the STAC items for OCO3 collection,
+// we have created this task. This runs before deployment (both preview and non-preview)
+// It is also triggered on some frequency to update the data.
 
 const dotenv = require('dotenv');
 const fs = require('fs');
@@ -10,7 +17,6 @@ async function downloadCache(collectionId) {
     // get all the collection items
     const collectionItemUrl = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
     const data = await fetchAllFromSTACAPI(collectionItemUrl);
-    console.log(":::>>>> ", data)
     return data;
   } catch (error) {
     console.error('Error fetching data:', error);
