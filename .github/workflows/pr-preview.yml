@@ -88,8 +88,8 @@ jobs:
           REACT_APP_CLOUD_BROWSE_URL: ${{vars.REACT_APP_CLOUD_BROWSE_URL}}
         run: |
           yarn
-          CI=false yarn build
           node ./dataCaching.js
+          CI=false yarn build
           aws s3 sync build/ s3://${{ env.S3_BUCKET }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }}
           COMMENT+="- 🛰️ Pr-Preview on : ${{ vars.PREVIEW_WEB_DISTRIBUTION_URL }}${{ vars.PUBLIC_URL }}pr-preview-${{ github.event.number }} \n \n"
           echo "COMMENT=${COMMENT}" >> $GITHUB_ENV

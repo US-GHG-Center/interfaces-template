@@ -84,8 +84,8 @@ jobs:
           REACT_APP_CLOUD_BROWSE_URL: ${{vars.REACT_APP_CLOUD_BROWSE_URL}}
         run: |
           yarn
-          CI=false yarn build
           node ./dataCaching.js
+          CI=false yarn build
 
       - name: Upload build folder
         uses: actions/upload-artifact@v4
