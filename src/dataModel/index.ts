@@ -20,3 +20,5 @@ export type {
   SAM,
   Target,
 };
+
+export interface VizItem extends STACItem {}

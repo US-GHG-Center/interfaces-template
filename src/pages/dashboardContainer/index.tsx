@@ -6,9 +6,7 @@ import { fetchAllFromSTACAPI } from '../../services/api';
 
 import { STACItem } from '../../dataModel';
 
-interface DataTree {
-  [key: string]: STACItem;
-}
+import { ExampleDataFactory } from '../../exampleDataFactory';
 
 export function DashboardContainer(): React.JSX.Element {
   // get the query params
@@ -28,7 +26,7 @@ export function DashboardContainer(): React.JSX.Element {
     searchParams.get('collection-id') || 'goes-ch4plume-v1'
   );
   const [loadingData, setLoadingData] = useState<boolean>(true);
-  const dataTree = useRef<DataTree | null>(null);
+  const dataFactory = useRef<ExampleDataFactory | null>(null);
 
   useEffect(() => {
     setLoadingData(true);
@@ -39,13 +37,12 @@ export function DashboardContainer(): React.JSX.Element {
         const collectionItemUrl: string = `${process.env.REACT_APP_STAC_API_URL}/collections/${collectionId}/items`;
         const data: STACItem[] = await fetchAllFromSTACAPI(collectionItemUrl);
 
-        const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
+        const exampleDataFactory: ExampleDataFactory = ExampleDataFactory.getInstance();
         const testSample: STACItem[] = data.slice(0, 10);
-        testSample.forEach((items) => {
-          vizItemsDict[items.id] = items;
+        testSample.forEach((item) => {
+          exampleDataFactory.addVizItem(item);
         });
-        dataTree.current = vizItemsDict;
-
+        dataFactory.current = exampleDataFactory;
         // NOTE: incase we need metadata and other added information,
         // add that to the STAC Item Property
 
@@ -61,7 +58,7 @@ export function DashboardContainer(): React.JSX.Element {
 
   return (
     <Dashboard
-      dataTree={dataTree}
+      dataFactory={dataFactory}
       zoomLocation={zoomLocation}
       zoomLevel={zoomLevel}
       setZoomLocation={setZoomLocation}
