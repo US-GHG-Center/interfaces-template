@@ -275,11 +275,6 @@ export const VizItemTimeline = ({
     const g = svg.select('g');
     if (!g || !parsedItems.length) return;
 
-    const baseX = getBaseX(dates, dimensions.width, margin);
-    if (!baseX) return;
-
-    const x = transformRef.current.rescaleX(baseX);
-
     // Re-select circles and re-bind data
     const circles = g.selectAll<SVGCircleElement, STACItem>('circle').data(parsedItems);
 
@@ -288,7 +283,7 @@ export const VizItemTimeline = ({
       if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active
       return '#9ca3af'; // default
     });
-  }, [hoveredItemId, parsedItems, dimensions.width]);
+  }, [hoveredItemId]);
 
 
   // Handle movement controls
