@@ -130,7 +130,7 @@ export function StacItemInfoCard({
     let lvmax = VMAX || 420;
     let lcolormap = colorMap || 'plasma';
     let lassets = assets || 'rad';
-    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=${lassets}&rescale=${lvmin}%2C${lvmax}&colormap_name=${lcolormap}`;
+    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=${lassets}&rescale=${lvmin}%2C${lvmax}&colormap_name=${lcolormap}&nodata=nan`;
     setThumbnailUrl(thumbnailUrl);
 
     let firstAssetKey = Object.keys(stacItem.assets)[0];
