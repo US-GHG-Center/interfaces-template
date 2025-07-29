@@ -29,7 +29,6 @@ import {
   getBaseX,
   centerOnDate,
   updateHighlights,
-  isSameMonthAndYear,
   getTickDates,
   moveToIndex
 } from './helper';
@@ -257,6 +256,19 @@ export const VizItemTimeline = ({
       zoomRef.current!
     );
   }, [dimensions, parsedItems]);
+
+  useEffect(() => {
+    const newIndex = parsedItems.findIndex(item => item.id === activeItemId);
+    if (newIndex !== -1) {
+      setActiveIndex(newIndex);
+      activeDateRef.current = parsedItems[newIndex].date;
+    } else {
+      // fallback if no activeItemId matches
+      setActiveIndex(0);
+      activeDateRef.current = parsedItems[0]?.date;
+    }
+  }, [parsedItems, activeItemId]);
+
 
   useEffect(() => {
     const svg = d3.select(svgRef.current);
