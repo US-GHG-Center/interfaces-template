@@ -80,7 +80,7 @@ export function Dashboard({
   const [VMAX, setVMAX] = useState<number>(420);
   const [VMIN, setVMIN] = useState<number>(400);
   const [colormap, setColormap] = useState<string>('magma');
-  const [assets, setAssets] = useState<string>('cog_default');
+  const [assets, setAssets] = useState<string>('xco2');
   // targets based on target type
   const [targetTypes, setTargetTypes] = useState<string[]>([]);
   const [selectedTargetType, setSelectedTargetType] = useState<string[]>([]);
