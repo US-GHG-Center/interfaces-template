@@ -7,10 +7,15 @@ import Typography from '@mui/material/Typography';
 import styled from 'styled-components';
 import Divider from '@mui/material/Divider';
 import DownloadIcon from '@mui/icons-material/Download';
+import { FastAverageColor } from 'fast-average-color';
+
+import { getBackgroundColorFromImage } from '../../../utils'
+import { TruncatedCopyText } from '../truncatedText';
 
 import { STACItem } from '../../../dataModel';
 
 import './index.css';
+import { get } from 'http';
 
 export const HorizontalLayout = styled.div`
   width: 100%;
@@ -25,37 +30,33 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   $isHovered?: boolean;
 }
 
-const HighlightableCard = styled(Card)<CardProps>`
+const HighlightableCard = styled(Card) <CardProps>`
   transition: border 0.3s ease;
   &:hover {
-    border: 1px solid blue;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgb(59, 130, 246);
   }
   border: ${(props) =>
     //eslint-disable-next-line prettier/prettier
-    props.$isHovered ? '1px solid blue' : '1px solid transparent'};
-  box-shadow: ${(props) =>
-    //eslint-disable-next-line prettier/prettier
-    props.$isHovered ? '0 4px 20px rgba(0, 0, 0, 0.2)' : 'none'};
+    props.$isHovered ? '1px solid rgb(59, 130, 246)' : '1px solid transparent'};
 `;
 
 interface CaptionValueInterface {
   caption: string;
-  value: number | string;
-  className: string;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 export const CaptionValue = ({
   caption,
-  value,
-  className,
+  className='',
+  children,
 }: CaptionValueInterface): JSX.Element => {
   return (
     <div className={className}>
       <Typography
         variant='caption'
         component='div'
-        sx={{ color: 'text.primary' }}
+        sx={{ color: 'var(--main-blue)' }}
       >
         {caption}
       </Typography>
@@ -64,7 +65,7 @@ export const CaptionValue = ({
         component='div'
         sx={{ color: 'text.secondary' }}
       >
-        {value}
+        {children}
       </Typography>
     </div>
   );
@@ -77,6 +78,10 @@ export interface StacItemInfoCardProps {
   hovered: boolean;
   clicked: boolean;
   children?: JSX.Element;
+  VMIN?: number;
+  VMAX?: number;
+  colorMap?: string;
+  assets?: string;
 }
 
 export function StacItemInfoCard({
@@ -86,11 +91,16 @@ export function StacItemInfoCard({
   onClick,
   onHover,
   children,
+  VMIN,
+  VMAX,
+  colorMap,
+  assets,
 }: StacItemInfoCardProps): JSX.Element {
   const [isHovered, setIsHovered] = useState<boolean>(hovered || false);
   const [id, setId] = useState<string>('');
   const [collection, setCollection] = useState<string>('');
   const [thumbnailUrl, setThumbnailUrl] = useState<string>('');
+  const [imgBgColor, setImgBgColor] = useState<string>('#333');
   const [lon, setLon] = useState<number | undefined>();
   const [lat, setLat] = useState<number | undefined>();
   const [tiffUrl, setTiffUrl] = useState<string>('');
@@ -118,88 +128,92 @@ export function StacItemInfoCard({
     setLon(coordinates[0]);
     setLat(coordinates[1]);
 
-    let VMIN = 0;
-    let VMAX = 0.4;
-    let colorMap = 'plasma';
-    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=rad&rescale=${VMIN}%2C${VMAX}&colormap_name=${colorMap}`;
+    let lvmin = VMIN || 400;
+    let lvmax = VMAX || 420;
+    let lcolormap = colorMap || 'plasma';
+    let lassets = assets || 'rad';
+    const thumbnailUrl: string = `${process.env.REACT_APP_RASTER_API_URL}/collections/${collection}/items/${id}/preview.png?assets=${lassets}&rescale=${lvmin}%2C${lvmax}&colormap_name=${lcolormap}`;
     setThumbnailUrl(thumbnailUrl);
+
+    getBackgroundColorFromImage(thumbnailUrl, '#444', '#eee').then(color => {
+      setImgBgColor(color);
+    });
 
     let firstAssetKey = Object.keys(stacItem.assets)[0];
     let firstAsset = stacItem.assets[firstAssetKey];
     setTiffUrl(firstAsset.href);
-  }, [stacItem]);
+  }, [stacItem, VMIN, VMAX, colorMap, assets]);
+
+  useEffect(() => {
+    setIsHovered(hovered);
+  }, [hovered]);
 
   return (
     <HighlightableCard
-      sx={{ display: 'flex', flex: '0 0 auto', margin: '15px' }}
+      sx={{ display: 'flex', flex: '0 0 auto', margin: '15px', padding: '10px' }}
       onClick={handleCardClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       $isHovered={isHovered}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <CardMedia
-          component='img'
-          height='100'
-          sx={{
-            padding: '1em',
-            objectFit: 'contain',
-            minWidth: '50px',
-            imageRendering: 'pixelated',
-          }}
-          image={thumbnailUrl}
-          alt='Visualization Item image'
-        />
-      </div>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 0 auto' }}>
         <CardContent sx={{ flex: '1 0 auto' }}>
-          <HorizontalLayout>
-            <CaptionValue
-              caption='Visualization Item ID'
-              value={id}
-              className=''
-            />
-          </HorizontalLayout>
-          <HorizontalLayout>
-            <CaptionValue
-              caption='STAC Collection ID'
-              value={collection}
-              className=''
-            />
-          </HorizontalLayout>
-          <HorizontalLayout>
-            <CaptionValue
-              className='card-plume'
-              caption='Approximate Release Longitude'
-              value={Number(lon).toFixed(3)}
-            />
-            <CaptionValue
-              className='card-plume'
-              caption='Approximate Release Latitude'
-              value={Number(lat).toFixed(3)}
-            />
-          </HorizontalLayout>
-          <HorizontalLayout>
-            <a
-              href={tiffUrl}
-              target='_blank'
-              rel='noreferrer'
-              className='card-download-link'
-            >
-              <Typography variant='caption' component='div'>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  Download the Tiff File <DownloadIcon fontSize='small' />
-                </div>
-              </Typography>
-            </a>
-          </HorizontalLayout>
+          <Box sx={{ display: 'flex', flexDirection: 'row', flex: '1 0 auto', alignItems: 'left', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div>
+              <HorizontalLayout>
+                <CaptionValue
+                  caption='Visualization Item ID'
+                  className=''
+                ><TruncatedCopyText text={id} /></CaptionValue>
+              </HorizontalLayout>
+              <HorizontalLayout>
+                <CaptionValue
+                  caption='STAC Collection ID'
+                  className=''
+                ><TruncatedCopyText text={collection} /></CaptionValue>
+              </HorizontalLayout>
+              <HorizontalLayout>
+                <CaptionValue
+                  caption='Release Location (Approximate)'
+                  className=''
+                >
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <div>Lat: {Number(lat).toFixed(3)}</div>
+                    <div>Lon: {Number(lon).toFixed(3)}</div>
+                  </div>
+                </CaptionValue>
+
+              </HorizontalLayout>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '50%', justifyContent: 'center' }}>
+              <CardMedia
+                component='img'
+                sx={{
+                  objectFit: 'contain',
+                  maxWidth: '200px',
+                  padding: '10px',
+                  imageRendering: 'pixelated',
+                  backgroundColor: imgBgColor
+                }}
+                image={thumbnailUrl}
+                alt='Visualization Item image'
+              />
+              <HorizontalLayout>
+                <a
+                  href={tiffUrl}
+                  target='_blank'
+                  rel='noreferrer'
+                  className='card-download-link'
+                >
+                  <Typography variant='caption' component='div'>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      Download the Tiff File <DownloadIcon fontSize='small' />
+                    </div>
+                  </Typography>
+                </a>
+              </HorizontalLayout>
+            </div>
+          </Box>
           {children && (
             <>
               <Divider></Divider>
