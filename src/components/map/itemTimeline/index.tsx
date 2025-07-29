@@ -29,7 +29,6 @@ import {
   getBaseX,
   centerOnDate,
   updateHighlights,
-  isSameMonthAndYear,
   getTickDates,
   moveToIndex
 } from './helper';
@@ -256,7 +255,35 @@ export const VizItemTimeline = ({
       baseX!,
       zoomRef.current!
     );
-  }, [dimensions, parsedItems, hoveredItemId]);
+  }, [dimensions, parsedItems]);
+
+  useEffect(() => {
+    const newIndex = parsedItems.findIndex(item => item.id === activeItemId);
+    if (newIndex !== -1) {
+      setActiveIndex(newIndex);
+      activeDateRef.current = parsedItems[newIndex].date;
+    } else {
+      // fallback if no activeItemId matches
+      setActiveIndex(0);
+      activeDateRef.current = parsedItems[0]?.date;
+    }
+  }, [parsedItems, activeItemId]);
+
+
+  useEffect(() => {
+    const svg = d3.select(svgRef.current);
+    const g = svg.select('g');
+    if (!g || !parsedItems.length) return;
+
+    // Re-select circles and re-bind data
+    const circles = g.selectAll<SVGCircleElement, STACItem>('circle').data(parsedItems);
+
+    circles.attr('fill', d => {
+      if (d.id === hoveredItemId) return '#9dc1fa'; // hovered
+      if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active
+      return '#9ca3af'; // default
+    });
+  }, [hoveredItemId]);
 
 
   // Handle movement controls
