@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import moment from 'moment';
+import { Box, CardContent, CardMedia, Typography, Grid } from '@mui/material';
 import {
   StacItemInfoCard,
   StacItemInfoCardProps,
@@ -67,43 +68,40 @@ export const SamInfoCard = ({
         assets={assets}
       >
         <>
-          <HorizontalLayout>
-            <CaptionValue caption='Target Id' value={targetId} className='' />
-            <CaptionValue
-              caption='Target Type'
-              value={targetType}
-              className=''
-            />
-          </HorizontalLayout>
-          <HorizontalLayout>
-            <CaptionValue
-              caption='Target Name'
-              value={targetName}
-              className=''
-            />
-            <CaptionValue
-              caption='Target Altitude'
-              value={targetAltitude}
-              className=''
-            />
-          </HorizontalLayout>
-          <HorizontalLayout>
-            <CaptionValue
-              caption='Visualization Start Time '
-              value={
-                moment.utc(startDatetime).format('MM/DD/YYYY, HH:mm:ss') +
-                ' UTC'
-              }
-              className=''
-            />
-            <CaptionValue
-              caption='Visualization End Time '
-              value={
-                moment.utc(endDatetime).format('MM/DD/YYYY, HH:mm:ss') + ' UTC'
-              }
-              className=''
-            />
-          </HorizontalLayout>
+          <Box sx={{ marginTop: '20px' }}>
+            {/* Target Group */}
+            <Typography variant="body2" sx={{ mb: 0.5, color: 'var(--main-blue)' }}>Target Details</Typography>
+            <Grid container spacing={1}>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='Target Id'>{targetId}</CaptionValue>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='Target Type'>{targetType}</CaptionValue>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='Target Name'>{targetName}</CaptionValue>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='Target Altitude'>{targetAltitude}</CaptionValue>
+              </Grid>
+            </Grid>
+
+            {/* Visualization Group */}
+            <Typography variant="body2" sx={{ mt: 3, mb: 0.5, color: 'var(--main-blue)' }}>Visualization Details</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='Start Time'>
+                  {moment.utc(startDatetime).format('MM/DD/YYYY, HH:mm:ss') + ' UTC'}
+                </CaptionValue>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <CaptionValue caption='End Time'>
+                  {moment.utc(endDatetime).format('MM/DD/YYYY, HH:mm:ss') + ' UTC'}
+                </CaptionValue>
+              </Grid>
+            </Grid>
+          </Box>
+
         </>
       </StacItemInfoCard>
     </div>

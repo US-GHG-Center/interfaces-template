@@ -1,3 +1,5 @@
+import { FastAverageColor } from 'fast-average-color';
+
 export function stringToNumberHash(str) {
   let hash = 0;
   // If the string is empty, return 0
@@ -37,4 +39,24 @@ export function titleCase(text) {
 
   // Join the words back into a single string with spaces
   return titleCasedWords.join(' ');
+}
+
+
+/* Get the background color based on the average color of an image.
+  If the image is dark, return a light background color, otherwise return a dark background color.
+*/
+export async function getBackgroundColorFromImage(
+  imageUrl,
+  darkBgColor = '#111',
+  lightBgColor = '#eee',
+) {
+  if (!imageUrl) return lightBgColor;
+  const fac = new FastAverageColor();
+
+  try {
+    const color = await fac.getColorAsync(imageUrl, { mode: 'speed' });
+    return color.isDark ? lightBgColor : darkBgColor;
+  } catch (error) {
+    return lightBgColor;
+  }
 }

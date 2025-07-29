@@ -85,15 +85,14 @@ export function PersistentDrawerRight({ open, header, body, cardRef }) {
       <Drawer
         sx={{
           width: drawerWidth,
-          marginRight: '5px',
-          marginTop: '5px',
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             marginRight: '5px',
             marginTop: '5px',
-            height: 'calc(100vh - var(--colorbar-height) - 3.5%)', //colobar is up 3% from bottom
-            borderRadius: '3px',
+            maxHeight: 'calc(100vh - 10px)', //colobar is up 3% from bottom
+            height: 'auto',
+            borderRadius: '12px',
           },
         }}
         variant='persistent'
