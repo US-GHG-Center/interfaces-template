@@ -54,6 +54,7 @@ export function dataTransformation(
 
   // For now, sort at the end.
   // TODO: In Target implementation, use an Treap instead of array to collect Sam.
+  oco3DataFactory.sortAllSams();
 
   return oco3DataFactory;
 }

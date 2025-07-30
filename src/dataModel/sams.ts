@@ -137,7 +137,7 @@ export class SamsTarget implements Target {
 
   getRepresentationalSAM(): SAM {
     if (this.isSamSorted) return this.sams[0];
-    return this.sams[this.sams.length - 1];
+    return this.getSortedSAM()[0];
   }
 
   addSAM(sam: SAM): void {
@@ -184,6 +184,7 @@ export class SamsTarget implements Target {
   }
 
   getSortedSAM(): SAM[] {
+    if (this.isSamSorted) return this.sams;
     const sortedSAMS: SAM[] = [...this.sams];
     return this.inplaceSort(sortedSAMS);
   }

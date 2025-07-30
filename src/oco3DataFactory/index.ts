@@ -87,9 +87,9 @@ export class Oco3DataFactory extends DataFactory {
     return stacItemId.split('_')[1];
   };
 
-  sortAllSams = (): void => {
+  sortAllSams(): void {
     Object.values(this.targetDict).forEach((target: Target) => {
       target.sortSAM();
     });
-  };
+  }
 }
