@@ -3,7 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import { useMapbox } from '../../../context/mapContext';
 import './index.css';
 import { ZOOM_LEVEL_MARGIN, PopularMapMarkerColors } from '../utils/constants';
-import { stringToNumberHash } from '../utils';
+import { stringToNumberHash } from '../../../utils';
 
 export const MarkerFeature = ({ vizItems, onClickOnMarker }) => {
   const { map } = useMapbox();
