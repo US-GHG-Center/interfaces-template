@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { styled as styledmui } from '@mui/material/styles';
 import styled from 'styled-components';
 import Box from '@mui/material/Box';
@@ -63,7 +64,18 @@ const HorizontalLayout = styled.div`
 //   body: React.ReactNode;
 // }
 
-export function PersistentDrawerRight({ open, header, body }) {
+export function PersistentDrawerRight({ open, header, body, cardRef }) {
+  // optional: cardRef is the ref to the actual card/div available in the body.
+  // when hoverover the cardRef. it will scroll to the view.
+  useEffect(() => {
+    if (cardRef && cardRef.current) {
+      cardRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardRef.current]);
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -73,15 +85,14 @@ export function PersistentDrawerRight({ open, header, body }) {
       <Drawer
         sx={{
           width: drawerWidth,
-          marginRight: '5px',
-          marginTop: '5px',
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             marginRight: '5px',
             marginTop: '5px',
-            height: 'calc(100vh - var(--colorbar-height) - 3.5%)', //colobar is up 3% from bottom
-            borderRadius: '3px',
+            maxHeight: 'calc(100vh - 10px)', //colobar is up 3% from bottom
+            height: 'auto',
+            borderRadius: '12px',
           },
         }}
         variant='persistent'
