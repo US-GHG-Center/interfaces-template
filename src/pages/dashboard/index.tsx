@@ -22,7 +22,6 @@ import {
 
 import { SAM, VizItem } from '../../dataModel';
 import { Oco3DataFactory } from '../../oco3DataFactory';
-import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 
 import './index.css';
 
@@ -80,7 +79,7 @@ export function Dashboard({
   // so using useCallback hook.
   const handleSelectedMarker = useCallback((vizItemId: string) => {
     if (!vizItemId || !dataFactory.current) return;
-    let targetId: string = getTargetIdFromStacIdSAM(vizItemId); // TODO: check this wrt to SAM and Target class definition
+    let targetId: string = dataFactory.current?.getTargetIdFromStacIdSAM(vizItemId);
     let candidateSams: SAM[] =
       dataFactory.current?.getVizItemsOnMarkerClicked(targetId) || [];
 

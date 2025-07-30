@@ -82,7 +82,7 @@ export class Oco3DataFactory extends DataFactory {
     return target.getSAMbyId(key);
   }
 
-  private getTargetIdFromStacIdSAM = (stacItemId: string): string => {
+  getTargetIdFromStacIdSAM = (stacItemId: string): string => {
     // check the SAM defination for explanation.
     return stacItemId.split('_')[1];
   };
