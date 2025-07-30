@@ -10,29 +10,21 @@ import {
   MainMap,
   MarkerFeature,
   VisualizationLayers,
-  ColorBar,
   ConfigurableColorBar,
   LoadingSpinner,
   PersistentDrawerRight,
   Title,
   MapControls,
   MapZoom,
-  Search,
-  FilterByDate,
-  VizItemAnimation,
   Dropdown,
   VizItemTimeline,
 } from '../../components/index.js';
 
-import { Oco3DataFactory } from '../../oco3DataFactory';
-
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
-import { SAM } from '../../dataModel';
-
+import { SAM, VizItem } from '../../dataModel';
+import { Oco3DataFactory } from '../../oco3DataFactory';
 import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
-
-import { VizItem } from '../../dataModel';
 
 const TITLE: string = 'OCO3 SAMS';
 const DESCRIPTION: string = `OCO-3, aboard the ISS, uses an agile pointing mirror to quickly collect 80x80km "Snapshot Area Maps" (SAMs) and target observations. These datasets, including XCO2 and SIF, help study carbon sources and plant health.`;
@@ -108,18 +100,6 @@ export function Dashboard({
     // currently no functionality needed.
   }, []);
 
-  const handleSelectedVizItemSearch = useCallback((vizItemId: string) => {
-    // will focus on the visualization item along with its visualization item metadata card
-    // will react to update the metadata on the sidedrawer
-    if (!vizItemId) return;
-    // const vizItem = vizItemsDict[vizItemId];
-    // const location = vizItem?.geometry?.coordinates[0][0];
-    // setTargets([vizItem]);
-    // setOpenDrawer(true);
-    // setZoomLocation(location.map((coord) => Number(coord)));
-    // setZoomLevel(null); // take the default zoom level
-  }, []);
-
   const handleResetHome = useCallback(() => {
     if (!dataFactory.current) return;
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
@@ -189,21 +169,6 @@ export function Dashboard({
         <MainMap>
           <Paper className='title-container'>
             <Title title={TITLE} description={DESCRIPTION} />
-            {/* <div className='title-content'>
-              <HorizontalLayout>
-                <Search
-                  vizItems={targets}
-                  onSelectedVizItemSearch={handleSelectedVizItemSearch}
-                  placeHolderText={'Search by vizItem ID and substring'}
-                ></Search>
-              </HorizontalLayout>
-              <HorizontalLayout>
-                <FilterByDate
-                  vizItems={targets}
-                  onFilteredVizItems={setFilteredVizItems}
-                />
-              </HorizontalLayout>
-            </div> */}
             {selectedSams.length ? (
               <HorizontalLayout>
                 {/* <div className={"sandesh"} style={{ margin: '0 0.9rem' }}> */}
