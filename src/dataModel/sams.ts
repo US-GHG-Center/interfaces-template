@@ -97,7 +97,7 @@ export interface Target {
   getTargetId(): string; // To have uniformity in target_id: ref. SAM.getTargetId
   getRepresentationalSAM(): SAM;
   addSAM(sam: SAM): void;
-  getSortedSAM(): SAM[];
+  getAllSAM(): SAM[];
   getSAMbyId(id: string): SAM | undefined;
   sortSAM(): void;
 }
@@ -110,7 +110,7 @@ export class SamsTarget implements Target {
   location: [Lon, Lat];
   startDatetime: DateTime;
   endDatetime: DateTime;
-  sams: SAM[];
+  sams: SAM[]; // it is considered to be always sorted, before use.
   private isSamSorted: boolean = false;
 
   constructor(id: string, siteName: string, location: [Lon, Lat]) {
@@ -136,8 +136,10 @@ export class SamsTarget implements Target {
   }
 
   getRepresentationalSAM(): SAM {
-    if (this.isSamSorted) return this.sams[0];
-    return this.getSortedSAM()[0];
+    if (!this.isSamSorted) {
+      this.inplaceSort(this.sams);
+    }
+    return this.sams[0];
   }
 
   addSAM(sam: SAM): void {
@@ -183,7 +185,7 @@ export class SamsTarget implements Target {
     });
   }
 
-  getSortedSAM(): SAM[] {
+  getAllSAM(): SAM[] {
     if (this.isSamSorted) return this.sams;
     const sortedSAMS: SAM[] = [...this.sams];
     return this.inplaceSort(sortedSAMS);
