@@ -1,27 +1,18 @@
 import {
   STACItem,
   STACItemSAM,
-  SamsTarget,
-  DataTree,
   SAMMissingMetaData,
   SAMProperties,
-  Lon,
-  Lat,
-  SamsTargetDict,
-  TargetType,
 } from '../../../dataModel';
 
 import { getTargetIdFromStacIdSAM } from '.';
-
-export interface DataTransformationResult {
-  DATA_TREE: DataTree;
-  samsTargetDict: SamsTargetDict;
-}
+import { Oco3DataFactory } from '../../../oco3DataFactory';
+import { SAMImpl } from '../../../dataModel/sams';
 
 export function dataTransformation(
   stacItems: STACItem[],
   missingSamsProperties: SAMMissingMetaData[]
-): DataTransformationResult {
+): Oco3DataFactory {
   interface SAMMissingMetaDataDict {
     [key: string]: SAMMissingMetaData;
   }
@@ -54,29 +45,16 @@ export function dataTransformation(
     });
   });
 
-  const DATA_TREE: DataTree = {};
-  const samsTargetDict: SamsTargetDict = {};
+  let oco3DataFactory: Oco3DataFactory = Oco3DataFactory.getInstance();
 
   fullStacItems.forEach((stacItem: STACItemSAM): void => {
-    let targetId: string = stacItem.properties.target_id;
-    let siteName: string = stacItem.properties.target_name;
-    let targetType: string = stacItem.properties.target_type;
-    let location: [Lon, Lat] = [
-      stacItem.properties.target_location.coordinates[0],
-      stacItem.properties.target_location.coordinates[1],
-    ];
-    if (!(targetId in DATA_TREE)) {
-      let st = new SamsTarget(targetId, siteName, location);
-      DATA_TREE[targetId] = st;
-      // create the SamsTargetDict and link the reference of target.
-      if (!(targetType in samsTargetDict)) {
-        let tt = new TargetType(targetType);
-        samsTargetDict[targetType] = tt;
-      }
-      samsTargetDict[targetType].addTarget(st);
-    }
-    DATA_TREE[targetId].addSAM(stacItem);
+    let stacItemSam = new SAMImpl(stacItem);
+    oco3DataFactory.addVizItem(stacItemSam);
   });
 
-  return { DATA_TREE, samsTargetDict };
+  // For now, sort at the end.
+  // TODO: In Target implementation, use an Treap instead of array to collect Sam.
+  oco3DataFactory.sortAllSams();
+
+  return oco3DataFactory;
 }

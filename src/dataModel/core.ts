@@ -23,14 +23,14 @@ export interface LocationMeta {
   coordinates: number[];
 }
 
-interface Link {
+export interface Link {
   rel: string;
   type: string;
   href: string;
   title?: string;
 }
 
-interface Asset {
+export interface Asset {
   href: string;
   type: string;
   roles?: string[];
