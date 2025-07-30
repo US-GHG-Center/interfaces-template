@@ -4,7 +4,6 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
 import styled from 'styled-components';
-import './index.css';
 
 import {
   MainMap,
@@ -18,13 +17,14 @@ import {
   MapZoom,
   Dropdown,
   VizItemTimeline,
+  SamInfoCard,
 } from '../../components/index.js';
-
-import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
 import { SAM, VizItem } from '../../dataModel';
 import { Oco3DataFactory } from '../../oco3DataFactory';
 import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
+
+import './index.css';
 
 const TITLE: string = 'OCO3 SAMS';
 const DESCRIPTION: string = `OCO-3, aboard the ISS, uses an agile pointing mirror to quickly collect 80x80km "Snapshot Area Maps" (SAMs) and target observations. These datasets, including XCO2 and SIF, help study carbon sources and plant health.`;
