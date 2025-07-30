@@ -3,26 +3,12 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
-import {
-  dataTransformation,
-  dataTransformationNew,
-  DataTransformationResult,
-} from './helper/dataTransform';
+import { dataTransformation } from './helper/dataTransform';
 
-import {
-  STACItem,
-  SAMMissingMetaData,
-  DataTree,
-  SamsTargetDict,
-} from '../../dataModel';
+import { STACItem, SAMMissingMetaData } from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
-import { DataFactory } from '../../core/dataFactory';
 import { Oco3DataFactory } from '../../oco3DataFactory';
-
-// interface DataTree {
-//   [key: string]: STACItem;
-// }
 
 export function DashboardContainer(): React.JSX.Element {
   // get the query params
@@ -42,8 +28,6 @@ export function DashboardContainer(): React.JSX.Element {
     searchParams.get('collection-id') || 'oco3-co2-sams-daygrid-v11r'
   );
   const [loadingData, setLoadingData] = useState<boolean>(true);
-  const dataTree = useRef<DataTree | null>(null);
-  const samsTargetDict = useRef<SamsTargetDict | null>(null);
   const oco3DataFactory = useRef<Oco3DataFactory | null>(null);
 
   useEffect(() => {
@@ -61,26 +45,8 @@ export function DashboardContainer(): React.JSX.Element {
 
         const missingData: SAMMissingMetaData[] = missingProperties.data;
 
-        const transformedData: DataTransformationResult = dataTransformation(
-          filteredData,
-          missingData
-        );
+        oco3DataFactory.current = dataTransformation(filteredData, missingData);
 
-        const test: Oco3DataFactory = dataTransformationNew(filteredData, missingData);
-        oco3DataFactory.current = test;
-
-        const dtm: DataTree = transformedData.DATA_TREE;
-        const std: SamsTargetDict = transformedData.samsTargetDict;
-
-        // const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
-        // const testSample: STACItem[] = data.slice(0, 10);
-        // testSample.forEach((items) => {
-        //   vizItemsDict[items.id] = items;
-        // });
-        // dataTree.current = vizItemsDict;
-
-        dataTree.current = dtm;
-        samsTargetDict.current = std;
         // NOTE: incase we need metadata and other added information,
         // add that to the STAC Item Property
 
@@ -97,7 +63,6 @@ export function DashboardContainer(): React.JSX.Element {
   return (
     <Dashboard
       dataFactory={oco3DataFactory}
-      samsTargetDict={samsTargetDict}
       zoomLocation={zoomLocation}
       zoomLevel={zoomLevel}
       setZoomLocation={setZoomLocation}

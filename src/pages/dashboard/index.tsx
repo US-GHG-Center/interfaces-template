@@ -24,12 +24,11 @@ import {
   VizItemTimeline,
 } from '../../components/index.js';
 
-import { DataFactory } from '../../core/dataFactory';
 import { Oco3DataFactory } from '../../oco3DataFactory';
 
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
-import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
+import { SAM } from '../../dataModel';
 
 import { getTargetIdFromStacIdSAM } from '../dashboardContainer/helper';
 
@@ -48,7 +47,6 @@ const HorizontalLayout = styled.div`
 
 interface DashboardProps {
   dataFactory: React.MutableRefObject<Oco3DataFactory | null>;
-  samsTargetDict: React.MutableRefObject<SamsTargetDict | null>;
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
   zoomLevel: number | null;
@@ -58,7 +56,6 @@ interface DashboardProps {
 
 export function Dashboard({
   dataFactory,
-  samsTargetDict,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
@@ -146,7 +143,7 @@ export function Dashboard({
       return;
     }
 
-    if (!samsTargetDict.current) return;
+    if (!dataFactory.current) return;
     let repTargets: SAM[] =
       dataFactory.current?.getVizItemForMarkerByTargetType(targetType) || [];
     setTargets(repTargets);
