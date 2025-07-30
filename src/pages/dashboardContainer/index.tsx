@@ -5,6 +5,7 @@ import { Dashboard } from '../dashboard';
 import { fetchAllFromSTACAPI } from '../../services/api';
 import {
   dataTransformation,
+  dataTransformationNew,
   DataTransformationResult,
 } from './helper/dataTransform';
 
@@ -16,6 +17,8 @@ import {
 } from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
+import { DataFactory } from '../../core/dataFactory';
+import { Oco3DataFactory } from '../../oco3DataFactory';
 
 // interface DataTree {
 //   [key: string]: STACItem;
@@ -61,6 +64,10 @@ export function DashboardContainer(): React.JSX.Element {
           filteredData,
           missingData
         );
+
+        const test: Oco3DataFactory = dataTransformationNew(filteredData, missingData);
+
+        console.log("$$$$", test)
 
         const dtm: DataTree = transformedData.DATA_TREE;
         const std: SamsTargetDict = transformedData.samsTargetDict;
