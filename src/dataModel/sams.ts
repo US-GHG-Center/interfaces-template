@@ -97,6 +97,7 @@ export interface Target {
   getTargetId(): string; // To have uniformity in target_id: ref. SAM.getTargetId
   getRepresentationalSAM(): SAM;
   addSAM(sam: SAM): void;
+  getSortedSAM(): SAM[];
   getSAMbyId(id: string): SAM | undefined;
   sortSAM(): void;
 }
@@ -110,6 +111,7 @@ export class SamsTarget implements Target {
   startDatetime: DateTime;
   endDatetime: DateTime;
   sams: SAM[];
+  private isSamSorted: boolean = false;
 
   constructor(id: string, siteName: string, location: [Lon, Lat]) {
     this.id = id;
@@ -134,7 +136,8 @@ export class SamsTarget implements Target {
   }
 
   getRepresentationalSAM(): SAM {
-    return this.sams[0];
+    if (this.isSamSorted) return this.sams[0];
+    return this.sams[this.sams.length - 1];
   }
 
   addSAM(sam: SAM): void {
@@ -163,7 +166,12 @@ export class SamsTarget implements Target {
 
   sortSAM(): void {
     // inplace sort: use it after all the sams are added to the target for best result
-    this.sams.sort((prev: SAM, next: SAM) => {
+    this.inplaceSort(this.sams);
+    this.isSamSorted = true;
+  }
+
+  private inplaceSort(items: SAM[]): SAM[] {
+    return items.sort((prev: SAM, next: SAM) => {
       const prevTime = prev.properties.start_datetime
         ? moment(prev.properties.start_datetime).valueOf()
         : Number.MAX_VALUE;
@@ -173,6 +181,11 @@ export class SamsTarget implements Target {
 
       return prevTime - nextTime;
     });
+  }
+
+  getSortedSAM(): SAM[] {
+    const sortedSAMS: SAM[] = [...this.sams];
+    return this.inplaceSort(sortedSAMS);
   }
 
   getSAMbyId(id: string): SAM | undefined {

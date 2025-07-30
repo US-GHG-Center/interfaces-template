@@ -32,7 +32,7 @@ export class Oco3DataFactory extends DataFactory {
     const target: Target = this.targetDict[key];
     // just show the first choronological SAM when the target marker is clicked
     // return [target.getRepresentationalSAM()];
-    return target.sams;
+    return target.getSortedSAM();
   }
 
   getVizItemsOnLayerClicked(key: string): VizItem[] {
