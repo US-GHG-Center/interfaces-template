@@ -1,7 +1,7 @@
 import { DataFactory } from '../core/dataFactory';
 import { VizItem, SAM, Target, Lon, Lat } from '../dataModel';
 
-import { SAMClass, SamsTarget } from '../dataModel/sams';
+import { SAMImpl, SamsTarget } from '../dataModel/sams';
 
 export class Oco3DataFactory extends DataFactory {
   private static instance: Oco3DataFactory;
@@ -47,7 +47,7 @@ export class Oco3DataFactory extends DataFactory {
       vizItem.properties.target_location.coordinates[0],
       vizItem.properties.target_location.coordinates[1],
     ];
-    const vizItemSam: SAMClass = new SAMClass(vizItem);
+    const vizItemSam: SAMImpl = new SAMImpl(vizItem);
     const vizItemTargetId: string = vizItemSam.getTargetId();
     if (!(targetType in this.targetTypeDict)) {
       this.targetTypeDict[targetType] = [];

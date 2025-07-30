@@ -45,7 +45,7 @@ export interface SAM extends STACItemSAM {
 
 //implementation
 
-export class SAMClass implements SAM {
+export class SAMImpl implements SAM {
   properties: SAMProperties;
   id: string;
   bbox: number[];

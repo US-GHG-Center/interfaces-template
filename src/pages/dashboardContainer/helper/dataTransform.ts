@@ -7,7 +7,7 @@ import {
 
 import { getTargetIdFromStacIdSAM } from '.';
 import { Oco3DataFactory } from '../../../oco3DataFactory';
-import { SAMClass } from '../../../dataModel/sams';
+import { SAMImpl } from '../../../dataModel/sams';
 
 export function dataTransformation(
   stacItems: STACItem[],
@@ -48,7 +48,7 @@ export function dataTransformation(
   let oco3DataFactory: Oco3DataFactory = Oco3DataFactory.getInstance();
 
   fullStacItems.forEach((stacItem: STACItemSAM): void => {
-    let stacItemSam = new SAMClass(stacItem);
+    let stacItemSam = new SAMImpl(stacItem);
     oco3DataFactory.addVizItem(stacItemSam);
   });
 
