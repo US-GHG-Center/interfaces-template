@@ -79,11 +79,17 @@ export function Dashboard({
   // so using useCallback hook.
   const handleSelectedMarker = useCallback((vizItemId: string) => {
     if (!vizItemId || !dataFactory.current) return;
-    let targetId: string = dataFactory.current?.getTargetIdFromStacIdSAM(vizItemId);
+    let targetId: string =
+      dataFactory.current?.getTargetIdFromStacIdSAM(vizItemId);
     let candidateSams: SAM[] =
       dataFactory.current?.getVizItemsOnMarkerClicked(targetId) || [];
 
-    setVisualizationLayers([candidateSams[0]]);
+    let placeHolderSam: SAM = candidateSams[0];
+    placeHolderSam.geometry.coordinates = [
+      [placeHolderSam.properties.target_location.coordinates],
+    ];
+
+    setVisualizationLayers([placeHolderSam]);
     setSelectedSams(candidateSams);
     let location: number[] = [
       Number(candidateSams[0].geometry.coordinates[0][0][0]),
