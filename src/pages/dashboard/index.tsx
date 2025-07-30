@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import { Typography } from '@mui/material';
@@ -83,6 +83,9 @@ export function Dashboard({
 
   // states for components/controls
   const [openDrawer, setOpenDrawer] = useState<boolean>(false);
+
+  // ref. to scroll to the hovered card within the drawer
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // handler functions
   const handleSelectedVizItem = (vizItemId: string) => {
@@ -215,6 +218,7 @@ export function Dashboard({
         </MainMap>
         <PersistentDrawerRight
           open={openDrawer}
+          cardRef={cardRef}
           header={
             <>
               <Typography
