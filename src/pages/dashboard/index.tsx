@@ -78,7 +78,7 @@ export function Dashboard({
   //color map
   const [VMAX, setVMAX] = useState<number>(420);
   const [VMIN, setVMIN] = useState<number>(400);
-  const [colormap, setColormap] = useState<string>('default');
+  const [colormap, setColormap] = useState<string>('viridis');
   const [assets, setAssets] = useState<string>('xco2');
   // targets based on target type
   const [targetTypes, setTargetTypes] = useState<string[]>(['all']);
@@ -352,13 +352,13 @@ export function Dashboard({
         <div style={{ position: 'absolute', right: 10, bottom: 18 }}>
           <ConfigurableColorBar
             id='coolcolor'
-            VMAXLimit={450}
-            VMINLimit={390}
+            VMAXLimit={430}
+            VMINLimit={420}
             colorMap={colormap}
             setColorMap={setColormap}
             setVMIN={setVMIN}
             setVMAX={setVMAX}
-            unit='(ppm)'
+            unit='Parts per million (ppm)'
           />
         </div>
       )}

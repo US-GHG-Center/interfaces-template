@@ -53,8 +53,8 @@ export const addSourceLayerToMap = (
     '&rescale=' +
     VMIN +
     '%2C' +
-    VMAX;
-  // "&nodata=-9999";
+    VMAX +
+    '&nodata=nan';
 
   map.addSource(sourceId, {
     type: 'raster',

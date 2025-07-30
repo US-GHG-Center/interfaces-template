@@ -76,6 +76,16 @@ jobs:
           role-session-name: ${{ github.repository_owner }}
           aws-region: us-west-2
 
+      - name: Cache the OCO3 STAC items 🔧
+        working-directory: ./
+        env:
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          REACT_APP_STAC_API_URL: ${{ vars.REACT_APP_STAC_API_URL }}
+        run: |
+          yarn
+          node ./dataCaching.js
+        continue-on-error: false
+
       - name: Build and deploy
         working-directory: ./
         env:
