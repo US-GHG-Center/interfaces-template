@@ -28,7 +28,8 @@ export function dataTransformation(
   const samMissingMetaDataDict: SAMMissingMetaDataDict = {};
 
   missingSamsProperties.forEach((missingSamsProp: SAMMissingMetaData) => {
-    samMissingMetaDataDict[missingSamsProp.target_id] = missingSamsProp;
+    let target_id: string = missingSamsProp.target_id.split('_')[0];
+    samMissingMetaDataDict[target_id] = missingSamsProp;
   });
 
   const fullStacItems: STACItemSAM[] = [];

@@ -1,0 +1,79 @@
+name: Update data on a schedule
+
+on:
+    schedule:
+      - cron: 0 0 1 * * # Runs on the first day of every month
+    workflow_dispatch: # Can be run manually if needed
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository and create a pull request
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # checks if the required env variables and secrets are present
+      - name: Validate required variables and secrets
+        run: |
+          missing_vars=()
+
+          # Check for required variables
+          # Variables for the Application: Remove unnecessary variables for the fork. 
+          [ -z "${{ vars.PUBLIC_URL }}" ] && missing_vars+=("vars.PUBLIC_URL")
+          # note: vars.PUBLIC_URL is expected to have leading and trailing /
+          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
+          # Variables for the Static Build placement in AWS.
+          [ -z "${{ vars.DEPLOYMENT_BUCKET }}" ] && missing_vars+=("vars.DEPLOYMENT_BUCKET")
+          [ -z "${{ vars.DEPLOYMENT_REGION }}" ] && missing_vars+=("vars.DEPLOYMENT_REGION")
+          [ -z "${{ secrets.DEPLOYMENT_ROLE_ARN }}" ] && missing_vars+=("secrets.DEPLOYMENT_ROLE_ARN")
+          [ -z "${{ secrets.CF_DISTRIBUTION_ID }}" ] && missing_vars+=("secrets.CF_DISTRIBUTION_ID")
+          # Add additional variables needed for the forked application here to validate.
+
+          # If any variables are missing, print them and exit with an error
+          if [ ${#missing_vars[@]} -ne 0 ]; then
+            echo "Error: The following required variables are missing:"
+            printf '%s\n' "${missing_vars[@]}"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Read Node.js version from .nvmrc
+        id: nvm
+        run: echo "::set-output name=NODE_VERSION::$(cat .nvmrc)"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ steps.nvm.outputs.NODE_VERSION }}
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Update the data 🔧
+        working-directory: ./
+        env:
+          PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+          REACT_APP_STAC_API_URL: ${{ vars.REACT_APP_STAC_API_URL }}
+        run: |
+          yarn
+          node ./dataCaching.js
+        continue-on-error: false
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync "./public/oco3-co2-sams-daygrid-v11r.json" s3://${{ vars.DEPLOYMENT_BUCKET }}${{ vars.PUBLIC_URL}}/oco3-co2-sams-daygrid-v11r.json --cache-control max-age=30,must-revalidate,s-maxage=604800 --delete
+
+      - name: Calculate PUBLIC URL Parent Path
+        run: echo "PUBLIC_URL_PARENT=$(dirname '${{ vars.PUBLIC_URL }}')" >> $GITHUB_ENV
+
+      - name: Request Invalidation to AWS Cloudfront
+        uses: oneyedev/aws-cloudfront-invalidation@v1
+        with:
+          distribution-id: ${{ secrets.CF_DISTRIBUTION_ID }}
+          paths: |
+            ${{ env.PUBLIC_URL_PARENT }}/*
