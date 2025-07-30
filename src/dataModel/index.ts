@@ -58,4 +58,4 @@ export interface SamsTargetDict {
   [key: string]: TargetType;
 }
 
-export interface VizItem extends STACItem {}
+export interface VizItem extends SAM {}

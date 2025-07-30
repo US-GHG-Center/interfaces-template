@@ -24,6 +24,9 @@ import {
   VizItemTimeline,
 } from '../../components/index.js';
 
+import { DataFactory } from '../../core/dataFactory';
+import { Oco3DataFactory } from '../../oco3DataFactory';
+
 import { SamInfoCard } from '../../components/ui/card/samInfoCard';
 
 import { DataTree, Target, SAM, SamsTargetDict } from '../../dataModel';
@@ -44,14 +47,7 @@ const HorizontalLayout = styled.div`
 `;
 
 interface DashboardProps {
-  /**
-   * The dataTree refers to the STACItems(/vizItems), structured in certain way
-   * inorder to fullfill the application needs (refers. data Interfaces).
-   * Example 1: Here, its simple map between STACItem.id and STACItem.
-   * Example 2: Complex application needs might ask for somekind of complex dataTree
-   * - representing one to many relationships - hence requiring n-tree instead of simple dictionary.
-   */
-  dataTree: React.MutableRefObject<DataTree | null>;
+  dataFactory: React.MutableRefObject<Oco3DataFactory | null>;
   samsTargetDict: React.MutableRefObject<SamsTargetDict | null>;
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
@@ -61,7 +57,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  dataTree,
+  dataFactory,
   samsTargetDict,
   zoomLocation,
   setZoomLocation,
@@ -94,19 +90,16 @@ export function Dashboard({
   // Note: these callback handler function needs to be initilaized only once.
   // so using useCallback hook.
   const handleSelectedMarker = useCallback((vizItemId: string) => {
-    if (!vizItemId || !dataTree.current) return;
-    let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
-    let target: Target | undefined = dataTree.current?.[targetId];
+    if (!vizItemId || !dataFactory.current) return;
+    let targetId: string = getTargetIdFromStacIdSAM(vizItemId); // TODO: check this wrt to SAM and Target class definition
+    let candidateSams: SAM[] =
+      dataFactory.current?.getVizItemsOnMarkerClicked(targetId) || [];
 
-    // instead get the sam with the provided vizItemId
-    let sam: SAM | undefined = target?.getRepresentationalSAM();
-    let candidateSams: SAM[] = target ? target.getSortedSAMs() : [];
-    if (!sam) return;
-    setVisualizationLayers([sam]);
+    setVisualizationLayers([candidateSams[0]]);
     setSelectedSams(candidateSams);
     let location: number[] = [
-      Number(sam.geometry.coordinates[0][0][0]),
-      Number(sam.geometry.coordinates[0][0][1]),
+      Number(candidateSams[0].geometry.coordinates[0][0][0]),
+      Number(candidateSams[0].geometry.coordinates[0][0][1]),
     ];
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
@@ -115,21 +108,7 @@ export function Dashboard({
 
   const handleSelectedVizLayer = useCallback((vizItemId: string) => {
     if (!vizItemId) return;
-    let targetId: string = getTargetIdFromStacIdSAM(vizItemId);
-    let target: Target | undefined = dataTree.current?.[targetId];
-
-    let vizItem: SAM | undefined = target?.getRepresentationalSAM();
-    if (!vizItem) return;
-
-    // set vizItem to be rendered.
-    // enable the timeline component.
-
-    let location = [
-      Number(vizItem?.geometry.coordinates[0][0][0]),
-      Number(vizItem?.geometry.coordinates[0][0][1]),
-    ];
-    setZoomLocation(location);
-    setZoomLevel(null); // take the default zoom level
+    // currently no functionality needed.
   }, []);
 
   const handleSelectedVizItemSearch = useCallback((vizItemId: string) => {
@@ -145,10 +124,9 @@ export function Dashboard({
   }, []);
 
   const handleResetHome = useCallback(() => {
-    if (!dataTree.current) return;
+    if (!dataFactory.current) return;
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
-    let targets: Target[] = getTargetsFromDataTree(dataTree.current);
-    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    let repTargets: SAM[] = dataFactory.current?.getVizItemForMarker() || [];
     setTargets(repTargets);
     setVisualizationLayers([]);
     setSelectedSams([]);
@@ -163,26 +141,22 @@ export function Dashboard({
     setSelectedTargetType(targetType);
 
     if (targetType === 'all') {
-      if (!dataTree.current) return;
-      let targets: Target[] = getTargetsFromDataTree(dataTree.current);
-      let repTargets: SAM[] = getSamRepOfTarget(targets);
+      let repTargets: SAM[] = dataFactory.current?.getVizItemForMarker() || [];
       setTargets(repTargets);
       return;
     }
 
     if (!samsTargetDict.current) return;
-    let targets: Target[] = samsTargetDict.current[targetType]?.targets;
-    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    let repTargets: SAM[] =
+      dataFactory.current?.getVizItemForMarkerByTargetType(targetType) || [];
     setTargets(repTargets);
   }, []);
 
   const handleTimelineTimeChange = useCallback((vizItemId: string) => {
-    if (!dataTree.current) return;
+    if (!dataFactory.current) return;
     // from the vizItemId, find the target id.
-    const targetId: string = getTargetIdFromStacIdSAM(vizItemId);
-    const target: Target = dataTree.current[targetId];
-    // using the targetId, find the necessary sam.
-    const changedVizItem: VizItem | undefined = target.getSAMbyId(vizItemId);
+    let changedVizItem: VizItem | undefined =
+      dataFactory.current?.getVizItemByVizId(vizItemId);
     if (changedVizItem) setVisualizationLayers([changedVizItem]);
   }, []);
 
@@ -190,36 +164,16 @@ export function Dashboard({
     setHoveredVizLayerId(vizItemId);
   }, []);
 
-  // helpers
-  const getSamRepOfTarget = (targets: Target[]): SAM[] => {
-    if (!dataTree) return [];
-    const repTargets: SAM[] = [];
-    targets.forEach((target: Target) => {
-      if (!target) {
-        return undefined;
-      }
-      let repTarget: SAM = target.getRepresentationalSAM();
-      // use the location in the target.
-      repTarget.geometry.coordinates = [[target.location]];
-      repTargets.push(target.getRepresentationalSAM());
-    });
-    return repTargets;
-  };
-
-  const getTargetsFromDataTree = (dataTree: DataTree): Target[] => {
-    if (!dataTree) return [];
-    let targets: Target[] = Object.values(dataTree);
-    return targets;
-  };
-
   // Component Effects
   useEffect(() => {
-    if (!dataTree.current) return;
-
+    if (!dataFactory.current) return;
     // Get all Targets. Here everything is wrt vizItem/SAM, so get a representational SAM.
-    let targets: Target[] = getTargetsFromDataTree(dataTree.current);
-    let repTargets: SAM[] = getSamRepOfTarget(targets);
+    let repTargets: SAM[] = dataFactory.current?.getVizItemForMarker() || [];
     setTargets(repTargets);
+
+    let targetTypesLocal: string[] =
+      dataFactory?.current.getTargetTypes() || [];
+    setTargetTypes(['all', ...targetTypesLocal]);
 
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 415;
@@ -229,13 +183,7 @@ export function Dashboard({
     setVMAX(VMAX);
     setColormap(colormap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataTree.current]);
-
-  useEffect(() => {
-    if (!samsTargetDict.current) return;
-    const targetTypesLocal = Object.keys(samsTargetDict.current);
-    setTargetTypes(['all', ...targetTypesLocal]);
-  }, [samsTargetDict.current]);
+  }, [dataFactory.current]);
 
   // JSX
   return (
