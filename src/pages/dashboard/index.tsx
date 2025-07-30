@@ -92,6 +92,7 @@ export function Dashboard({
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
     setOpenDrawer(true);
+    setHoveredVizLayerId(vizItemId);
   }, []);
 
   const handleSelectedVizLayer = useCallback((vizItemId: string) => {
@@ -134,6 +135,7 @@ export function Dashboard({
     let changedVizItem: VizItem | undefined =
       dataFactory.current?.getVizItemByVizId(vizItemId);
     if (changedVizItem) setVisualizationLayers([changedVizItem]);
+    setHoveredVizLayerId(vizItemId);
   }, []);
 
   const handleHoverOverSelectedSams = useCallback((vizItemId: string) => {
