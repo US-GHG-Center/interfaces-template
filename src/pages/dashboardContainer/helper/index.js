@@ -1,3 +1,10 @@
+/**
+ * The below code is for demonstration purpose only.
+ * The transformation could be made inorder to consolidate data from many sources.
+ * Also, concrete dataFactory implementation, for example, ExampleDataFactory,
+ * could be formed during transformation.
+ */
+
 import { fetchAllFromFeaturesAPI } from '../../../services/api';
 
 export const extractStationCollections = (

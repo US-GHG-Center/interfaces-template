@@ -20,12 +20,11 @@ import {
   FilterByDate,
   VizItemAnimation,
   VisualizationItemCard,
-  VizItemTimeline
+  VizItemTimeline,
 } from '../../components/index.js';
 
-import { STACItem } from '../../dataModel';
-
-interface VizItem extends STACItem {}
+import { VizItem } from '../../dataModel';
+import { DataFactory } from '../../core/dataFactory';
 
 const TITLE: string = 'Interface Template';
 const DESCRIPTION: string = `Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book`;
@@ -38,19 +37,8 @@ const HorizontalLayout = styled.div`
   margin: 12px;
 `;
 
-interface VizItemDict {
-  [key: string]: VizItem;
-}
-
 interface DashboardProps {
-  /**
-   * The dataTree refers to the STACItems(/vizItems), structured in certain way
-   * inorder to fullfill the application needs (refers. data Interfaces).
-   * Example 1: Here, its simple map between STACItem.id and STACItem.
-   * Example 2: Complex application needs might ask for somekind of complex dataTree
-   * - representing one to many relationships - hence requiring n-tree instead of simple dictionary.
-   */
-  dataTree: React.MutableRefObject<VizItemDict | null>;
+  dataFactory: React.MutableRefObject<DataFactory | null>;
   zoomLocation: number[];
   setZoomLocation: React.Dispatch<React.SetStateAction<number[]>>;
   zoomLevel: number | null;
@@ -59,7 +47,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  dataTree,
+  dataFactory,
   zoomLocation,
   setZoomLocation,
   zoomLevel,
@@ -67,12 +55,13 @@ export function Dashboard({
   loadingData,
 }: DashboardProps) {
   // states for data
-  const [vizItemsDict, setVizItemsDict] = useState<VizItemDict>({}); // store all available visualization items
   const [selectedVizItems, setSelectedVizItems] = useState<VizItem[]>([]); // all visualization items for the selected region (marker)
   const [hoveredVizLayerId, setHoveredVizLayerId] = useState<string>(''); // vizItem_id of the visualization item which was hovered over
   const [filteredVizItems, setFilteredVizItems] = useState<VizItem[]>([]); // visualization items for the selected region with the filter applied
 
-  const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>([]); // list of subdaily_visualization_item used for animation
+  const [vizItemsForAnimation, setVizItemsForAnimation] = useState<VizItem[]>(
+    []
+  ); // list of subdaily_visualization_item used for animation
   const [visualizationLayers, setVisualizationLayers] = useState<VizItem[]>([]);
 
   //color map
@@ -90,12 +79,14 @@ export function Dashboard({
   // handler functions
   const handleSelectedVizItem = (vizItemId: string) => {
     if (!vizItemId) return;
-    let vizItem = vizItemsDict[vizItemId];
+    if (!dataFactory) return;
+    let vizItems =
+      dataFactory.current?.getVizItemsOnMarkerClicked(vizItemId) || [];
 
-    setVisualizationLayers([vizItem]);
+    setVisualizationLayers(vizItems);
     let location = [
-      Number(vizItem.geometry.coordinates[0][0][0]),
-      Number(vizItem.geometry.coordinates[0][0][1]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][0]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][1]),
     ];
     setZoomLocation(location);
     setZoomLevel(null); // take the default zoom level
@@ -104,10 +95,11 @@ export function Dashboard({
 
   const handleSelectedVizLayer = (vizItemId: string) => {
     if (!vizItemId) return;
-    let vizItem = vizItemsDict[vizItemId];
+    let vizItems =
+      dataFactory.current?.getVizItemsOnMarkerClicked(vizItemId) || [];
     let location = [
-      Number(vizItem.geometry.coordinates[0][0][0]),
-      Number(vizItem.geometry.coordinates[0][0][1]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][0]),
+      Number(vizItems[0]?.geometry.coordinates[0][0][1]),
     ];
     setZoomLocation(location);
     handleSelectedVizItemSearch(vizItemId);
@@ -125,10 +117,11 @@ export function Dashboard({
   const handleSelectedVizItemSearch = (vizItemId: string) => {
     // will focus on the visualization item along with its visualization item metadata card
     // will react to update the metadata on the sidedrawer
-    if (!vizItemsDict || !vizItemId) return;
-    const vizItem = vizItemsDict[vizItemId];
-    const location = vizItem?.geometry?.coordinates[0][0];
-    setSelectedVizItems([vizItem]);
+    if (!vizItemId) return;
+    const vizItems =
+      dataFactory.current?.getVizItemsOnMarkerClicked(vizItemId) || [];
+    const location = vizItems[0]?.geometry?.coordinates[0][0];
+    setSelectedVizItems(vizItems);
     setOpenDrawer(true);
     setZoomLocation(location.map((coord) => Number(coord)));
     setZoomLevel(null); // take the default zoom level
@@ -136,8 +129,9 @@ export function Dashboard({
   };
 
   const handleResetHome = () => {
+    let vizItemdForMarker = dataFactory.current?.getVizItemForMarker() || [];
     setHoveredVizLayerId('');
-    setFilteredVizItems(selectedVizItems);
+    setSelectedVizItems(vizItemdForMarker);
     setVizItemsForAnimation([]);
     setOpenDrawer(false);
     setZoomLevel(4);
@@ -146,11 +140,10 @@ export function Dashboard({
 
   // Component Effects
   useEffect(() => {
-    if (!dataTree.current) return;
+    if (!dataFactory.current) return;
 
     // Mocked data initialization for the application.
-    setVizItemsDict(dataTree.current);
-    setSelectedVizItems(Object.values(dataTree.current));
+    setSelectedVizItems(dataFactory.current?.getVizItemForMarker() || []);
 
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
@@ -160,7 +153,7 @@ export function Dashboard({
     setVMAX(VMAX);
     setColormap(colormap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataTree.current]);
+  }, [dataFactory.current]);
 
   // JSX
   return (
@@ -264,7 +257,7 @@ export function Dashboard({
       </div>
       {VMAX && (
         <ConfigurableColorBar
-          id ='configurable-color-bar'
+          id='configurable-color-bar'
           VMAXLimit={100}
           VMINLimit={-92}
           colorMap={colormap}
