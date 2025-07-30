@@ -1,5 +1,5 @@
 import { DataFactory } from '../core/dataFactory';
-import { VizItem, SAM, Target, TargetType, Lon, Lat } from '../dataModel';
+import { VizItem, SAM, Target, Lon, Lat } from '../dataModel';
 
 import { SAMClass, SamsTarget } from '../dataModel/sams';
 
@@ -46,30 +46,20 @@ export class Oco3DataFactory extends DataFactory {
       vizItem.properties.target_location.coordinates[0],
       vizItem.properties.target_location.coordinates[1],
     ];
-
-    /**
-     * Note: there's a problem with target_id provided.
-     * the vizItem.id has target_id embedded into it.
-     * it should map directly to the vizItem.properties.targetId
-     * However, when parsing the vizItem.id to get target_id,
-     * due to naming inconsistencies, we face a problem.
-     * check. SAM defination.
-     */
-
     const vizItemSam: SAMClass = new SAMClass(vizItem);
     const vizItemTargetId: string = vizItemSam.getTargetId();
+    if (!(targetType in this.targetTypeDict)) {
+      this.targetTypeDict[targetType] = [];
+    }
     if (!(vizItemTargetId in this.targetDict)) {
+      // a new target.
       this.targetDict[vizItemTargetId] = new SamsTarget(
         vizItemTargetId,
         siteName,
         location
       );
+      this.targetTypeDict[targetType].push(this.targetDict[vizItemTargetId]);
     }
     this.targetDict[vizItemTargetId]?.addSAM(vizItemSam);
-
-    if (!(targetType in this.targetTypeDict)) {
-      this.targetTypeDict[targetType] = [];
-    }
-    this.targetTypeDict[targetType].push(this.targetDict[vizItemTargetId]);
   }
 }

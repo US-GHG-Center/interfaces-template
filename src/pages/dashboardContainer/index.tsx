@@ -17,7 +17,6 @@ import {
 } from '../../dataModel';
 
 import missingProperties from '../../assets/dataset/metadata.json';
-import { DataFactory } from '../../core/dataFactory';
 import { Oco3DataFactory } from '../../oco3DataFactory';
 
 // interface DataTree {
@@ -71,6 +70,9 @@ export function DashboardContainer(): React.JSX.Element {
 
         const dtm: DataTree = transformedData.DATA_TREE;
         const std: SamsTargetDict = transformedData.samsTargetDict;
+
+        console.log("dt", dtm)
+        console.log("std", std)
 
         // const vizItemsDict: DataTree = {}; // visualization_items[string] = visualization_item
         // const testSample: STACItem[] = data.slice(0, 10);
