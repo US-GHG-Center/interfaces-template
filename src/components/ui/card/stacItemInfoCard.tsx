@@ -31,13 +31,14 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const HighlightableCard = styled(Card) <CardProps>`
+  border-radius: 12px !important;
   transition: border 0.3s ease;
   &:hover {
     border: 1px solid rgb(59, 130, 246);
   }
   border: ${(props) =>
     //eslint-disable-next-line prettier/prettier
-    props.$isHovered ? '1px solid rgb(59, 130, 246)' : '1px solid transparent'};
+    props.$isHovered ? '1px solid rgb(59, 130, 246)' : '1px solid rgba(156, 166, 180, 0.25)'};
 `;
 
 interface CaptionValueInterface {
@@ -48,7 +49,7 @@ interface CaptionValueInterface {
 
 export const CaptionValue = ({
   caption,
-  className='',
+  className = '',
   children,
 }: CaptionValueInterface): JSX.Element => {
   return (
@@ -158,40 +159,51 @@ export function StacItemInfoCard({
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', flex: '1 0 auto' }}>
         <CardContent sx={{ flex: '1 0 auto' }}>
-          <Box sx={{ display: 'flex', flexDirection: 'row', flex: '1 0 auto', alignItems: 'left', justifyContent: 'space-between', marginBottom: '10px' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', flex: '1 0 auto', alignItems: 'top', justifyContent: 'space-between', marginBottom: '10px' }}>
             <div>
+              <Typography variant="body2" sx={{ mb: 0.5, color: 'var(--main-blue)' }}>STAC Details</Typography>
               <HorizontalLayout>
                 <CaptionValue
                   caption='Visualization Item ID'
                   className=''
-                ><TruncatedCopyText text={id} /></CaptionValue>
+                ><TruncatedCopyText text={id} maxLength={25} /></CaptionValue>
               </HorizontalLayout>
-              <HorizontalLayout>
+              {/* <HorizontalLayout>
                 <CaptionValue
                   caption='STAC Collection ID'
                   className=''
                 ><TruncatedCopyText text={collection} /></CaptionValue>
-              </HorizontalLayout>
+              </HorizontalLayout> */}
               <HorizontalLayout>
                 <CaptionValue
-                  caption='Release Location (Approximate)'
+                  caption='Center Coordinates'
                   className=''
                 >
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div>Lat: {Number(lat).toFixed(3)}</div>
-                    <div>Lon: {Number(lon).toFixed(3)}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div>Latitude: {Number(lat).toFixed(3)}</div>
+                    <div>Longitude: {Number(lon).toFixed(3)}</div>
                   </div>
                 </CaptionValue>
 
               </HorizontalLayout>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', width: '50%', justifyContent: 'center' }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              width: '40%',
+              maxWidth: '200px',
+              justifyContent: 'center',
+              borderRadius: '16px',
+            }}
+            >
               <CardMedia
                 component='img'
                 sx={{
                   objectFit: 'contain',
-                  maxWidth: '200px',
+                  width: '100%',
+                  height: 'auto',
                   padding: '10px',
+                  borderRadius: '8px',
                   imageRendering: 'pixelated',
                   backgroundColor: imgBgColor
                 }}
@@ -207,7 +219,7 @@ export function StacItemInfoCard({
                 >
                   <Typography variant='caption' component='div'>
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      Download the Tiff File <DownloadIcon fontSize='small' />
+                      Download the TIFF File <DownloadIcon fontSize='small' />
                     </div>
                   </Typography>
                 </a>

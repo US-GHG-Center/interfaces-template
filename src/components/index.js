@@ -9,6 +9,7 @@ export { VizItemTimeline } from './map/itemTimeline/index.tsx';
 export { MeasurementLayer } from './map/measurementLayer';
 export { MarkerFeature } from './map/mapMarker';
 export { MapZoom } from './map/mapZoom';
+export { MapLegend } from './map/mapLegend';
 
 // Map Layers
 export { VisualizationLayers } from './map/mapLayer';
@@ -17,7 +18,12 @@ export { VisualizationLayers } from './map/mapLayer';
 export { FilterByDate } from './method/filter';
 export { Search } from './method/search';
 
-export { VisualizationItemCard } from './ui/card';
+export { 
+  VisualizationItemCard,
+  StacItemInfoCard,
+  SamInfoCard,
+  BlankInfoCard
+ } from './ui/card';
 export { PersistentDrawerRight } from './ui/drawer';
 export { ColorBar } from './ui/colorBar';
 export { ConfigurableColorBar } from './ui/configurableColorBar';
@@ -31,6 +37,9 @@ export {
   addSourceLayerToMap,
   layerExists,
   sourceExists,
+  getMarkerColor
 } from './map/utils';
 
 // Add other component exports here as needed
+
+export { Dropdown } from './ui/dropdown';
