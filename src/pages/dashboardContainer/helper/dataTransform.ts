@@ -52,5 +52,8 @@ export function dataTransformation(
     oco3DataFactory.addVizItem(stacItemSam);
   });
 
+  // For now, sort at the end.
+  // TODO: In Target implementation, use an Treap instead of array to collect Sam.
+
   return oco3DataFactory;
 }

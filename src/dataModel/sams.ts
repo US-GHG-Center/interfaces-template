@@ -96,9 +96,9 @@ export interface Target {
   // methods
   getTargetId(): string; // To have uniformity in target_id: ref. SAM.getTargetId
   getRepresentationalSAM(): SAM;
-  getSortedSAMs(): SAM[];
   addSAM(sam: SAM): void;
   getSAMbyId(id: string): SAM | undefined;
+  sortSAM(): void;
 }
 
 // Implementation
@@ -161,9 +161,9 @@ export class SamsTarget implements Target {
     // update startDatetime and endDatetime END
   }
 
-  getSortedSAMs(): SAM[] {
-    const sortedSAMS: SAM[] = [...this.sams];
-    sortedSAMS.sort((prev: SAM, next: SAM) => {
+  sortSAM(): void {
+    // inplace sort: use it after all the sams are added to the target for best result
+    this.sams.sort((prev: SAM, next: SAM) => {
       const prevTime = prev.properties.start_datetime
         ? moment(prev.properties.start_datetime).valueOf()
         : Number.MAX_VALUE;
@@ -173,7 +173,6 @@ export class SamsTarget implements Target {
 
       return prevTime - nextTime;
     });
-    return sortedSAMS;
   }
 
   getSAMbyId(id: string): SAM | undefined {
