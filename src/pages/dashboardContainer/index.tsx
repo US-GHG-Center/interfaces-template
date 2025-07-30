@@ -42,11 +42,8 @@ export function DashboardContainer(): React.JSX.Element {
         const filteredData: STACItem[] = data.filter(
           (item: STACItem) => !item.id.includes('unfiltered')
         );
-
         const missingData: SAMMissingMetaData[] = missingProperties.data;
-
         oco3DataFactory.current = dataTransformation(filteredData, missingData);
-
         // NOTE: incase we need metadata and other added information,
         // add that to the STAC Item Property
 

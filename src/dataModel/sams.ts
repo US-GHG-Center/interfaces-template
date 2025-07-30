@@ -101,11 +101,6 @@ export interface Target {
   getSAMbyId(id: string): SAM | undefined;
 }
 
-export interface TargetTypeInterface {
-  name: string;
-  targets: Target[];
-}
-
 // Implementation
 
 export class SamsTarget implements Target {
@@ -143,16 +138,16 @@ export class SamsTarget implements Target {
   }
 
   addSAM(sam: SAM): void {
-    this.sams.push(sam);
-
-    // TODO: check why the datetime is not updating
-    // update startDatetime and endDatetime based on the new sam.
     if (!this.sams.length) {
       this.startDatetime = sam.properties.start_datetime;
       this.endDatetime = sam.properties.end_datetime;
+      this.sams.push(sam);
       return;
     }
 
+    this.sams.push(sam);
+
+    // update startDatetime and endDatetime START.
     let { start_datetime: startDateTime, end_datetime: endDatetime } =
       sam.properties;
     let mStartDate = moment(startDateTime);
@@ -163,6 +158,7 @@ export class SamsTarget implements Target {
     if (mEndDate.isAfter(moment(this.endDatetime))) {
       this.endDatetime = endDatetime;
     }
+    // update startDatetime and endDatetime END
   }
 
   getSortedSAMs(): SAM[] {
