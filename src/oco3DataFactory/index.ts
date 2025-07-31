@@ -3,6 +3,8 @@ import { VizItem, SAM, Target, Lon, Lat } from '../dataModel';
 
 import { SAMImpl, SamsTarget } from '../dataModel/sams';
 
+import { getTargetIdFromStacIdSAM } from '../pages/dashboardContainer/helper';
+
 export class Oco3DataFactory extends DataFactory {
   private static instance: Oco3DataFactory;
   private constructor() {
@@ -84,7 +86,7 @@ export class Oco3DataFactory extends DataFactory {
 
   getTargetIdFromStacIdSAM = (stacItemId: string): string => {
     // check the SAM defination for explanation.
-    return stacItemId.split('_')[1];
+    return getTargetIdFromStacIdSAM(stacItemId);
   };
 
   sortAllSams(): void {

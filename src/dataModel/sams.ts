@@ -10,6 +10,8 @@ import {
 } from './core';
 import moment from 'moment';
 
+import { getTargetIdFromStacIdSAM } from '../pages/dashboardContainer/helper';
+
 // TODO: change the properties to camelCase for consistency.
 // Its left at it is as the incoming data is snakecase.
 export interface SAMMissingMetaData {
@@ -39,7 +41,7 @@ export interface STACItemSAM extends STACItem {
 export interface SAM extends STACItemSAM {
   // id: is in Format: <data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>. e.g. "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
   // however, the <target_id> can sometimes have _ separator. Hence, index 1 doesnot always represent the full target_id
-  // solution: lets work with the semi_target_id always, i.e. target_id will be always target_id_old.split('_')[0]
+  // solution: the target_id on the metadata is correct. we just need a mechanism to find out the correct target_id from the stac_item_id
   getTargetId: () => string;
 }
 
@@ -81,7 +83,7 @@ export class SAMImpl implements SAM {
      * id: is in Format: <data-type>_<target_id>_<datetime>_<filter-status>_<ghg-type>. e.g. "oco3-co2_volcano0010_2025-03-30T232216Z_unfiltered_xco2"
      */
     if (!this.id) return '';
-    return this.id.split('_')[1];
+    return getTargetIdFromStacIdSAM(this.id);
   };
 }
 
@@ -132,14 +134,18 @@ export class SamsTarget implements Target {
      * check. SAM defination.
      */
     if (!this.id) return '';
-    return this.id.split('_')[0];
+    return this.id;
   }
 
   getRepresentationalSAM(): SAM {
     if (!this.isSamSorted) {
       this.inplaceSort(this.sams);
     }
-    return this.sams[0];
+    let repSam: SAM = this.sams[0];
+    repSam.geometry.coordinates = [
+      [repSam.properties.target_location.coordinates],
+    ];
+    return repSam;
   }
 
   addSAM(sam: SAM): void {
