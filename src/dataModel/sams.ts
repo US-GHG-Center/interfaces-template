@@ -141,7 +141,11 @@ export class SamsTarget implements Target {
     if (!this.isSamSorted) {
       this.inplaceSort(this.sams);
     }
-    return this.sams[0];
+    let repSam: SAM = this.sams[0];
+    repSam.geometry.coordinates = [
+      [repSam.properties.target_location.coordinates],
+    ];
+    return repSam;
   }
 
   addSAM(sam: SAM): void {
