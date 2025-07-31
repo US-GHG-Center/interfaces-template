@@ -79,8 +79,7 @@ async function fetchAllFromSTACAPI(STACApiUrl) {
   try {
     return await apiCaller(STACApiUrl);
   } catch (error) {
-    console.error('Error fetching data:', error);
-    return [];
+    throw new Error('Error fetching data:', error);
   }
 }
 
