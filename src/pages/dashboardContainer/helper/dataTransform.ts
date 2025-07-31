@@ -29,8 +29,12 @@ export function dataTransformation(
     const stacItemId = item.id;
     const targetId = getTargetIdFromStacIdSAM(stacItemId);
 
-    if (!(targetId in samMissingMetaDataDict)) {
+    if (
+      !(targetId in samMissingMetaDataDict) ||
+      item.id.slice(0, 7) === 'oco3-sif'
+    ) {
       // if missing properties are not available for target_id, we ignore whole SamSTACItem.
+      // also as per the discussion with JPL team, we reject all the items where the id starts with oco3-sif
       return;
     }
 
