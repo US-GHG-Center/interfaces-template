@@ -19,7 +19,7 @@ export function dataTransformation(
   const samMissingMetaDataDict: SAMMissingMetaDataDict = {};
 
   missingSamsProperties.forEach((missingSamsProp: SAMMissingMetaData) => {
-    let target_id: string = missingSamsProp.target_id.split('_')[0];
+    let target_id: string = missingSamsProp.target_id;
     samMissingMetaDataDict[target_id] = missingSamsProp;
   });
 
