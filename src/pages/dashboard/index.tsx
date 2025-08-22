@@ -67,7 +67,7 @@ export function Dashboard({
   //color map
   const [VMAX, setVMAX] = useState<number>(100);
   const [VMIN, setVMIN] = useState<number>(-92);
-  const [colormap, setColormap] = useState<string>('default');
+  const [colormap, setColormap] = useState<string>('magma');
   const [assets, setAssets] = useState<string>('rad');
 
   // states for components/controls
@@ -148,7 +148,7 @@ export function Dashboard({
     // also few extra things for the application state. We can receive it from collection json.
     const VMIN = 0;
     const VMAX = 0.4;
-    const colormap: string = 'default';
+    const colormap: string = 'magma';
     setVMIN(VMIN);
     setVMAX(VMAX);
     setColormap(colormap);

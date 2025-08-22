@@ -1,7 +1,17 @@
 {
   "name": "interface-template",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
+    "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/main.js",
+  "source": "src/lib/index.ts",
+  "module": "dist/module.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "homepage": ".",
   "dependencies": {
     "@date-io/moment": "^3.0.0",
@@ -13,7 +23,6 @@
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@mui/icons-material": "^6.1.6",
-    "@mui/material": "^6.1.6",
     "@mui/x-date-pickers": "^7.22.0",
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^13.0.0",
@@ -33,9 +42,7 @@
     "mapbox-gl": "^3.7.0",
     "mapboxgl-timeline": "^1.0.2",
     "moment": "^2.30.1",
-    "react": "^18.3.1",
     "react-calendar-timeline": "^0.27.0",
-    "react-dom": "^18.3.1",
     "react-loader-spinner": "^6.1.6",
     "react-resizable-panels": "^2.1.1",
     "react-router-dom": "^6.27.0",
@@ -46,11 +53,49 @@
     "vis-timeline": "^7.7.4",
     "web-vitals": "^2.1.0"
   },
+  "devDependencies": {
+    "@mui/material": "^6.1.6",
+    "@parcel/packager-raw-url": "^2.15.2",
+    "@parcel/packager-ts": "^2.15.2",
+    "@parcel/transformer-typescript-types": "^2.15.2",
+    "@parcel/transformer-webmanifest": "^2.15.2",
+    "parcel": "^2.15.2",
+    "parcel-resolver-tspaths": "^0.0.9",
+    "@types/d3": "^7.4.3",
+    "buffer": "^5.5.0||^6.0.0",
+    "env-cmd": "^10.1.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "jest-watch-typeahead": "^2.2.2",
+    "postcss": ">= 8",
+    "postcss-normalize": "^13.0.1",
+    "prettier": "^3.4.2",
+    "process": "^0.11.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^4.4.2"
+  },
+  "peerDependencies": {
+    "@mui/material": "^6.1.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "targets": {
+    "interfaceTemplate": {
+      "source": "public/index.html",
+      "context": "browser"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "react-scripts eject",
+    "start": "parcel",
+    "build": "parcel build",
+    "build-lib": "parcel build ./src/lib/index.ts --dist-dir dist",
+    "test": "jest",
+    "clean": "rm -rf ./node_modules dist build yarn.lock .parcel-cache && yarn cache clean",
     "format": "prettier --write .",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
@@ -76,13 +121,5 @@
   },
   "resolutions": {
     "styled-components": "^5"
-  },
-  "devDependencies": {
-    "@craco/craco": "^7.1.0",
-    "@types/d3": "^7.4.3",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^10.0.1",
-    "eslint-plugin-prettier": "^5.2.3",
-    "prettier": "^3.4.2"
   }
 }
