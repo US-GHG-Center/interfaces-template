@@ -9,6 +9,7 @@ import { LayerVisibilityControl } from './layerVisibility';
 import { HomeControl } from './home';
 import { RestoreControl } from './restore';
 import { MeasurementLayer } from '../measurementLayer';
+import { BasemapControl } from './selectBaseMap';
 
 import './index.css';
 const scaleUnits = {
@@ -26,6 +27,7 @@ const DefaultMapControls = ({
   setMapScaleUnit,
   handleResetHome,
   handleResetToSelectedRegion,
+  handleBaseMapSelection,
   openDrawer,
 }) => {
   const { map } = useMapbox();
@@ -40,18 +42,21 @@ const DefaultMapControls = ({
     });
     const layerVisibilityControl = new LayerVisibilityControl();
     const homeControl = new HomeControl(handleResetHome);
-    const restoreControl = new RestoreControl(handleResetToSelectedRegion);
+    // const restoreControl = new RestoreControl(handleResetToSelectedRegion);
 
     const hamburgerControlElem = hamburgerControl.onAdd(map);
     const homeControlElem = homeControl.onAdd(map);
-    const restoreControlElem = restoreControl.onAdd(map);
+    // const restoreControlElem = restoreControl.onAdd(map);
     const mapboxNavigationElem = mapboxNavigation.onAdd(map);
     const layerVisibilityControlElem = layerVisibilityControl.onAdd(map);
+    const basemapControl = new BasemapControl(handleBaseMapSelection);
+    const basemapControlElem = basemapControl.onAdd(map);
 
     const mapboxCustomControlContainer = customControlContainer.current;
     mapboxCustomControlContainer.append(hamburgerControlElem);
     mapboxCustomControlContainer.append(homeControlElem);
-    mapboxCustomControlContainer.append(restoreControlElem);
+    mapboxCustomControlContainer.append(basemapControlElem);
+    // mapboxCustomControlContainer.append(restoreControlElem);
     mapboxCustomControlContainer.append(mapboxNavigationElem);
     mapboxCustomControlContainer.append(layerVisibilityControlElem);
 
@@ -61,7 +66,8 @@ const DefaultMapControls = ({
       if (mapboxNavigation) mapboxNavigation.onRemove();
       if (layerVisibilityControl) layerVisibilityControl.onRemove();
       if (homeControl) homeControl.onRemove();
-      if (restoreControl) restoreControl.onRemove();
+      if (basemapControlElem) basemapControlElem.onRemove();
+      // if (restoreControl) restoreControl.onRemove();
     };
   }, [map]);
 
@@ -170,6 +176,17 @@ export const MapControls = ({
   const [clearMeasurementIcon, setClearMeasurementIcon] = useState(false);
   const [clearMeasurementLayer, setClearMeasurementLayer] = useState(false);
   const [mapScaleUnit, setMapScaleUnit] = useState(scaleUnits.MILES);
+
+  const { map } = useMapbox();
+
+  const handleBaseMapSelection = (basemapStyleName, basemapStyleId = '') => {
+    let completeStyleId = basemapStyleName + `/${basemapStyleId}`;
+    const mapboxStyleBaseUrl = `mapbox://styles/${completeStyleId}`;
+    if (map) {
+      map.setStyle(mapboxStyleBaseUrl);
+    }
+  };
+
   return (
     <>
       <DefaultMapControls
@@ -189,6 +206,7 @@ export const MapControls = ({
         setMapScaleUnit={setMapScaleUnit}
         handleResetHome={handleResetHome}
         handleResetToSelectedRegion={handleResetToSelectedRegion}
+        handleBaseMapSelection={handleBaseMapSelection}
       />
       <MeasurementLayer
         measureMode={measureMode}
