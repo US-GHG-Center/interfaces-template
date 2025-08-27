@@ -62,6 +62,18 @@ export const VizItemTimeline = ({
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  /* 
+    Refs to track user interactions with the timeline points
+    These refs help distinguish between user clicks/hover on the timeline itself
+    vs programmatic changes (e.g., using the "Next" button, or when the activeItemId changes)
+  */
+  const userClickedIdRef = useRef<string | null>(null);
+  const userHoveredIdRef = useRef<string | null>(null);
+
+  // Ref to track the currently hovered item ID
+  const hoveredItemIdRef = useRef<string | null>(null);
+
+
   const [infoOpen, setInfoOpen] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 50 });
 
@@ -84,9 +96,13 @@ export const VizItemTimeline = ({
   };
 
   const handleVizItemClick = (idx: number) => {
+    const item = parsedItems[idx];
+    if (!item) return;
+    userClickedIdRef.current = item.id;
     activeDateRef.current = dates[idx];
     setActiveIndex(idx);
-    onVizItemSelect(parsedItems[idx].id);
+    onVizItemSelect(item.id);
+    onVizItemHover(item.id);
     updateHighlights(
       svgRef,
       parsedItems,
@@ -202,9 +218,9 @@ export const VizItemTimeline = ({
         .attr('cy', 0)
         .attr('r', 5)
         .attr('fill', d => {
-          if (d.id === hoveredItemId) return '#9dc1fa'; // color for hovered item
-          if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active item color
-          return '#9ca3af'; // default gray
+          if (d.id === hoveredItemIdRef.current) return '#9dc1fa';
+          if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6';
+          return '#9ca3af';
         })
         .style('cursor', 'pointer')
         .on('click', (e, d) => {
@@ -212,6 +228,7 @@ export const VizItemTimeline = ({
           handleVizItemClick(idx);
         })
         .on('mouseover', function (e, d) {
+          userHoveredIdRef.current = d.id;
           const isActive = d.date.getTime() === activeDateRef.current.getTime();
           if (!isActive) d3.select(this).attr('fill', '#9dc1fa'); // muted hover color
           const idx = parsedItems.findIndex(item => item.id === d.id);
@@ -267,22 +284,57 @@ export const VizItemTimeline = ({
       setActiveIndex(0);
       activeDateRef.current = parsedItems[0]?.date;
     }
+
+    updateHighlights(
+      svgRef,
+      parsedItems,
+      activeDateRef.current,
+      baseX,
+      transformRef.current
+    );
+
+    // Only center if the change is NOT from user click
+    if (activeItemId !== userClickedIdRef.current) {
+      centerOnDate(
+        svgRef,
+        activeDateRef.current,
+        transformRef.current.k, // keep current zoom level
+        dimensions.width,
+        margin,
+        baseX!,
+        zoomRef.current!
+      );
+    }
+
+    // Reset the ref — so future updates are treated as external unless clicked again
+    userClickedIdRef.current = null;
   }, [parsedItems, activeItemId]);
 
 
   useEffect(() => {
+    if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
     const g = svg.select('g');
     if (!g || !parsedItems.length) return;
 
-    // Re-select circles and re-bind data
-    const circles = g.selectAll<SVGCircleElement, STACItem>('circle').data(parsedItems);
+    hoveredItemIdRef.current = hoveredItemId;
 
-    circles.attr('fill', d => {
-      if (d.id === hoveredItemId) return '#9dc1fa'; // hovered
-      if (d.date.getTime() === activeDateRef.current.getTime()) return '#3b82f6'; // active
-      return '#9ca3af'; // default
-    });
+    if (hoveredItemId !== userHoveredIdRef.current) {
+      const hoveredItem = parsedItems.find(item => item.id === hoveredItemId);
+      if (hoveredItem) {
+        centerOnDate(
+          svgRef,
+          hoveredItem.date,
+          transformRef.current.k,
+          dimensions.width,
+          margin,
+          baseX!,
+          zoomRef.current!
+        );
+      }
+    }
+    userHoveredIdRef.current = null; // reset after handling hover
+
   }, [hoveredItemId]);
 
 
